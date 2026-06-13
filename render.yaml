@@ -1,0 +1,47 @@
+# 숲길동무 — Render 무료 배포 청사진(Blueprint)
+# https://render.com → New → Blueprint → 이 저장소 연결 → 자동 인식.
+# 한 서비스가 API(/api/v1/*)와 PWA(app/ 정적)를 같은 HTTPS 오리진에서 서빙한다.
+# 배포되면 https://forestmate.onrender.com 형태의 공개 URL이 생긴다(스토어 등록의 토대).
+services:
+  - type: web
+    name: forestmate
+    runtime: docker
+    plan: free                      # 무료 플랜(유휴 시 슬립 — 첫 요청 시 수십 초 콜드스타트)
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore               # 한국에서 가장 가까운 무료 리전
+    healthCheckPath: /api/v1/healthz
+    autoDeploy: true
+    envVars:
+      - key: ENV
+        value: prod
+      # SQLite는 무료 플랜의 임시 디스크에 저장 → 재배포·슬립 시 초기화된다.
+      # 데이터 영속이 필요하면 Render PostgreSQL(무료) 생성 후 아래를 주석 해제:
+      # - key: DATABASE_URL
+      #   fromDatabase: { name: forestmate-db, property: connectionString }
+      - key: DATABASE_URL
+        value: sqlite:////tmp/forestmate.db
+      # 관제 히트맵 최소 군집(위치정보법). 실사용자 50명 미만 데모 단계는 1,
+      # 정식 운영 전환 시 50으로 올린다.
+      - key: K_ANONYMITY
+        value: "1"
+      - key: DISTRESS_STALL_MINUTES
+        value: "30"
+      - key: CORS_ORIGINS
+        value: "*"                  # 운영 전환 시 앱/웹 도메인만 화이트리스트
+      # 공공데이터포털 키 — 비우면 동일 스키마 스냅샷 폴백. 대시보드에서 비밀값으로 입력.
+      - key: DATA_GO_KR_KEY
+        sync: false
+      # Claude API 키 — 비우면 규칙 기반 챗. 대시보드에서 비밀값으로 입력.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: claude-opus-4-8
+      - key: LLM_MAX_TOKENS
+        value: "1024"
+
+# 영속 DB가 필요할 때만 사용(무료 PostgreSQL):
+# databases:
+#   - name: forestmate-db
+#     plan: free
+#     region: singapore

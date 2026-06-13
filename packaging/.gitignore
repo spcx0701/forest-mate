@@ -1,0 +1,14 @@
+# 빌드 산출물·서명키·의존성 — 커밋 금지
+node_modules/
+android/app-release-bundle.aab
+android/app-release-signed.apk
+android/*.keystore
+android/.gradle/
+android/build/
+ios/www/
+ios/ios/
+ios/node_modules/
+*.keystore
+*.jks
+*.mobileprovision
+*.p12
