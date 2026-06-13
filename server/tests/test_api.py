@@ -89,6 +89,15 @@ def test_full_hike_flow(client):
     assert "sos" in kinds and "checkin" in kinds
     assert len(body["risk_table"]) > 0
 
+    # 8) 마이 리포트 — 하드코딩이 아니라 이 기기의 실제 완료 산행을 집계
+    res = client.get("/api/v1/hikes/summary", headers=auth)
+    assert res.status_code == 200
+    rep = res.json()
+    assert rep["total_hikes"] == 1
+    assert rep["total_km"] > 0 and rep["total_kcal"] > 0
+    assert rep["active_days"] >= 1
+    assert sum(m["count"] for m in rep["monthly"]) == 1  # 완료 1건이 월별에 반영
+
 
 def test_dashboard_websocket_receives_sos(client):
     res = client.post("/api/v1/devices", json={"name": "WS", "fit": 2})

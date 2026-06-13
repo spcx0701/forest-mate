@@ -7,13 +7,16 @@ const nowHM = () => { const d = new Date(); return `${String(d.getHours()).padSt
 
 /* ---------------- 상태 저장 ---------------- */
 const DEFAULTS = {
-  profile: { set: false, name: "동무", fit: 2, knee: true, heart: false },
+  profile: { set: false, name: "", fit: 2, knee: true, heart: false },
   settings: { offRoute: true, family: true },
   lang: "ko",
   region: "eunpyeong",
   aiCount: 0,
   hikesDone: 0,
-  june: { cnt: 4, km: 32.5, kcal: 8420, co2: 12.4 },
+  // 오프라인(로컬) 폴백용 누적치 — 신규 사용자는 0에서 시작(가짜 시드 제거).
+  // cloud 모드에서는 서버 /hikes/summary 실집계로 대체된다.
+  june: { cnt: 0, km: 0, kcal: 0, co2: 0 },
+  installAt: null,
   insurance: null,
 };
 let S;
@@ -23,6 +26,7 @@ S.profile = Object.assign({}, DEFAULTS.profile, S.profile);
 S.settings = Object.assign({}, DEFAULTS.settings, S.settings);
 S.june = Object.assign({}, DEFAULTS.june, S.june);
 const save = () => { try { localStorage.setItem("fm_state", JSON.stringify(S)); } catch {} };
+if (!S.installAt) { S.installAt = Date.now(); save(); }   // 최초 사용일(로컬 경과일 계산용)
 
 /* URL 파라미터 (?t=tab&demo=57 — 화면 캡처/시연용) */
 const Q = new URLSearchParams(location.search);
@@ -340,7 +344,7 @@ function endHike(byUser = true) {
   S.june.co2 = +(S.june.co2 + doneKm * 0.38).toFixed(1);
   S.hikesDone += 1; save();
   if (API.mode === "cloud" && API.hikeId) {
-    API.post(`/hikes/${API.hikeId}/end`).catch(() => {});
+    API.post(`/hikes/${API.hikeId}/end`).then(() => renderMy()).catch(() => {});
     API.hikeId = null;
   }
   logEvent(`산행 종료 — ${doneKm}km 기록 저장 (마이 리포트 반영)`);
@@ -638,23 +642,50 @@ function seedChat() {
   bubble("길에서 봤는데, 이 버섯 먹어도 돼?", "user");
   speciesReply(sp);
   bubble("백운대 정상까지 얼마나 남았어?", "user");
-  bubble(`남은 거리 <b>1.8km</b>, 동무님 페이스라면 약 <b>55분</b> 뒤 도착해요. 일몰(19:52)까지 여유가 충분하지만, 정상 부근 바람이 초속 9m로 강하니 겉옷을 준비하세요. 🧥`);
+  bubble(`남은 거리 <b>1.8km</b>, ${S.profile.name || "산친구"}님 페이스라면 약 <b>55분</b> 뒤 도착해요. 일몰(19:52)까지 여유가 충분하지만, 정상 부근 바람이 초속 9m로 강하니 겉옷을 준비하세요. 🧥`);
 }
 
 /* ---------------- 마이 ---------------- */
-const BARS_BASE = [34, 42, 55, 68, 61]; // 1~5월(%)
-function renderMy() {
-  $("profName").textContent = S.profile.name;
-  $("profDays").textContent = `숲길과 함께한 지 ${247 + S.hikesDone}일째`;
-  $("profLv").textContent = `Lv.${7 + Math.floor(S.hikesDone / 3)} 숲지기`;
-  $("repCnt").textContent = `${S.june.cnt}회`;
-  $("repKm").textContent = `${S.june.km}km`;
-  $("repKcal").textContent = S.june.kcal.toLocaleString();
-  $("repCo2").textContent = `${S.june.co2}kg`;
-  const juneH = Math.min(100, 84 + (S.june.cnt - 4) * 4);
-  const hs = [...BARS_BASE, juneH];
-  $("repBars").innerHTML = hs.map((h, i) => `
-    <div class="b ${i === 5 ? "cur" : ""}"><i style="height:${h}%"></i><span>${i + 1}월</span></div>`).join("");
+function last6Months() {
+  const out = [], d = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    out.push({ key: `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`, label: `${m.getMonth() + 1}월` });
+  }
+  return out;
+}
+// cloud 모드면 서버 실집계(/hikes/summary), 아니면 로컬 누적치로 폴백.
+async function renderMy() {
+  $("profName").textContent = S.profile.name || "산친구";
+  const months = last6Months();
+  let days, cnt, km, kcal, co2, level, bars;
+
+  if (API.mode === "cloud") {
+    try {
+      const s = await API.get("/hikes/summary");
+      days = s.active_days; cnt = s.total_hikes; km = s.total_km;
+      kcal = s.total_kcal; co2 = s.co2_kg; level = s.level;
+      const byKey = Object.fromEntries(s.monthly.map((m) => [m.month, m.km]));
+      const maxKm = Math.max(1, ...s.monthly.map((m) => m.km));
+      bars = months.map((m) => ({ h: Math.round(((byKey[m.key] || 0) / maxKm) * 100), label: m.label }));
+    } catch { /* 아래 로컬 폴백 */ }
+  }
+  if (days === undefined) {  // 오프라인 폴백 — 가짜 247 대신 최초 사용일 기준 경과일
+    days = Math.floor((Date.now() - (S.installAt || Date.now())) / 86400000) + 1;
+    cnt = S.june.cnt; km = S.june.km; kcal = S.june.kcal; co2 = S.june.co2;
+    level = 1 + Math.floor((S.hikesDone || 0) / 3);
+    const curH = Math.min(100, (S.june.km || 0) * 6);
+    bars = months.map((m, i) => ({ h: i === months.length - 1 ? curH : 0, label: m.label }));
+  }
+
+  $("profDays").textContent = `숲길과 함께한 지 ${days}일째`;
+  $("profLv").textContent = `Lv.${level} 숲지기`;
+  $("repCnt").textContent = `${cnt}회`;
+  $("repKm").textContent = `${km}km`;
+  $("repKcal").textContent = (kcal || 0).toLocaleString();
+  $("repCo2").textContent = `${co2}kg`;
+  $("repBars").innerHTML = bars.map((b, i) => `
+    <div class="b ${i === bars.length - 1 ? "cur" : ""}"><i style="height:${b.h}%"></i><span>${b.label}</span></div>`).join("");
   renderBadges(); renderIns();
 }
 function renderBadges() {
@@ -733,7 +764,7 @@ qsa("#obChecks .ckc").forEach((b) => b.addEventListener("click", () => {
   else { qs('#obChecks .ckc[data-v="none"]').classList.remove("on"); b.classList.toggle("on"); }
 }));
 $("obSave").addEventListener("click", () => {
-  S.profile.name = $("obName").value.trim() || "동무";
+  S.profile.name = $("obName").value.trim() || "산친구";
   S.profile.fit = +qs("#obFit button.on").dataset.v;
   S.profile.knee = qs('#obChecks .ckc[data-v="knee"]').classList.contains("on");
   S.profile.heart = qs('#obChecks .ckc[data-v="heart"]').classList.contains("on");
@@ -774,9 +805,10 @@ async function init() {
   renderGuards();
   renderLocCard();
   seedChat();
-  selectCourse("bukhansan");
-  // 데모 파라미터: 산행 진행 상태 재현 (?demo=57)
+  // 산행 탭은 코스 미선택 상태로 시작(빈 상태 안내). 코스는 홈 추천에서 사용자가 선택.
+  // 데모 파라미터(?demo=57)일 때만 스크린샷용으로 기본 코스를 채운다.
   if (DEMO !== null) {
+    selectCourse("bukhansan");
     Hike.prog = DEMO / 100;
     Hike.hr = 96;
     Hike.active = true;
