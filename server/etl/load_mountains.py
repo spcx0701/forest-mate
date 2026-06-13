@@ -34,14 +34,24 @@ def _is_top100(raw: str) -> bool:
     return bool(v) and ("100" in v or v.upper() in ("Y", "1", "O", "TRUE"))
 
 
+def _g(row: dict, *keys: str) -> str:
+    """후보 키 중 처음으로 값이 있는 것(필드명 변형 흡수)."""
+    for k in keys:
+        if row.get(k):
+            return row[k]
+    return ""
+
+
 def _to_model(row: dict) -> Mountain:
+    name = _g(row, "mntiname", "mntnnm", "mntn_nm", "name")
+    addr = _g(row, "mntiadd", "addr", "mntn_lctn", "lctn")
     return Mountain(
-        list_no=row["mntilistno"] or row["mntiname"],
-        name=row["mntiname"], sub_name=row["mntisname"], addr=row["mntiadd"],
-        sido=_sido(row["mntiadd"]), height=_height(row["mntihigh"]),
-        summary=row["mntisummary"][:4000], details=row["mntidetails"][:8000],
-        admin=row["mntiadmin"], admin_tel=row["mntiadminnum"],
-        is_top100=_is_top100(row["mntitop"]),
+        list_no=_g(row, "mntilistno", "mntnno", "no") or name,
+        name=name, sub_name=_g(row, "mntisname"), addr=addr,
+        sido=_sido(addr), height=_height(_g(row, "mntihigh", "mntn_hg", "height")),
+        summary=_g(row, "mntisummary")[:4000], details=_g(row, "mntidetails", "mntn_dtl")[:8000],
+        admin=_g(row, "mntiadmin"), admin_tel=_g(row, "mntiadminnum"),
+        is_top100=_is_top100(_g(row, "mntitop")),
     )
 
 
