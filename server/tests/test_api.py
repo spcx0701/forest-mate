@@ -44,6 +44,15 @@ def test_species_identify(client):
     assert "개나리광대버섯" in body["name"]
 
 
+def test_mountains_search_empty(client):
+    # 키 없는 테스트 환경 — 카탈로그 비어있어도 검색 API는 정상 스키마 반환
+    res = client.get("/api/v1/mountains?q=북한")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["total"] == 0 and body["items"] == []
+    assert client.get("/api/v1/mountains/sido").status_code == 200
+
+
 def test_full_hike_flow(client):
     # 1) 기기 등록(익명)
     res = client.post("/api/v1/devices", json={"name": "테스터", "fit": 2, "knee": True})

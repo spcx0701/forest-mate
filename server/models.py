@@ -85,6 +85,28 @@ class SosEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class Mountain(Base):
+    """전국 산 카탈로그 — 산림청 산정보 서비스(3,368개) ETL 적재 결과.
+
+    상세 안전 코스(고도·위험구간·대피소)는 별도 큐레이션(seed COURSES)이며,
+    이 테이블은 전국 산 검색·소개용 카탈로그다.
+    """
+
+    __tablename__ = "mountains"
+
+    list_no: Mapped[str] = mapped_column(String(16), primary_key=True)  # mntilistno
+    name: Mapped[str] = mapped_column(String(64), index=True)           # mntiname
+    sub_name: Mapped[str] = mapped_column(String(64), default="")       # mntisname
+    addr: Mapped[str] = mapped_column(String(128), default="")          # mntiadd(소재지)
+    sido: Mapped[str] = mapped_column(String(24), index=True, default="")  # 소재지 첫 토큰(시·도)
+    height: Mapped[int] = mapped_column(Integer, default=0)             # mntihigh
+    summary: Mapped[str] = mapped_column(Text, default="")              # mntisummary
+    details: Mapped[str] = mapped_column(Text, default="")             # mntidetails
+    admin: Mapped[str] = mapped_column(String(64), default="")          # mntiadmin
+    admin_tel: Mapped[str] = mapped_column(String(32), default="")      # mntiadminnum
+    is_top100: Mapped[bool] = mapped_column(Boolean, default=False)     # mntitop(100대명산 여부)
+
+
 class AlertEvent(Base):
     """관제 피드 이벤트(위험구간 경고·조난의심·해제 등)."""
 

@@ -11,10 +11,26 @@ from datetime import datetime, timedelta
 
 from ..config import get_settings
 from ..seed import REGIONS
-from .base import AdapterError, fetch_json
+from .base import AdapterError, fetch_json, service_key
 
 KMA_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst"
 FIRE_URL = "https://apis.data.go.kr/1400377/forestPoint/forestPointListSigunguSearch"
+
+# 기상청 단기예보(getVilageFcst) 발표시각 — 이 8개만 유효(매 3시간, 02시 시작).
+_KMA_SLOTS = [2, 5, 8, 11, 14, 17, 20, 23]
+
+
+def _kma_base(now: datetime | None = None) -> tuple[str, str]:
+    """가장 최근의 유효 발표시각(base_date, base_time)을 계산.
+
+    이전 코드는 (hour//3)*3 → 00·03·06…을 써서 '자료없음'이 떴다.
+    발표 후 약 45분 뒤 자료가 안정적이라 now-45분 기준으로 직전 슬롯을 고른다.
+    """
+    t = (now or datetime.now()) - timedelta(minutes=45)
+    for s in reversed(_KMA_SLOTS):
+        if t.hour >= s:
+            return t.strftime("%Y%m%d"), f"{s:02d}00"
+    return (t - timedelta(days=1)).strftime("%Y%m%d"), "2300"  # 02:45 이전 → 전일 23시
 
 
 def _snapshot(region_id: str) -> dict:
@@ -28,18 +44,20 @@ async def get_weather(region_id: str) -> dict:
     if not settings.live_data:
         return {**_snapshot(region_id)["weather"], "source": "snapshot"}
 
-    base = datetime.now() - timedelta(hours=1)
+    base_date, base_time = _kma_base()
     params = {
-        "serviceKey": settings.data_go_kr_key,
-        "dataType": "JSON", "numOfRows": 200, "pageNo": 1,
-        "base_date": base.strftime("%Y%m%d"),
-        "base_time": f"{(base.hour // 3) * 3:02d}00" or "0200",
+        "serviceKey": service_key(),
+        "dataType": "JSON", "numOfRows": 1000, "pageNo": 1,
+        "base_date": base_date, "base_time": base_time,
         "nx": region["nx"], "ny": region["ny"],
     }
     try:
         data = await fetch_json(KMA_URL, params, cache_key=f"kma:{region_id}")
         items = data["response"]["body"]["items"]["item"]
-        vals = {it["category"]: it["fcstValue"] for it in items}
+        # 가장 이른 예보시각의 값을 현재값 대용으로(카테고리별 최초 1건).
+        vals: dict[str, str] = {}
+        for it in sorted(items, key=lambda x: (x["fcstDate"], x["fcstTime"])):
+            vals.setdefault(it["category"], it["fcstValue"])
         temp = float(vals.get("TMP", 18))
         wind = float(vals.get("WSD", 3))
         rain = int(vals.get("POP", 10))
@@ -59,7 +77,7 @@ async def get_fire_risk(region_id: str) -> dict:
         return {**_snapshot(region_id)["fire"], "source": "snapshot"}
 
     params = {
-        "serviceKey": settings.data_go_kr_key,
+        "serviceKey": service_key(),
         "_type": "json", "numOfRows": 1, "pageNo": 1,
         "localAreaCode": region["sgg"], "excludeForecast": 0,
     }

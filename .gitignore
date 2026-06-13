@@ -5,3 +5,6 @@ __pycache__/
 .env
 .DS_Store
 node_modules/
+
+# Office 임시 잠금파일
+~$*
