@@ -208,6 +208,18 @@ nav a.sosnav{color:var(--danger)}
 .fld{margin-bottom:12px}
 .fld label{display:block; font-size:11.5px; font-weight:800; color:var(--sub); margin-bottom:6px}
 .fld input[type=text]{width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid #DCE6DE; font-size:14px; outline:none}
+
+/* 전국 산 검색 */
+.mnt-search{display:flex; flex-direction:column; align-items:flex-start; gap:2px; width:100%; margin-top:14px; padding:13px 16px; border-radius:14px; border:1.5px solid #DCE6DE; background:#fff; font-size:14px; font-weight:800; color:var(--ink,#1B4332); text-align:left; cursor:pointer}
+.mnt-search span{font-size:11px; font-weight:600; color:var(--sub)}
+#mntQ{width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid #DCE6DE; font-size:14px; outline:none; margin-bottom:10px}
+.mnt-results{max-height:46vh; overflow-y:auto; display:flex; flex-direction:column; gap:7px}
+.mnt-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 13px; border-radius:12px; background:#F2F7F1; border:1px solid #E3EDE4}
+.mnt-row b{font-size:14px; font-weight:800}
+.mnt-row .loc{font-size:11px; color:var(--sub); margin-top:2px}
+.mnt-row .h{font-size:13px; font-weight:800; color:#40916C; white-space:nowrap}
+.mnt-row .top{font-size:10px; font-weight:800; color:#B35309; background:#FFF4E8; border-radius:99px; padding:2px 7px; margin-left:6px}
+.mnt-empty{font-size:12.5px; color:var(--sub); text-align:center; padding:18px 0}
 .checks{display:flex; gap:8px; flex-wrap:wrap}
 .ckc{padding:9px 13px; border-radius:99px; background:#F2F7F1; font-size:12px; font-weight:700; color:var(--sub); border:1.5px solid transparent}
 .ckc.on{background:#FFF4E8; color:#B35309; border-color:#F4A261}

@@ -46,6 +46,8 @@
       </div>
     </div>
 
+    <button class="mnt-search" id="mntSearchBtn">🔍 전국 산 검색<span id="mntSearchSub">산림청 산정보 · 전국 3,400여 개 산</span></button>
+
     <h2 class="sec">🤖 AI 맞춤 코스 <small id="recoNote"></small></h2>
     <div class="reco" id="recoList"></div>
 
@@ -233,6 +235,17 @@
   <!-- ============ 보험 ============ -->
   <div class="overlay" id="insModal">
     <div class="sheet" id="insSheet"></div>
+  </div>
+
+  <!-- ============ 전국 산 검색 ============ -->
+  <div class="overlay" id="mntModal">
+    <div class="sheet">
+      <h3>전국 산 검색 🏔</h3>
+      <p class="sub">산림청 산정보 — 전국 3,400여 개 산을 이름으로 검색하세요.</p>
+      <input type="search" id="mntQ" placeholder="산 이름 입력 (예: 지리산, 북한산)" autocomplete="off">
+      <div id="mntResults" class="mnt-results"></div>
+      <div class="btnrow"><button class="btn ghost" data-close="mntModal">닫기</button></div>
+    </div>
   </div>
 </div>
 
