@@ -14,7 +14,8 @@ from ..seed import REGIONS
 from .base import AdapterError, fetch_json, service_key
 
 KMA_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst"
-FIRE_URL = "https://apis.data.go.kr/1400377/forestPoint/forestPointListSigunguSearch"
+# 산불위험예보 V2 (구버전 forestPoint는 폐기됨). 파라미터: ServiceKey(대문자)·localAreas.
+FIRE_URL = "https://apis.data.go.kr/1400377/forestPointV2/forestPointListSigunguSearchV2"
 
 # 기상청 단기예보(getVilageFcst) 발표시각 — 이 8개만 유효(매 3시간, 02시 시작).
 _KMA_SLOTS = [2, 5, 8, 11, 14, 17, 20, 23]
@@ -77,18 +78,24 @@ async def get_fire_risk(region_id: str) -> dict:
         return {**_snapshot(region_id)["fire"], "source": "snapshot"}
 
     params = {
-        "serviceKey": service_key(),
+        "ServiceKey": service_key(),
         "_type": "json", "numOfRows": 1, "pageNo": 1,
-        "localAreaCode": region["sgg"], "excludeForecast": 0,
+        "localAreas": region["sgg"], "excludeForecast": 0,
     }
     try:
         data = await fetch_json(FIRE_URL, params, cache_key=f"fire:{region_id}")
         item = data["response"]["body"]["items"]["item"]
         if isinstance(item, list):
             item = item[0]
-        d1 = int(float(item.get("d1", 40)))  # 오늘 위험지수(0~100, 높을수록 위험)
-        score = max(0, 100 - d1)
-        level = "낮음" if d1 < 51 else "보통" if d1 < 66 else "높음" if d1 < 86 else "매우 높음"
+        # 당일 산불위험지수(0~100). V2 응답 필드 변형 흡수.
+        risk = 40
+        for k in ("meanavg", "meanAvg", "d0", "d1", "today", "dangerLevel"):
+            v = item.get(k)
+            if v not in (None, ""):
+                risk = int(float(v))
+                break
+        score = max(0, 100 - risk)
+        level = "낮음" if risk < 51 else "보통" if risk < 66 else "높음" if risk < 86 else "매우 높음"
         return {"level": level, "score": score,
                 "src": "국립산림과학원 산불위험예보", "source": "live"}
     except (AdapterError, KeyError, TypeError, ValueError):

@@ -791,6 +791,45 @@ $("locSel").addEventListener("change", () => {
 $("bellBtn").addEventListener("click", () =>
   toast("기상 특보 알림", "도봉산 Y계곡 강풍주의보 — 우회 코스를 추천해요 (산악기상관측망)", "🌬", false, 4200));
 
+/* ---------------- 전국 산 검색 (산림청 산정보) ---------------- */
+let mntTimer;
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+function openMntSearch() {
+  $("mntModal").classList.add("show");
+  $("mntQ").value = "";
+  $("mntResults").innerHTML = API.mode === "cloud"
+    ? `<div class="mnt-empty">산 이름을 입력하면 전국에서 검색해요.</div>`
+    : `<div class="mnt-empty">전국 산 검색은 온라인(서버 연결) 상태에서 동작해요.</div>`;
+  setTimeout(() => $("mntQ").focus(), 120);
+}
+async function runMntSearch(q) {
+  q = q.trim();
+  const box = $("mntResults");
+  if (!q) { box.innerHTML = `<div class="mnt-empty">산 이름을 입력하면 전국에서 검색해요.</div>`; return; }
+  if (API.mode !== "cloud") { box.innerHTML = `<div class="mnt-empty">전국 산 검색은 온라인 상태에서 동작해요.</div>`; return; }
+  box.innerHTML = `<div class="mnt-empty">검색 중…</div>`;
+  try {
+    const d = await API.get(`/mountains?q=${encodeURIComponent(q)}&size=30`);
+    if (!d.items.length) { box.innerHTML = `<div class="mnt-empty">'${esc(q)}' 검색 결과가 없어요.</div>`; return; }
+    box.innerHTML =
+      `<div class="mnt-empty" style="text-align:left;padding:2px 2px 8px">전국 ${d.total.toLocaleString()}개 중 ${d.items.length}개</div>` +
+      d.items.map((m) => `
+        <div class="mnt-row">
+          <div><b>${esc(m.name)}${m.top100 ? '<span class="top">100대명산</span>' : ""}</b>
+            <div class="loc">📍 ${esc(m.addr || m.sido || "")}</div></div>
+          <div class="h">${m.height ? m.height + "m" : "—"}</div>
+        </div>`).join("");
+  } catch {
+    box.innerHTML = `<div class="mnt-empty">검색 중 오류가 났어요. 잠시 후 다시 시도해주세요.</div>`;
+  }
+}
+$("mntSearchBtn").addEventListener("click", openMntSearch);
+$("mntQ").addEventListener("input", (e) => {
+  clearTimeout(mntTimer);
+  const v = e.target.value;
+  mntTimer = setTimeout(() => runMntSearch(v), 320);
+});
+
 /* ---------------- 초기화 ---------------- */
 async function init() {
   // 백엔드 가용성 감지 — 성공 시 cloud 모드(서버 산행지수·추천·챗·SOS)
