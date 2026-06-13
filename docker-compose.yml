@@ -1,0 +1,35 @@
+# 운영 근접 구성 — API + PostgreSQL. `docker compose up`로 단일 명령 기동.
+services:
+  api:
+    build: .
+    ports:
+      - "5181:5181"
+    environment:
+      ENV: prod
+      DATABASE_URL: postgresql+psycopg://forest:${DB_PASSWORD:-forest}@db:5432/forestmate
+      K_ANONYMITY: "50"             # 위치정보법 준수 — 통계 표출 최소 군집
+      DISTRESS_STALL_MINUTES: "30"
+      DATA_GO_KR_KEY: ${DATA_GO_KR_KEY:-}      # 비어 있으면 스냅샷 폴백
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}  # 비어 있으면 규칙 챗 엔진
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgis/postgis:16-3.4   # 등산로 공간 질의 대비 PostGIS
+    environment:
+      POSTGRES_USER: forest
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-forest}
+      POSTGRES_DB: forestmate
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forest -d forestmate"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

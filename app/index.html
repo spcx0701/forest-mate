@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="산림 공공데이터·AI 기반 산행 안전 동반자 — 산행지수·맞춤 코스·위험 경고·AI 조난 감지·원터치 SOS">
+<meta name="theme-color" content="#1B4332">
+<link rel="manifest" href="manifest.json">
+<!-- iOS 홈스크린(standalone) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="숲길동무">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="stylesheet" href="app.css">
+<title>숲길동무 ForestMate — AI 산행 안전 동반자</title>
+</head>
+<body>
+<div id="phone">
+  <div class="statusbar"></div>
+  <header>
+    <div class="logo"><div class="mark"><img src="icon-192.png" alt="숲길동무"></div>숲길동무<span id="cloudDot" title="실시간 서버 연결됨">LIVE</span></div>
+    <select class="loc" id="locSel" aria-label="지역 선택">
+      <option value="eunpyeong">📍 서울 은평구</option>
+      <option value="jongno">📍 서울 종로구</option>
+      <option value="guri">📍 경기 구리시</option>
+    </select>
+    <button class="bell" id="bellBtn">🔔<i></i></button>
+  </header>
+
+  <!-- ============ HOME ============ -->
+  <section class="screen active" id="home">
+    <div class="index-card">
+      <div class="ring">
+        <svg width="104" height="104" viewBox="0 0 104 104">
+          <circle cx="52" cy="52" r="44" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="9"/>
+          <circle id="idxArc" class="val-arc" cx="52" cy="52" r="44" fill="none" stroke="#B7E4C7" stroke-width="9"
+                  stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
+        </svg>
+        <div class="val"><b id="idxVal">--</b><span>오늘의 산행지수</span></div>
+      </div>
+      <div class="idx-right">
+        <h3 id="idxLabel">불러오는 중…</h3>
+        <div class="idx-grid" id="idxGrid"></div>
+      </div>
+    </div>
+
+    <h2 class="sec">🤖 AI 맞춤 코스 <small id="recoNote"></small></h2>
+    <div class="reco" id="recoList"></div>
+
+    <h2 class="sec">🛡 안전 브리핑</h2>
+    <div class="banner">⚠️ <div id="briefing"></div></div>
+
+    <div class="card" style="margin-top:14px">
+      <b style="font-size:13px">🌿 이번 주 숲 소식</b>
+      <p style="font-size:12px; color:var(--sub); margin-top:6px; line-height:1.6" id="newsLine"></p>
+      <div class="src">데이터 출처: 산림청 등산로정보 · 국립산림과학원 산불위험예보/산악기상 · 산사태정보시스템 · 기상청 단기예보 · 숲나들e</div>
+    </div>
+  </section>
+
+  <!-- ============ TRAIL ============ -->
+  <section class="screen" id="trail">
+    <div class="trail-head">
+      <div class="tt"><b id="trailName">코스를 선택하세요</b><span id="trailRoute">홈의 AI 추천에서 코스를 고르면 시작됩니다</span></div>
+      <div class="live idle" id="trailLive"><i></i><span id="trailLiveTx">대기 중</span></div>
+    </div>
+
+    <div class="mapwrap">
+      <div class="gridtag">국가지점번호<br><b id="gridNo">— — —</b></div>
+      <div class="offline">📥 오프라인 지도 저장됨</div>
+      <div id="mapHost"></div>
+    </div>
+
+    <div class="stats4">
+      <div class="st"><b id="stDist">0<small>km</small></b><span id="stDistCap">이동 거리</span></div>
+      <div class="st"><b id="stAlt">—</b><span>현재 고도</span></div>
+      <div class="st"><b id="stHr">—</b><span>심박(워치)</span></div>
+      <div class="st"><b id="sunset">--:--</b><span>일몰까지</span></div>
+    </div>
+
+    <div class="alert-card" id="trailAlert" style="display:none">
+      <div class="ico">⚠️</div>
+      <div class="tx"><b id="alertTitle"></b><span id="alertBody"></span></div>
+    </div>
+
+    <div class="hike-ctrl">
+      <button class="btn primary" id="btnHike">▶ 산행 시작</button>
+      <button class="btn ghost" id="btnEnd" disabled>산행 종료</button>
+    </div>
+
+    <div class="toggles">
+      <div class="tg">🧭 코스 이탈 알림<span class="sw" data-set="offRoute"></span></div>
+      <div class="tg">👨‍👩‍👧 가족 위치 공유<span class="sw" data-set="family"></span></div>
+    </div>
+    <div class="src">지도·등산로: 산림청 등산로 공간정보 / 위험구간: 산사태정보시스템·국립산림과학원 / 위치체계: 행정안전부 국가지점번호 · 데모 모드: 실제 GPS 대신 시뮬레이션으로 진행</div>
+  </section>
+
+  <!-- ============ AI ============ -->
+  <section class="screen" id="ai">
+    <h2 class="sec" style="margin-top:2px">🌲 AI 숲해설사 ‘숲이’ <small>온디바이스 + RAG · 4개 언어</small></h2>
+    <div class="chat" id="chatLog"></div>
+    <div class="quick" id="quickRow">
+      <button class="qc" data-q="photo">🌿 식물 식별</button>
+      <button class="qc" data-q="이 근처 위험 구간 알려줘">🚨 위험 정보</button>
+      <button class="qc" data-q="정상까지 얼마나 남았어?">🗺 코스 안내</button>
+      <button class="qc" data-q="오늘 산 날씨 어때?">⛅ 산악 날씨</button>
+      <button class="qc lang" data-lang="en">🌐 EN</button>
+      <button class="qc lang" data-lang="zh">中文</button>
+      <button class="qc lang" data-lang="ja">日本語</button>
+    </div>
+    <div class="inputbar">
+      <button class="rbtn" id="btnPhoto">📷</button>
+      <input id="chatInput" placeholder="숲이에게 물어보세요…" autocomplete="off">
+      <button class="rbtn mic" id="btnSend">🎤</button>
+    </div>
+    <div class="src">학습·지식 출처: 국가생물종지식정보시스템(국립수목원) · 산림청 숲e랑 해설 콘텐츠 · 등산로 POI 공간정보 — 공공 지식베이스 근거 답변(RAG)</div>
+  </section>
+
+  <!-- ============ SOS ============ -->
+  <section class="screen" id="sos">
+    <div class="guard">
+      <div class="g"><b id="guardMon"><span class="dot-off"></span>자동 조난감지 대기</b><span id="guardMonTx">산행을 시작하면 이동·심박 이상을 감시해요</span></div>
+      <div class="g"><b id="guardFam"><span class="dot-ok"></span>가족 안심 공유 ON</b><span id="guardFamTx">어머니 · 동생에게 실시간 위치 전송 중</span></div>
+    </div>
+
+    <div class="sos-zone">
+      <div class="sos-btn" id="sosBtn">
+        <svg viewBox="0 0 186 186"><circle id="sosRing" cx="93" cy="93" r="89" stroke-dasharray="559" stroke-dashoffset="559"/></svg>
+        <b>SOS</b><span>3초간 길게 누르기</span>
+      </div>
+      <div class="sos-hint">신고 시 아래 위치정보가 119 상황실로 자동 전송됩니다 (LTE 음영지역: 문자 폴백)</div>
+    </div>
+
+    <div class="loc-card" id="locCard"></div>
+
+    <h2 class="sec">🕐 안전 이벤트</h2>
+    <div class="card timeline" id="eventLog"></div>
+    <div class="src">위치체계: 행정안전부 국가지점번호 · 구조 연계: 소방청 119 신고 API(연동 협의) · 사고다발구간: 소방청 산악사고 데이터 학습</div>
+  </section>
+
+  <!-- ============ MY ============ -->
+  <section class="screen" id="my">
+    <div class="card prof">
+      <div class="ava">🧗</div>
+      <div class="pi"><b><span id="profName">동무</span>님 <button class="edit-prof" id="btnEditProf">프로필 수정</button></b><span id="profDays"></span></div>
+      <div class="lv" id="profLv">Lv.7 숲지기</div>
+    </div>
+
+    <div class="card">
+      <b style="font-size:13.5px">6월 산행 리포트</b>
+      <div class="m4">
+        <div class="mm"><b id="repCnt">—</b><span>산행</span></div>
+        <div class="mm"><b id="repKm">—</b><span>거리</span></div>
+        <div class="mm"><b id="repKcal">—</b><span>kcal</span></div>
+        <div class="mm"><b id="repCo2">—</b><span>탄소흡수 기여*</span></div>
+      </div>
+      <div class="bars" id="repBars"></div>
+      <div class="src">* 숲가꾸기 챌린지 참여 환산치 (산림청 탄소흡수량 고시 기준)</div>
+    </div>
+
+    <h2 class="sec">🏅 배지</h2>
+    <div class="badges" id="badgeRow"></div>
+
+    <h2 class="sec">🎫 안심 서비스</h2>
+    <div class="ins">
+      <div class="tx"><b id="insTitle">내일 산행, 1일 안심보험</b><span id="insSub">상해·구조비용 보장 — 산행지수 연동 보험료</span></div>
+      <button class="cta" id="insBtn">990원 가입</button>
+    </div>
+    <div class="card" style="margin-top:12px; display:flex; align-items:center; gap:11px">
+      <span style="font-size:24px">🏕</span>
+      <div style="flex:1"><b style="font-size:13px">회복이 필요한 주간이에요</b>
+        <p style="font-size:11.5px; color:var(--sub); margin-top:3px">축령산 치유의숲 프로그램, 이번 주 토 10시 예약 가능 (숲나들e 연동)</p></div>
+      <span style="color:var(--leaf); font-weight:900; font-size:18px">›</span>
+    </div>
+  </section>
+
+  <nav>
+    <a href="#home" class="on" data-t="home"><span class="nic">🏠</span>홈</a>
+    <a href="#trail" data-t="trail"><span class="nic">🧭</span>산행</a>
+    <a href="#sos" class="sosnav" data-t="sos"><span class="nic">SOS</span>안전</a>
+    <a href="#ai" data-t="ai"><span class="nic">💬</span>AI동무</a>
+    <a href="#my" data-t="my"><span class="nic">👤</span>마이</a>
+  </nav>
+
+  <!-- ============ 공용 토스트 ============ -->
+  <div id="toast"><div class="t-in"><span class="ti" id="toastIco">🔔</span><div><b id="toastTitle"></b><span id="toastBody"></span></div></div></div>
+
+  <!-- ============ 온보딩 ============ -->
+  <div class="overlay" id="onboard">
+    <div class="sheet">
+      <div class="grab"></div>
+      <h3>반가워요! 산행 프로필을 알려주세요 🌲</h3>
+      <p class="sub">체력과 주의사항에 맞춰 AI가 코스를 추천하고, 위험 경고 기준을 조정해요.</p>
+      <div class="fld"><label>닉네임</label><input type="text" id="obName" placeholder="동무" maxlength="8"></div>
+      <div class="fld"><label>체력 수준</label>
+        <div class="seg" id="obFit">
+          <button data-v="1">⛰ 초급</button><button data-v="2" class="on">⛰⛰ 중급</button><button data-v="3">⛰⛰⛰ 상급</button>
+        </div>
+      </div>
+      <div class="fld"><label>건강 주의사항 (해당 시 선택)</label>
+        <div class="checks" id="obChecks">
+          <button class="ckc on" data-v="knee">무릎 주의</button>
+          <button class="ckc" data-v="heart">심혈관 주의</button>
+          <button class="ckc" data-v="none">없음</button>
+        </div>
+      </div>
+      <div class="btnrow"><button class="btn primary" id="obSave">시작하기</button></div>
+    </div>
+  </div>
+
+  <!-- ============ 코스 상세 ============ -->
+  <div class="overlay" id="courseModal">
+    <div class="sheet" id="courseSheet"></div>
+  </div>
+
+  <!-- ============ 사진 선택 ============ -->
+  <div class="overlay" id="photoModal">
+    <div class="sheet">
+      <div class="grab"></div>
+      <h3>📷 어떤 사진을 보낼까요?</h3>
+      <p class="sub">시연 모드 — 실제 앱에서는 카메라/갤러리가 열립니다. 온디바이스 모델이 1차 판별 후 서버 RAG가 검증해요.</p>
+      <div class="pgrid" id="photoGrid"></div>
+      <div class="btnrow"><button class="btn ghost" data-close="photoModal">닫기</button></div>
+    </div>
+  </div>
+
+  <!-- ============ SOS 신고 ============ -->
+  <div class="overlay" id="sosModal">
+    <div class="sheet" id="sosSheet"></div>
+  </div>
+
+  <!-- ============ 보험 ============ -->
+  <div class="overlay" id="insModal">
+    <div class="sheet" id="insSheet"></div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

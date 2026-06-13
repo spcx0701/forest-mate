@@ -1,0 +1,18 @@
+{
+  "appId": "kr.forestmate.app",
+  "appName": "숲길동무",
+  "webDir": "www",
+  "server": {
+    "url": "https://forestmate.onrender.com",
+    "iosScheme": "https",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#F4F7F2"
+  },
+  "plugins": {
+    "Geolocation": {},
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}

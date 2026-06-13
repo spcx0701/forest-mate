@@ -1,0 +1,100 @@
+"""API 통합 테스트 — 기기 등록 → 산행 → 위험경고 → SOS → 관제 반영 전체 흐름."""
+
+
+def test_healthz(client):
+    res = client.get("/api/v1/healthz")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "ok"
+    assert body["live_data"] is False  # 테스트는 스냅샷 모드
+
+
+def test_index_snapshot_score(client):
+    res = client.get("/api/v1/index", params={"region": "eunpyeong"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["score"] == 82
+    assert body["conditions"]["weather"]["source"] == "snapshot"
+
+
+def test_index_unknown_region_404(client):
+    assert client.get("/api/v1/index", params={"region": "nowhere"}).status_code == 404
+
+
+def test_recommend_personalization(client):
+    res = client.get("/api/v1/recommend", params={"fit": 3})
+    assert res.json()[0]["course_id"] == "dobong"
+    res = client.get("/api/v1/recommend", params={"fit": 2, "knee": True})
+    assert res.json()[0]["course_id"] == "bukhansan"
+    assert res.json()[0]["score"] == 92
+
+
+def test_chat_rule_engine(client):
+    res = client.post("/api/v1/chat", json={"message": "오늘 산 날씨 어때?"})
+    body = res.json()
+    assert body["engine"] == "rules"
+    assert body["intent"] == "weather"
+    assert "18" in body["reply"]  # 은평 스냅샷 기온
+
+
+def test_species_identify(client):
+    res = client.post("/api/v1/species/identify", json={"sample_id": "mushroom"})
+    body = res.json()
+    assert body["toxic"] is True
+    assert "개나리광대버섯" in body["name"]
+
+
+def test_full_hike_flow(client):
+    # 1) 기기 등록(익명)
+    res = client.post("/api/v1/devices", json={"name": "테스터", "fit": 2, "knee": True})
+    assert res.status_code == 201
+    token = res.json()["token"]
+    auth = {"Authorization": f"Bearer {token}"}
+
+    # 2) 인증 없는 호출 거부
+    assert client.post("/api/v1/hikes", json={"course_id": "bukhansan"}).status_code == 401
+
+    # 3) 산행 시작
+    res = client.post("/api/v1/hikes", json={"course_id": "bukhansan"}, headers=auth)
+    assert res.status_code == 201
+    hike_id = res.json()["hike_id"]
+
+    # 4) 트랙 업데이트 — 위험구간(0.62) 접근 창(0.54~0.62) 진입 시 경고
+    #    0.20은 어느 위험구간 창(0.30~0.38, 0.54~0.62)에도 안 걸린다
+    res = client.post(f"/api/v1/hikes/{hike_id}/track",
+                      json={"progress": 0.20, "alt": 400, "hr": 96}, headers=auth)
+    assert res.json()["alerts"] == []
+    res = client.post(f"/api/v1/hikes/{hike_id}/track",
+                      json={"progress": 0.56, "alt": 520, "hr": 101}, headers=auth)
+    alerts = res.json()["alerts"]
+    assert len(alerts) == 1 and "낙석주의" in alerts[0]["title"]
+
+    # 5) SOS 접수
+    res = client.post("/api/v1/sos", json={"hike_id": hike_id, "note": "발목 부상"},
+                      headers=auth)
+    assert res.status_code == 201
+    body = res.json()
+    assert body["status"] == "dispatched"
+    assert body["grid_no"] == "다사 5683 2741"
+
+    # 6) 산행 종료 → 기록 반환
+    res = client.post(f"/api/v1/hikes/{hike_id}/end", headers=auth)
+    assert res.json()["distance_km"] > 0
+
+    # 7) 관제 요약에 사건 반영
+    res = client.get("/api/v1/dashboard/summary")
+    body = res.json()
+    assert body["kpi"]["open_sos"] >= 1
+    kinds = [e["kind"] for e in body["events"]]
+    assert "sos" in kinds and "checkin" in kinds
+    assert len(body["risk_table"]) > 0
+
+
+def test_dashboard_websocket_receives_sos(client):
+    res = client.post("/api/v1/devices", json={"name": "WS", "fit": 2})
+    auth = {"Authorization": f"Bearer {res.json()['token']}"}
+    with client.websocket_connect("/api/v1/ws/dashboard") as ws:
+        client.post("/api/v1/sos", json={"note": "테스트"}, headers=auth)
+        msg = ws.receive_json()
+        assert msg["type"] == "sos"
+        assert "SOS" in msg["title"]

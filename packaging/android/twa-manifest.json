@@ -1,0 +1,39 @@
+{
+  "//": "Bubblewrap TWA 설정. <HOST>를 배포 도메인(예: forestmate.onrender.com)으로 모두 치환 후 `bubblewrap build`. 자세한 절차는 ../../store/스토어_제출_런북.md 참고.",
+  "packageId": "kr.forestmate.app",
+  "host": "forestmate.onrender.com",
+  "name": "숲길동무 ForestMate",
+  "launcherName": "숲길동무",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#1B4332",
+  "themeColorDark": "#1B4332",
+  "navigationColor": "#1B4332",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#1B4332",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#F4F7F2",
+  "enableNotifications": true,
+  "startUrl": "/index.html",
+  "webManifestUrl": "https://forestmate.onrender.com/manifest.json",
+  "iconUrl": "https://forestmate.onrender.com/icon-512.png",
+  "maskableIconUrl": "https://forestmate.onrender.com/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "minSdkVersion": 21,
+  "fallbackType": "customtabs",
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://forestmate.onrender.com/",
+  "shortcuts": [
+    { "name": "오늘의 산행지수", "shortName": "산행지수", "url": "/index.html?t=home", "chosenIconUrl": "https://forestmate.onrender.com/icon-192.png" },
+    { "name": "AI 숲이", "shortName": "AI 숲이", "url": "/index.html?t=ai", "chosenIconUrl": "https://forestmate.onrender.com/icon-192.png" },
+    { "name": "원터치 SOS", "shortName": "SOS", "url": "/index.html?t=trail", "chosenIconUrl": "https://forestmate.onrender.com/icon-192.png" }
+  ],
+  "signingKey": {
+    "path": "./android-signing.keystore",
+    "alias": "forestmate"
+  }
+}

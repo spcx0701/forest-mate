@@ -1,0 +1,21 @@
+{
+  "name": "forestmate-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "숲길동무 iOS 래퍼(Capacitor) — App Store 제출용. 절차: ../../store/스토어_제출_런북.md",
+  "scripts": {
+    "prepare:www": "rm -rf www && cp -R ../../app www",
+    "add:ios": "cap add ios",
+    "sync": "npm run prepare:www && cap sync ios",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/geolocation": "^6.0.1",
+    "@capacitor/push-notifications": "^6.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

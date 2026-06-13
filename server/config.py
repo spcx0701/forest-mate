@@ -1,0 +1,53 @@
+"""숲길동무 백엔드 설정 — 환경변수(.env)로 주입한다.
+
+운영 전환 체크리스트:
+  - DATABASE_URL을 PostgreSQL(+PostGIS)로 교체
+  - DATA_GO_KR_KEY 발급(공공데이터포털) 후 설정 → 어댑터가 실 API 호출
+  - K_ANONYMITY=50 (위치정보 통계 표출 기준)
+  - ANTHROPIC_API_KEY 설정 시 AI 챗이 LLM(RAG) 모드로 동작
+"""
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    app_name: str = "forestmate-api"
+    env: str = "dev"  # dev | staging | prod
+    database_url: str = "sqlite:///./forestmate.db"
+
+    # 공공데이터 API 키 (없으면 동일 스키마의 스냅샷으로 폴백 — 데모/오프라인 모드)
+    data_go_kr_key: str = ""
+
+    # 외부 API 타임아웃/캐시
+    adapter_timeout_s: float = 3.0
+    adapter_cache_ttl_s: int = 600  # 산불위험예보·기상 등은 10분 캐시
+
+    # 위치정보 익명화: 통계 표출 최소 군집 크기 (위치정보법 준수 기준 k≥50, 개발은 1)
+    k_anonymity: int = 1
+
+    # 조난 감지 규칙 (운영: 30분 / 데모: 짧게)
+    distress_stall_minutes: float = 30.0
+    distress_min_points: int = 3
+
+    # AI 챗 — LLM(RAG) 모드. 키가 없으면 규칙 기반 의도 엔진으로 동작.
+    anthropic_api_key: str = ""
+    llm_model: str = "claude-opus-4-8"
+    llm_max_tokens: int = 1024
+
+    cors_origins: str = "*"
+
+    @property
+    def llm_enabled(self) -> bool:
+        return bool(self.anthropic_api_key)
+
+    @property
+    def live_data(self) -> bool:
+        return bool(self.data_go_kr_key)
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
