@@ -5,9 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..adapters import mountains as mnt_api
-from ..adapters.base import last_errors
-from ..adapters.public_data import get_fire_risk, get_region_conditions, get_weather
+from ..adapters.public_data import get_region_conditions
 from ..config import get_settings
 from ..db import get_db
 from ..models import Mountain
@@ -61,30 +59,6 @@ async def mountains_by_sido(db: Session = Depends(get_db)):
         select(Mountain.sido, func.count()).group_by(Mountain.sido).order_by(func.count().desc())
     ).all()
     return [{"sido": s or "(미상)", "count": n} for s, n in rows]
-
-
-@router.get("/_diag", include_in_schema=False)
-async def _diag(db: Session = Depends(get_db)):
-    """라이브 진단 — 기상·산불·산정보 어댑터 동작과 적재 현황(키 값은 미노출)."""
-    s = get_settings()
-    w = await get_weather("eunpyeong")
-    f = await get_fire_risk("eunpyeong")
-    mnt_probe: dict
-    try:
-        items, total = await mnt_api.fetch_mountains(page=1, rows=3)
-        mnt_probe = {"ok": True, "total_available": total,
-                     "sample": [i["mntiname"] for i in items]}
-    except Exception as exc:  # noqa: BLE001
-        mnt_probe = {"ok": False, "error": str(exc)[:200]}
-    return {
-        "live_data": s.live_data,
-        "key_form": ("encoded" if "%" in s.data_go_kr_key else "raw") if s.data_go_kr_key else "none",
-        "weather": {"source": w.get("source"), "temp": w.get("temp"), "station": w.get("station")},
-        "fire": {"source": f.get("source"), "level": f.get("level")},
-        "mountains_api": mnt_probe,
-        "mountains_in_db": db.scalar(select(func.count()).select_from(Mountain)) or 0,
-        "errors": dict(last_errors),
-    }
 
 
 @router.get("/index")
