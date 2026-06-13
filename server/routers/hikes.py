@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import AlertEvent, Device, Hike, SosEvent, TrackPoint
-from ..schemas import (DeviceCreate, DeviceOut, HikeCreate, HikeEndOut, SosCreate,
-                       SosOut, TrackIn, TrackOut)
+from ..schemas import (DeviceCreate, DeviceOut, HikeCreate, HikeEndOut,
+                       HikeSummaryOut, SosCreate, SosOut, TrackIn, TrackOut)
 from ..seed import COURSES
 from ..services.bus import bus
 from ..services.safety import assess_distress
@@ -110,6 +110,42 @@ async def end_hike(hike_id: str, device: Device = Depends(get_device),
     duration = int((hike.ended_at - started).total_seconds() / 60)
     return HikeEndOut(hike_id=hike.id, distance_km=hike.distance_km,
                       kcal=hike.kcal, duration_min=duration)
+
+
+@router.get("/hikes/summary", response_model=HikeSummaryOut)
+async def hike_summary(device: Device = Depends(get_device), db: Session = Depends(get_db)):
+    """마이 리포트 — 이 기기의 완료된 산행을 DB에서 집계(하드코딩 아님)."""
+    hikes = db.execute(
+        select(Hike).where(Hike.device_id == device.id, Hike.status == "done")
+    ).scalars().all()
+    total = len(hikes)
+    total_km = round(sum(h.distance_km for h in hikes), 1)
+    total_kcal = sum(h.kcal for h in hikes)
+    created = device.created_at if device.created_at.tzinfo else device.created_at.replace(tzinfo=timezone.utc)
+    active_days = (datetime.now(timezone.utc) - created).days + 1
+
+    # 최근 6개월 월별 집계(완료 산행 기준)
+    now = datetime.now(timezone.utc)
+    months: dict[str, dict] = {}
+    for i in range(5, -1, -1):
+        y, m = now.year, now.month - i
+        while m <= 0:
+            m += 12
+            y -= 1
+        months[f"{y:04d}-{m:02d}"] = {"month": f"{y:04d}-{m:02d}", "km": 0.0, "count": 0}
+    for h in hikes:
+        ref = h.ended_at or h.started_at
+        ref = ref if ref.tzinfo else ref.replace(tzinfo=timezone.utc)
+        key = f"{ref.year:04d}-{ref.month:02d}"
+        if key in months:
+            months[key]["km"] = round(months[key]["km"] + h.distance_km, 1)
+            months[key]["count"] += 1
+
+    return HikeSummaryOut(
+        total_hikes=total, total_km=total_km, total_kcal=total_kcal,
+        co2_kg=round(total_km * 0.38, 1), active_days=active_days,
+        level=1 + total // 3, monthly=list(months.values()),
+    )
 
 
 @router.post("/sos", response_model=SosOut, status_code=201)

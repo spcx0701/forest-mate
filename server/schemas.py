@@ -55,6 +55,17 @@ class SosOut(BaseModel):
     created_at: datetime
 
 
+class HikeSummaryOut(BaseModel):
+    """마이 리포트 — 기기(익명)별 실제 산행 기록 집계."""
+    total_hikes: int
+    total_km: float
+    total_kcal: int
+    co2_kg: float
+    active_days: int           # 가입(기기 등록)일로부터 경과 일수
+    level: int
+    monthly: list[dict]        # 최근 6개월 [{month, km, count}]
+
+
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=500)
     lang: str = Field(default="ko", pattern="^(ko|en|zh|ja)$")
