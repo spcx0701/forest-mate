@@ -15,8 +15,8 @@ from .base import AdapterError, fetch_text, service_key
 
 MNT_INFO_URL = "http://apis.data.go.kr/1400000/service/cultureInfoService2/mntInfoOpenAPI2"
 
-# 산정보 표준 프록시가 응답이 느릴 수 있어 여유 타임아웃.
-_TIMEOUT = 12.0
+# 산정보 표준 프록시는 응답이 느리고 간헐적 ReadTimeout이 나 여유 타임아웃을 크게 둔다.
+_TIMEOUT = 20.0
 
 
 def _parse(xml_text: str) -> tuple[list[dict], int]:

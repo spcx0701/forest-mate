@@ -10,6 +10,8 @@ import argparse
 import asyncio
 import re
 
+from sqlalchemy import func, select
+
 from ..adapters.base import AdapterError
 from ..adapters.mountains import fetch_mountains
 from ..config import get_settings
@@ -55,29 +57,47 @@ def _to_model(row: dict) -> Mountain:
     )
 
 
+async def _fetch_retry(page: int, rows: int, attempts: int = 3) -> tuple[list[dict], int]:
+    """느린 프록시의 간헐적 ReadTimeout 대비 — 페이지별 재시도(지수 백오프)."""
+    last: Exception | None = None
+    for n in range(attempts):
+        try:
+            return await fetch_mountains(page=page, rows=rows)
+        except AdapterError as exc:
+            last = exc
+            await asyncio.sleep(1.5 * (n + 1))
+    raise last  # type: ignore[misc]
+
+
 async def run(max_pages: int | None = None, rows: int = 100) -> dict:
     if not get_settings().live_data:
         return {"ok": False, "reason": "DATA_GO_KR_KEY 미설정 — 적재 생략", "loaded": 0}
 
     init_db()
-    loaded, page, total = 0, 1, None
     db = SessionLocal()
     try:
+        # 이어받기 — 이미 적재된 수만큼 페이지를 건너뛰고 재개(재시작·부분실패 대비, 멱등).
+        existing = db.scalar(select(func.count()).select_from(Mountain)) or 0
+        page = existing // rows + 1
+        loaded, total = 0, None
         while True:
             try:
-                items, total = await fetch_mountains(page=page, rows=rows)
+                items, total = await _fetch_retry(page, rows)
             except AdapterError as exc:
-                return {"ok": False, "reason": str(exc), "loaded": loaded, "page": page}
+                # 재시도 후에도 실패 → 부분 적재 상태로 종료(다음 시작 시 이어받기).
+                return {"ok": False, "reason": str(exc), "loaded": loaded,
+                        "page": page, "in_db": existing + loaded}
             if not items:
                 break
             for row in items:
                 db.merge(_to_model(row))   # upsert (멱등)
             db.commit()
             loaded += len(items)
-            if (total and loaded >= total) or (max_pages and page >= max_pages):
+            if (total and existing + loaded >= total) or (max_pages and page >= max_pages):
                 break
             page += 1
-        return {"ok": True, "loaded": loaded, "total": total, "pages": page}
+        return {"ok": True, "loaded": loaded, "total": total,
+                "in_db": existing + loaded, "pages": page}
     finally:
         db.close()
 

@@ -32,12 +32,12 @@ async def _autoload_mountains() -> None:
         count = db.scalar(select(func.count()).select_from(Mountain)) or 0
     finally:
         db.close()
-    if count:
+    if count >= 3300:   # 거의 전량 적재됨 — 재개 불필요
         return
     from .etl.load_mountains import run
     try:
-        log.info("mountain catalog empty — ETL 시작")
-        log.info("mountain ETL 완료: %s", await run())
+        log.info("mountain catalog 적재/이어받기 시작 (현재 %d개)", count)
+        log.info("mountain ETL 완료: %s", await run())   # resume는 run() 내부에서 처리
     except Exception as exc:  # noqa: BLE001
         log.warning("mountain ETL 실패(스냅샷/검색은 계속 동작): %s", exc)
 
