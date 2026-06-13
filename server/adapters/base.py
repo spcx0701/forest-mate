@@ -1,4 +1,5 @@
 """공공데이터 어댑터 공통 — TTL 캐시 + 타임아웃 + 폴백 신호 + 키 정규화."""
+import re
 import time
 from typing import Any
 from urllib.parse import unquote
@@ -13,8 +14,15 @@ class AdapterError(Exception):
 
 
 _cache: dict[str, tuple[float, Any]] = {}
-# 진단용: cache_key -> 마지막 실패 사유(키 값은 포함하지 않음). /_diag에서 노출.
+# 진단용: cache_key -> 마지막 실패 사유. /_diag 등에 노출되므로 키 값은 반드시 가린다.
 last_errors: dict[str, str] = {}
+
+_KEY_RE = re.compile(r"(?i)(servicekey=)[^&\s'\"]+")
+
+
+def _redact(msg: str) -> str:
+    """에러 메시지/URL에 섞인 serviceKey 값을 가린다(인증키 유출 방지)."""
+    return _KEY_RE.sub(r"\1***", msg)
 
 
 def service_key() -> str:
@@ -28,7 +36,8 @@ def service_key() -> str:
     return unquote(k) if "%" in k else k
 
 
-async def fetch_json(url: str, params: dict, cache_key: str | None = None) -> Any:
+async def fetch_json(url: str, params: dict, cache_key: str | None = None,
+                     timeout: float | None = None) -> Any:
     settings = get_settings()
     key = cache_key or f"{url}|{sorted(params.items())!r}"
     now = time.monotonic()
@@ -39,22 +48,22 @@ async def fetch_json(url: str, params: dict, cache_key: str | None = None) -> An
 
     body = ""
     try:
-        async with httpx.AsyncClient(timeout=settings.adapter_timeout_s) as client:
+        async with httpx.AsyncClient(timeout=timeout or settings.adapter_timeout_s) as client:
             res = await client.get(url, params=params)
         body = res.text
         res.raise_for_status()
         data = res.json()  # data.go.kr는 키 오류 시 200+XML을 주기도 함 → 여기서 폴백
     except Exception as exc:
-        # 진단 기록(응답 본문 일부 포함 — 키는 응답에 없으므로 안전)
-        last_errors[key] = f"{type(exc).__name__}: {str(exc)[:160]} | body={body[:200]!r}"
-        raise AdapterError(str(exc)) from exc
+        last_errors[key] = _redact(f"{type(exc).__name__}: {str(exc)[:200]} | body={body[:160]!r}")
+        raise AdapterError(_redact(str(exc))) from exc
 
     last_errors.pop(key, None)
     _cache[key] = (now, data)
     return data
 
 
-async def fetch_text(url: str, params: dict, cache_key: str | None = None) -> str:
+async def fetch_text(url: str, params: dict, cache_key: str | None = None,
+                     timeout: float | None = None) -> str:
     """XML만 제공하는 서비스(산림청 산정보 등)용 — 원문 텍스트 반환."""
     settings = get_settings()
     key = cache_key or f"text|{url}|{sorted(params.items())!r}"
@@ -66,13 +75,13 @@ async def fetch_text(url: str, params: dict, cache_key: str | None = None) -> st
 
     body = ""
     try:
-        async with httpx.AsyncClient(timeout=settings.adapter_timeout_s) as client:
+        async with httpx.AsyncClient(timeout=timeout or settings.adapter_timeout_s) as client:
             res = await client.get(url, params=params)
         body = res.text
         res.raise_for_status()
     except Exception as exc:
-        last_errors[key] = f"{type(exc).__name__}: {str(exc)[:160]} | body={body[:200]!r}"
-        raise AdapterError(str(exc)) from exc
+        last_errors[key] = _redact(f"{type(exc).__name__}: {str(exc)[:200]} | body={body[:160]!r}")
+        raise AdapterError(_redact(str(exc))) from exc
 
     last_errors.pop(key, None)
     _cache[key] = (now, body)

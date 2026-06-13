@@ -43,5 +43,7 @@ async def fetch_mountains(page: int = 1, rows: int = 100, search: str = "") -> t
         "serviceKey": service_key(),
         "pageNo": page, "numOfRows": rows, "searchWrd": search,
     }
-    xml_text = await fetch_text(MNT_INFO_URL, params, cache_key=f"mnt:{search}:{page}:{rows}")
+    # openapi.forest.go.kr 게이트웨이는 연결이 느려 기본 3초로는 ConnectTimeout이 난다.
+    xml_text = await fetch_text(MNT_INFO_URL, params,
+                                cache_key=f"mnt:{search}:{page}:{rows}", timeout=12.0)
     return _parse(xml_text)
