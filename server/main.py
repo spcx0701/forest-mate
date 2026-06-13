@@ -3,6 +3,7 @@
   uvicorn server.main:app --port 5181
 정적 프런트(app/)도 같은 오리진에서 서빙한다(CORS 불필요·배포 단순화).
 """
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,22 +12,44 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func, select
 
 from .config import get_settings
-from .db import init_db
+from .db import SessionLocal, init_db
 from .routers import dashboard, hikes, public
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+log = logging.getLogger("forestmate")
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
+
+
+async def _autoload_mountains() -> None:
+    """키가 있고 카탈로그가 비어 있으면 전국 산을 백그라운드로 적재(시작 비차단)."""
+    from .models import Mountain
+    db = SessionLocal()
+    try:
+        count = db.scalar(select(func.count()).select_from(Mountain)) or 0
+    finally:
+        db.close()
+    if count:
+        return
+    from .etl.load_mountains import run
+    try:
+        log.info("mountain catalog empty — ETL 시작")
+        log.info("mountain ETL 완료: %s", await run())
+    except Exception as exc:  # noqa: BLE001
+        log.warning("mountain ETL 실패(스냅샷/검색은 계속 동작): %s", exc)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
     settings = get_settings()
-    logging.getLogger("forestmate").info(
-        "started env=%s live_data=%s llm=%s", settings.env, settings.live_data, settings.llm_enabled)
+    log.info("started env=%s live_data=%s llm=%s",
+             settings.env, settings.live_data, settings.llm_enabled)
+    if settings.live_data:
+        asyncio.create_task(_autoload_mountains())  # 비차단 — 헬스체크 즉시 통과
     yield
 
 
