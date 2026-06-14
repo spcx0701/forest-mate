@@ -136,11 +136,11 @@ const FM_DATA = {
   ],
 
   news: [
-    { title: "북한산 진달래 능선 개화 80%", detail: "북한산 대남문~대성문 능선 진달래가 80% 개화했어요. 이번 주말 절정 예상. 혼잡이 예상되니 이른 아침 산행을 권장해요.", url: "https://www.knps.or.kr" },
-    { title: "우이령길 예약 잔여 24명", detail: "북한산 우이령길(예약 탐방제)은 하루 정원이 있어요. 오늘 잔여 24명. 국립공원 예약통합시스템에서 신청하세요.", url: "https://reservation.knps.or.kr" },
-    { title: "도봉산 Y계곡 우회 권장(강풍)", detail: "산악기상관측망 기준 도봉산 능선 강풍주의보. Y계곡 등 노출 구간은 우회로를 이용하세요.", url: "https://www.forest.go.kr" },
-    { title: "치유의숲 6월 프로그램 접수 중", detail: "전국 국립 치유의숲 6월 산림치유 프로그램을 숲나들e에서 접수 중이에요.", url: "https://www.foresttrip.go.kr" },
-    { title: "아차산 해맞이광장 보수공사 완료", detail: "아차산 해맞이광장 데크 보수공사가 완료돼 정상 개방됐어요.", url: "https://www.forest.go.kr" },
+    { title: "북한산 진달래 능선 개화 80%", date: "06-14", region: "서울·경기", detail: "북한산 대남문~대성문 능선 진달래가 80% 개화했어요. 이번 주말 절정 예상. 혼잡이 예상되니 이른 아침 산행을 권장해요.", url: "https://www.knps.or.kr" },
+    { title: "우이령길 예약 잔여 24명", date: "06-14", region: "서울 강북", detail: "북한산 우이령길(예약 탐방제)은 하루 정원이 있어요. 오늘 잔여 24명. 국립공원 예약통합시스템에서 신청하세요.", url: "https://reservation.knps.or.kr" },
+    { title: "도봉산 Y계곡 우회 권장(강풍)", date: "06-13", region: "서울 도봉", detail: "산악기상관측망 기준 도봉산 능선 강풍주의보. Y계곡 등 노출 구간은 우회로를 이용하세요.", url: "https://www.forest.go.kr" },
+    { title: "치유의숲 6월 프로그램 접수 중", date: "06-12", region: "전국", detail: "전국 국립 치유의숲 6월 산림치유 프로그램을 숲나들e에서 접수 중이에요.", url: "https://www.foresttrip.go.kr" },
+    { title: "아차산 해맞이광장 보수공사 완료", date: "06-11", region: "서울 광진", detail: "아차산 해맞이광장 데크 보수공사가 완료돼 정상 개방됐어요.", url: "https://www.forest.go.kr" },
   ],
 
   /* AI 다국어 응답 (RAG 데모 — 핵심 의도만) */
