@@ -24,20 +24,34 @@ log = logging.getLogger("forestmate")
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 
 
+def _load_baked_catalog() -> bool:
+    """구워넣은 카탈로그(server/data/catalog.json) 적재. 적재/존재 시 True.
+
+    재배포·슬립으로 임시 DB가 비어도 시작 즉시 전량 복원(영속·키 불필요)."""
+    from .etl.load_catalog import available, load_from_file
+    if not available():
+        return False
+    try:
+        log.info("baked catalog 적재: %s", load_from_file())
+    except Exception as exc:  # noqa: BLE001
+        log.warning("baked catalog 적재 실패: %s", exc)
+    return True
+
+
 async def _autoload_mountains() -> None:
-    """키가 있고 카탈로그가 비어 있으면 전국 산을 백그라운드로 적재(시작 비차단)."""
+    """카탈로그 파일이 없을 때만 — 키로 전국 산을 백그라운드 적재(시작 비차단)."""
     from .models import Mountain
     db = SessionLocal()
     try:
         count = db.scalar(select(func.count()).select_from(Mountain)) or 0
     finally:
         db.close()
-    if count >= 3300:   # 거의 전량 적재됨 — 재개 불필요
+    if count >= 3300:
         return
     from .etl.load_mountains import run
     try:
         log.info("mountain catalog 적재/이어받기 시작 (현재 %d개)", count)
-        log.info("mountain ETL 완료: %s", await run())   # resume는 run() 내부에서 처리
+        log.info("mountain ETL 완료: %s", await run())
     except Exception as exc:  # noqa: BLE001
         log.warning("mountain ETL 실패(스냅샷/검색은 계속 동작): %s", exc)
 
@@ -48,8 +62,9 @@ async def lifespan(_: FastAPI):
     settings = get_settings()
     log.info("started env=%s live_data=%s llm=%s",
              settings.env, settings.live_data, settings.llm_enabled)
-    if settings.live_data:
-        asyncio.create_task(_autoload_mountains())  # 비차단 — 헬스체크 즉시 통과
+    has_catalog = _load_baked_catalog()                  # 영속 카탈로그 우선(동기·빠름)
+    if not has_catalog and settings.live_data:           # 파일 없을 때만 API ETL 폴백
+        asyncio.create_task(_autoload_mountains())
     yield
 
 

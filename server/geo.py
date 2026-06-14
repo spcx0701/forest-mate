@@ -90,7 +90,19 @@ def normalize_sido(text: str) -> str:
 
 
 def region_for_mountain(m) -> dict:
-    """Mountain → conditions 계산용 ad-hoc region dict (시도 대표지점)."""
+    """Mountain → conditions 계산용 ad-hoc region dict.
+
+    실측 좌표(VWorld 지오코딩)가 있으면 정밀 격자·시군구로, 없으면 시도 대표지점."""
+    lat = getattr(m, "lat", None)
+    lon = getattr(m, "lon", None)
+    if lat and lon:
+        nx, ny = dfs_xy_conv(lat, lon)
+        sgg = getattr(m, "sgg", "") or SIDO_REF[normalize_sido(m.sido or m.addr)]["sgg"]
+        return {
+            "id": f"{nx}:{ny}:{sgg}",               # 같은 격자·시군구는 캐시 공유
+            "name": m.name, "nx": nx, "ny": ny, "sgg": sgg,
+            "sunset_at": "19:30", "snapshot": _DEFAULT_SNAPSHOT, "precise": True,
+        }
     key = normalize_sido(m.sido or m.addr)
     ref = SIDO_REF[key]
     nx, ny = dfs_xy_conv(ref["lat"], ref["lon"])
@@ -98,6 +110,15 @@ def region_for_mountain(m) -> dict:
         "id": f"sido:{key}",                       # 동일 시도는 캐시 공유
         "name": f"{ref['name']} 대표지점",
         "nx": nx, "ny": ny, "sgg": ref["sgg"],
-        "sunset_at": "19:30",
-        "snapshot": _DEFAULT_SNAPSHOT,
+        "sunset_at": "19:30", "snapshot": _DEFAULT_SNAPSHOT, "precise": False,
+    }
+
+
+def region_for_coords(lat: float, lon: float, sgg: str = "") -> dict:
+    """GPS 좌표 → conditions region dict (현재 위치 정밀 날씨)."""
+    nx, ny = dfs_xy_conv(lat, lon)
+    return {
+        "id": f"{nx}:{ny}:{sgg or 'gps'}", "name": "현재 위치",
+        "nx": nx, "ny": ny, "sgg": sgg or SIDO_REF["서울"]["sgg"],
+        "sunset_at": "19:30", "snapshot": _DEFAULT_SNAPSHOT, "precise": True,
     }

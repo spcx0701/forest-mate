@@ -105,6 +105,11 @@ class Mountain(Base):
     admin: Mapped[str] = mapped_column(String(64), default="")          # mntiadmin
     admin_tel: Mapped[str] = mapped_column(String(32), default="")      # mntiadminnum
     is_top100: Mapped[bool] = mapped_column(Boolean, default=False)     # mntitop(100대명산 여부)
+    # VWorld 지오코딩(주소→좌표·법정동 시군구코드) — 정밀 날씨격자·산불·주변검색용
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sgg: Mapped[str] = mapped_column(String(5), default="")             # 시군구 5자리(산불 localAreas)
+    facilities: Mapped[str] = mapped_column(Text, default="")           # 등산로 주요지점 시설 JSON
 
 
 class AlertEvent(Base):

@@ -76,6 +76,35 @@ def test_mountain_index_resolves_region(client):
     assert client.get("/api/v1/mountains/NOPE/index").status_code == 404
 
 
+def test_gps_nearby_and_precise_index(client):
+    # 실측 좌표 보유 산 → GPS 주변검색·현재위치지수·정밀 산행지수
+    from server.db import SessionLocal
+    from server.models import Mountain
+    db = SessionLocal()
+    db.merge(Mountain(list_no="GPS1", name="청계산", sido="경기도",
+                      addr="경기도 과천시 막계동", height=618,
+                      lat=37.4449, lon=127.0539, sgg="41290"))
+    db.commit()
+    db.close()
+
+    # 주변 검색 — 과천 인근 좌표
+    res = client.get("/api/v1/mountains/nearby", params={"lat": 37.45, "lon": 127.05, "radius": 10})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["count"] >= 1
+    assert body["items"][0]["name"] == "청계산"
+    assert body["items"][0]["dist_km"] < 5
+
+    # 현재 위치(GPS) 지수
+    g = client.get("/api/v1/index/gps", params={"lat": 37.45, "lon": 127.05}).json()
+    assert g["place"] == "현재 위치" and 0 <= g["score"] <= 100
+
+    # 정밀 산행지수 — 좌표 있으면 place가 시도근사가 아닌 실주소
+    pi = client.get("/api/v1/mountains/GPS1/index").json()
+    assert "대표지점 추정" not in pi["place"]
+    assert pi["mountain"]["lat"] == 37.4449
+
+
 def test_full_hike_flow(client):
     # 1) 기기 등록(익명)
     res = client.post("/api/v1/devices", json={"name": "테스터", "fit": 2, "knee": True})

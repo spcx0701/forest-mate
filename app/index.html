@@ -54,8 +54,8 @@
     <h2 class="sec">🛡 안전 브리핑</h2>
     <div class="banner">⚠️ <div id="briefing"></div></div>
 
-    <div class="card" style="margin-top:14px">
-      <b style="font-size:13px">🌿 이번 주 숲 소식</b>
+    <div class="card" id="newsCard" style="margin-top:14px; cursor:pointer">
+      <b style="font-size:13px">🌿 이번 주 숲 소식 <span style="float:right;color:var(--leaf);font-weight:900">›</span></b>
       <p style="font-size:12px; color:var(--sub); margin-top:6px; line-height:1.6" id="newsLine"></p>
       <div class="src">데이터 출처: 산림청 등산로정보 · 국립산림과학원 산불위험예보/산악기상 · 산사태정보시스템 · 기상청 단기예보 · 숲나들e</div>
     </div>
@@ -169,7 +169,7 @@
       <div class="tx"><b id="insTitle">내일 산행, 1일 안심보험</b><span id="insSub">상해·구조비용 보장 — 산행지수 연동 보험료</span></div>
       <button class="cta" id="insBtn">990원 가입</button>
     </div>
-    <div class="card" style="margin-top:12px; display:flex; align-items:center; gap:11px">
+    <div class="card" id="restCard" style="margin-top:12px; display:flex; align-items:center; gap:11px; cursor:pointer">
       <span style="font-size:24px">🏕</span>
       <div style="flex:1"><b style="font-size:13px">회복이 필요한 주간이에요</b>
         <p style="font-size:11.5px; color:var(--sub); margin-top:3px">축령산 치유의숲 프로그램, 이번 주 토 10시 예약 가능 (숲나들e 연동)</p></div>
@@ -242,10 +242,16 @@
     <div class="sheet">
       <h3>전국 산 검색 🏔</h3>
       <p class="sub">산림청 산정보 — 전국 3,400여 개 산을 이름으로 검색하세요.</p>
+      <button class="btn ghost" id="mntGpsBtn" style="width:100%;margin-bottom:10px">📍 내 주변 산 찾기 (GPS)</button>
       <input type="search" id="mntQ" placeholder="산 이름 입력 (예: 지리산, 북한산)" autocomplete="off">
       <div id="mntResults" class="mnt-results"></div>
       <div class="btnrow"><button class="btn ghost" data-close="mntModal">닫기</button></div>
     </div>
+  </div>
+
+  <!-- ============ 숲나들e 연동(숲 소식·치유의숲) ============ -->
+  <div class="overlay" id="extModal">
+    <div class="sheet" id="extSheet"></div>
   </div>
 </div>
 

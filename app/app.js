@@ -842,17 +842,42 @@ async function runMntSearch(q) {
     if (!d.items.length) { box.innerHTML = `<div class="mnt-empty">'${esc(q)}' 검색 결과가 없어요.</div>`; return; }
     box.innerHTML =
       `<div class="mnt-empty" style="text-align:left;padding:2px 2px 8px">전국 ${d.total.toLocaleString()}개 중 ${d.items.length}개 · <b>탭하면 산행지수</b></div>` +
-      d.items.map((m) => `
-        <div class="mnt-row" data-id="${esc(m.list_no)}" data-name="${esc(m.name)}">
-          <div><b>${esc(m.name)}${m.top100 ? '<span class="top">100대명산</span>' : ""}</b>
-            <div class="loc">📍 ${esc(m.addr || m.sido || "")}</div></div>
-          <div class="h">${m.height ? m.height + "m" : "—"} ›</div>
-        </div>`).join("");
+      d.items.map(mntRow).join("");
   } catch {
     box.innerHTML = `<div class="mnt-empty">검색 중 오류가 났어요. 잠시 후 다시 시도해주세요.</div>`;
   }
 }
+function mntRow(m) {
+  const dist = m.dist_km != null ? `<div class="loc">🧭 ${m.dist_km}km</div>` : "";
+  return `
+    <div class="mnt-row" data-id="${esc(m.list_no)}" data-name="${esc(m.name)}">
+      <div><b>${esc(m.name)}${m.top100 ? '<span class="top">100대명산</span>' : ""}</b>
+        <div class="loc">📍 ${esc(m.addr || m.sido || "")}</div>${dist}</div>
+      <div class="h">${m.height ? m.height + "m" : "—"} ›</div>
+    </div>`;
+}
+async function findNearby() {
+  const box = $("mntResults");
+  if (API.mode !== "cloud") { box.innerHTML = `<div class="mnt-empty">주변 산 찾기는 온라인 상태에서 동작해요.</div>`; return; }
+  if (!navigator.geolocation) { box.innerHTML = `<div class="mnt-empty">이 기기는 위치 기능을 지원하지 않아요.</div>`; return; }
+  box.innerHTML = `<div class="mnt-empty">📍 현재 위치를 확인하는 중…</div>`;
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    try {
+      const d = await API.get(`/mountains/nearby?lat=${lat}&lon=${lon}&radius=40&limit=25`);
+      if (!d.items.length) { box.innerHTML = `<div class="mnt-empty">반경 40km 내 등록된 산이 없어요. 검색을 이용해 주세요.</div>`; return; }
+      box.innerHTML =
+        `<div class="mnt-empty" style="text-align:left;padding:2px 2px 8px">📍 내 주변 ${d.count}곳 · 가까운 순 · <b>탭하면 산행지수</b></div>` +
+        d.items.map(mntRow).join("");
+    } catch {
+      box.innerHTML = `<div class="mnt-empty">주변 산을 불러오지 못했어요.</div>`;
+    }
+  }, () => {
+    box.innerHTML = `<div class="mnt-empty">위치 권한이 거부됐어요. 이름으로 검색해 주세요.</div>`;
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+}
 $("mntSearchBtn").addEventListener("click", openMntSearch);
+$("mntGpsBtn").addEventListener("click", findNearby);
 $("mntQ").addEventListener("input", (e) => {
   clearTimeout(mntTimer);
   const v = e.target.value;
@@ -862,6 +887,38 @@ $("mntResults").addEventListener("click", (e) => {
   const row = e.target.closest(".mnt-row");
   if (row && row.dataset.id) selectMountainIndex(row.dataset.id, row.dataset.name);
 });
+
+/* ---------------- 숲나들e 연동 (숲 소식 · 치유의숲) ---------------- */
+const FOREST_URL = "https://www.foresttrip.go.kr";
+function openExt(html) { $("extSheet").innerHTML = html; $("extModal").classList.add("show"); }
+function openRest() {
+  openExt(`
+    <h3>🏕 축령산 치유의숲 · 숲 명상</h3>
+    <p class="sub">한국산림복지진흥원 숲나들e 연동 · 산림치유 프로그램</p>
+    <div class="ext-row"><b>일정</b> 이번 주 토요일 10:00 (90분)</div>
+    <div class="ext-row"><b>장소</b> 전남 장성 축령산 편백숲 치유센터</div>
+    <div class="ext-row"><b>잔여</b> <span style="color:#2D6A4F;font-weight:800">예약 가능</span> · 회복지수 낮은 주간 추천</div>
+    <div class="ext-row"><b>효과</b> 편백 피톤치드 · 호흡 명상으로 스트레스·혈압 완화</div>
+    <p class="sub" style="margin-top:12px">최근 산행 패턴상 휴식이 필요해요. 숲나들e에서 실시간 예약현황 확인·신청하세요.</p>
+    <div class="btnrow">
+      <a class="btn primary" href="${FOREST_URL}/cs/hsfr/healingForestList.do" target="_blank" rel="noopener">숲나들e에서 예약하기 ↗</a>
+      <button class="btn ghost" data-close="extModal">닫기</button>
+    </div>`);
+}
+function openNews() {
+  const items = (FM_DATA.news || []).map((n) => `<div class="ext-row">🌿 ${esc(n)}</div>`).join("");
+  openExt(`
+    <h3>🌿 이번 주 숲 소식</h3>
+    <p class="sub">산림청 · 숲나들e · 국립공원 주간 소식</p>
+    ${items}
+    <p class="sub" style="margin-top:12px">휴양림·치유의숲 예약과 개장 정보는 숲나들e에서 확인할 수 있어요.</p>
+    <div class="btnrow">
+      <a class="btn primary" href="${FOREST_URL}" target="_blank" rel="noopener">숲나들e 바로가기 ↗</a>
+      <a class="btn ghost" href="https://www.forest.go.kr" target="_blank" rel="noopener">산림청 소식 ↗</a>
+    </div>`);
+}
+$("restCard").addEventListener("click", openRest);
+$("newsCard").addEventListener("click", openNews);
 
 /* ---------------- 초기화 ---------------- */
 async function init() {
