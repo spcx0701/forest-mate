@@ -1,0 +1,5 @@
+F-Droid 소스 빌드 제출 준비.
+
+- Apache-2.0 라이선스와 NOTICE를 추가했습니다.
+- F-Droid 및 Fastlane 메타데이터를 추가했습니다.
+- deprecated JCenter 저장소를 Maven Central로 교체했습니다.

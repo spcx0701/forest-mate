@@ -57,3 +57,16 @@ npm run fingerprint
 ## 4. 배포 방식
 
 APK는 Play Store가 아니라 직접 링크, GitHub Release, 또는 행사 제출 패키지로 배포한다. 사용자는 Android 설정에서 "알 수 없는 앱 설치"를 허용해야 설치할 수 있다.
+
+## 5. F-Droid 소스 빌드
+
+F-Droid 제출은 GitHub Release APK 업로드가 아니라 소스에서 unsigned release APK를 빌드하는 방식이다. 루트의 `.fdroid.yml`와 `fastlane/metadata/android/`가 제출 메타데이터의 기준이며, 자세한 절차는 `packaging/fdroid/README.md`를 따른다.
+
+F-Droid 빌드는 개인 서명키를 쓰지 않는다.
+
+```bash
+cd "/Users/dong9733/Documents/LYT Kit 2/forest-mate/packaging/android"
+./gradlew --no-daemon assembleRelease
+```
+
+예상 산출물은 `app/build/outputs/apk/release/app-release-unsigned.apk`이며, F-Droid가 이 unsigned APK를 자체 키로 서명한다.

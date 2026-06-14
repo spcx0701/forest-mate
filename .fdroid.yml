@@ -1,0 +1,43 @@
+Categories:
+  - Navigation
+  - Sports & Health
+License: Apache-2.0
+AuthorName: ForestMate contributors
+WebSite: https://forestmate.onrender.com/home.html
+SourceCode: https://github.com/spcx0701/forest-mate
+IssueTracker: https://github.com/spcx0701/forest-mate/issues
+Changelog: https://github.com/spcx0701/forest-mate/releases
+AutoName: ForestMate
+Summary: Hiking safety companion using forest public data
+Description: |-
+  ForestMate is a hiking safety companion built around forest public data.
+  It combines a trail safety index, route recommendations, risk alerts,
+  offline fallback data, one-tap SOS flows, and a public-sector dashboard.
+
+  The Android app is a Trusted Web Activity wrapper for the published
+  ForestMate web app. The web client and FastAPI server source are in this
+  repository and can be self-hosted. This default build connects to the
+  hosted ForestMate web/API service at forestmate.onrender.com, so it is
+  expected to carry the NonFreeNet anti-feature in F-Droid metadata.
+
+  The Android build does not include advertising SDKs, Firebase,
+  Crashlytics, Google Play Services, or proprietary tracking libraries.
+AntiFeatures:
+  - NonFreeNet
+RepoType: git
+Repo: https://github.com/spcx0701/forest-mate.git
+Builds:
+  - versionName: '1.0.1'
+    versionCode: 2
+    commit: android-v1.0.1
+    subdir: packaging/android
+    gradle:
+      - yes
+    output: app/build/outputs/apk/release/app-release-unsigned.apk
+    scandelete:
+      - gradle/wrapper/gradle-wrapper.jar
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^android-v[0-9]+\.[0-9]+\.[0-9]+$
+UpdateCheckData: 'packaging/android/app/build.gradle|versionCode\s+(\d+)|.|versionName\s+"([^"]+)"'
+CurrentVersion: '1.0.1'
+CurrentVersionCode: 2

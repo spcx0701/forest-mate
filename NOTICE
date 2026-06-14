@@ -1,0 +1,19 @@
+ForestMate
+Copyright 2026 ForestMate contributors
+
+This product includes software developed for the ForestMate project.
+
+Unless otherwise noted, source code, documentation, generated Android
+resources, screenshots, and project-owned artwork in this repository are
+licensed under the Apache License, Version 2.0.
+
+The Android packaging project was generated with Bubblewrap and includes
+source files derived from the Google Chrome Labs Trusted Web Activity
+template. Those generated files retain their original Apache-2.0 notices.
+
+The Android application uses Android Browser Helper libraries published by
+Google Chrome Labs under Apache-2.0-compatible terms.
+
+The service integrates public forest and weather data sources at runtime.
+Those external datasets and remote services remain governed by their own
+terms. Optional live integrations require API keys supplied by the operator.

@@ -1,0 +1,5 @@
+F-Droid source-build preparation.
+
+- Adds Apache-2.0 licensing and project notices.
+- Adds F-Droid and Fastlane metadata.
+- Replaces the deprecated JCenter repository with Maven Central.
