@@ -34,16 +34,14 @@ def _kma_base(now: datetime | None = None) -> tuple[str, str]:
     return (t - timedelta(days=1)).strftime("%Y%m%d"), "2300"  # 02:45 이전 → 전일 23시
 
 
-def _snapshot(region_id: str) -> dict:
-    return REGIONS[region_id]["snapshot"]
+async def get_weather(region: dict) -> dict:
+    """기상 — 기온·풍속·강수확률·점수. source: live|snapshot.
 
-
-async def get_weather(region_id: str) -> dict:
-    """기상 — 기온·풍속·강수확률·점수. source: live|snapshot."""
+    region: nx·ny·id(캐시키)·snapshot 키를 가진 dict (REGIONS 항목 또는 산 ad-hoc)."""
     settings = get_settings()
-    region = REGIONS[region_id]
+    snap = region["snapshot"]
     if not settings.live_data:
-        return {**_snapshot(region_id)["weather"], "source": "snapshot"}
+        return {**snap["weather"], "source": "snapshot"}
 
     base_date, base_time = _kma_base()
     params = {
@@ -53,7 +51,7 @@ async def get_weather(region_id: str) -> dict:
         "nx": region["nx"], "ny": region["ny"],
     }
     try:
-        data = await fetch_json(KMA_URL, params, cache_key=f"kma:{region_id}")
+        data = await fetch_json(KMA_URL, params, cache_key=f"kma:{region['id']}")
         items = data["response"]["body"]["items"]["item"]
         # 가장 이른 예보시각의 값을 현재값 대용으로(카테고리별 최초 1건).
         vals: dict[str, str] = {}
@@ -67,15 +65,15 @@ async def get_weather(region_id: str) -> dict:
         return {"temp": temp, "wind": wind, "rain_prob": rain, "label": label,
                 "score": int(score), "station": "기상청 단기예보", "source": "live"}
     except (AdapterError, KeyError, ValueError):
-        return {**_snapshot(region_id)["weather"], "source": "snapshot"}
+        return {**snap["weather"], "source": "snapshot"}
 
 
-async def get_fire_risk(region_id: str) -> dict:
+async def get_fire_risk(region: dict) -> dict:
     """산불위험지수 — 국립산림과학원 예보. source: live|snapshot."""
     settings = get_settings()
-    region = REGIONS[region_id]
+    snap = region["snapshot"]
     if not settings.live_data:
-        return {**_snapshot(region_id)["fire"], "source": "snapshot"}
+        return {**snap["fire"], "source": "snapshot"}
 
     params = {
         "ServiceKey": service_key(),
@@ -83,7 +81,7 @@ async def get_fire_risk(region_id: str) -> dict:
         "localAreas": region["sgg"], "excludeForecast": 0,
     }
     try:
-        data = await fetch_json(FIRE_URL, params, cache_key=f"fire:{region_id}")
+        data = await fetch_json(FIRE_URL, params, cache_key=f"fire:{region['id']}")
         item = data["response"]["body"]["items"]["item"]
         if isinstance(item, list):
             item = item[0]
@@ -99,25 +97,29 @@ async def get_fire_risk(region_id: str) -> dict:
         return {"level": level, "score": score,
                 "src": "국립산림과학원 산불위험예보", "source": "live"}
     except (AdapterError, KeyError, TypeError, ValueError):
-        return {**_snapshot(region_id)["fire"], "source": "snapshot"}
+        return {**snap["fire"], "source": "snapshot"}
 
 
-async def get_landslide(region_id: str) -> dict:
+async def get_landslide(region: dict) -> dict:
     """산사태 위험등급 — 산사태정보시스템은 공간 레이어(WMS/SHP) 제공이라
     운영에서는 ETL로 구간별 등급을 사전 적재한다. 여기서는 적재 결과 스냅샷."""
-    return {**_snapshot(region_id)["landslide"], "source": "etl"}
+    return {**region["snapshot"]["landslide"], "source": "etl"}
+
+
+async def conditions_for_region(region: dict) -> dict:
+    """임의 region dict(REGIONS 항목 또는 산 ad-hoc)의 기상·산불·산사태 종합."""
+    return {
+        "region_id": region["id"],
+        "name": region["name"],
+        "fire": await get_fire_risk(region),
+        "landslide": await get_landslide(region),
+        "weather": await get_weather(region),
+        "sunset_at": region["sunset_at"],
+        "sunset_score": region["snapshot"]["sunset_score"],
+    }
 
 
 async def get_region_conditions(region_id: str) -> dict:
     if region_id not in REGIONS:
         raise KeyError(region_id)
-    region = REGIONS[region_id]
-    return {
-        "region_id": region_id,
-        "name": region["name"],
-        "fire": await get_fire_risk(region_id),
-        "landslide": await get_landslide(region_id),
-        "weather": await get_weather(region_id),
-        "sunset_at": region["sunset_at"],
-        "sunset_score": region["snapshot"]["sunset_score"],
-    }
+    return await conditions_for_region({**REGIONS[region_id], "id": region_id})

@@ -118,34 +118,63 @@ function calcIndex(r) {
 }
 function idxLabel(v) { return v >= 80 ? "좋음 — 산행하기 좋은 날 🌤" : v >= 60 ? "보통 — 기상 변화에 유의하세요 ⛅" : "주의 — 무리한 산행은 피하세요 ⚠️"; }
 
-async function renderHome() {
-  const r = FM_DATA.regions[S.region];
-  let v = calcIndex(r);
-  let fire = r.fire, landslide = r.landslide, weather = r.weather, sunsetAt = r.sunsetAt;
-  if (API.mode === "cloud") {
-    try {
-      const d = await API.get(`/index?region=${S.region}`);
-      v = d.score;
-      fire = { level: d.conditions.fire.level, score: d.conditions.fire.score, src: d.conditions.fire.src };
-      landslide = d.conditions.landslide;
-      weather = { ...d.conditions.weather, station: d.conditions.weather.station };
-      sunsetAt = d.conditions.sunset_at;
-    } catch { /* 로컬 계산 유지 */ }
-  }
+function paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel) {
   const C = 276.5;
   $("idxVal").textContent = v;
   $("idxArc").style.strokeDashoffset = (C * (1 - v / 100)).toFixed(1);
   $("idxArc").style.stroke = v >= 80 ? "#B7E4C7" : v >= 60 ? "#FFD8A8" : "#FFB3B8";
-  $("idxLabel").textContent = idxLabel(v);
+  $("idxLabel").innerHTML = placeLabel
+    ? `${idxLabel(v)}<span class="idx-place">${placeLabel} <a id="mntReset">✕ 내 지역</a></span>`
+    : idxLabel(v);
   const wxCls = weather.score >= 75 ? "ok" : "mid";
   $("idxGrid").innerHTML = `
     <div class="idx-item"><b class="${fire.score >= 80 ? "ok" : "mid"}">산불위험 ${fire.level}</b>${fire.src}</div>
     <div class="idx-item"><b class="${landslide.score >= 80 ? "ok" : "mid"}">산사태 ${landslide.label}</b>위험지도 ${landslide.grade}등급</div>
     <div class="idx-item"><b class="${wxCls}">산악기상 ${weather.temp}°C</b>${weather.station}</div>
     <div class="idx-item"><b class="mid">일몰 ${sunsetAt}</b>16시 이후 입산 주의</div>`;
+  const reset = $("mntReset");
+  if (reset) reset.addEventListener("click", () => { S.selectedMountain = null; save(); renderHome(); });
+}
+
+async function fetchConditions(path) {
+  const d = await API.get(path);
+  return {
+    v: d.score, sunsetAt: d.conditions.sunset_at, place: d.place,
+    fire: { level: d.conditions.fire.level, score: d.conditions.fire.score, src: d.conditions.fire.src },
+    landslide: d.conditions.landslide, weather: { ...d.conditions.weather },
+  };
+}
+
+async function renderHome() {
+  let v, fire, landslide, weather, sunsetAt, placeLabel = null;
+  const sel = API.mode === "cloud" ? S.selectedMountain : null;
+  if (sel) {
+    try {
+      const c = await fetchConditions(`/mountains/${encodeURIComponent(sel.listNo)}/index`);
+      ({ v, fire, landslide, weather, sunsetAt } = c);
+      placeLabel = `🏔 ${sel.name} · ${c.place}`;
+    } catch { S.selectedMountain = null; }
+  }
+  if (placeLabel === null) {
+    const r = FM_DATA.regions[S.region];
+    v = calcIndex(r); fire = r.fire; landslide = r.landslide; weather = r.weather; sunsetAt = r.sunsetAt;
+    if (API.mode === "cloud") {
+      try { ({ v, fire, landslide, weather, sunsetAt } = await fetchConditions(`/index?region=${S.region}`)); }
+      catch { /* 로컬 계산 유지 */ }
+    }
+  }
+  paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel);
   renderReco();
   $("briefing").innerHTML = `<b>${FM_DATA.briefings[new Date().getDay() % FM_DATA.briefings.length].split(".")[0]}.</b><br>${FM_DATA.briefings[new Date().getDay() % FM_DATA.briefings.length].split(".").slice(1).join(".").trim()}`;
   $("newsLine").textContent = FM_DATA.news.slice(0, 3).join(" · ");
+}
+
+async function selectMountainIndex(listNo, name) {
+  $("mntModal").classList.remove("show");
+  S.selectedMountain = { listNo, name }; save();
+  show("home");
+  await renderHome();
+  toast("산행지수", `${name} 기준으로 산행지수 ${$("idxVal").textContent}점을 계산했어요`, "🏔");
 }
 
 /* ---------------- AI 추천 ---------------- */
@@ -812,12 +841,12 @@ async function runMntSearch(q) {
     const d = await API.get(`/mountains?q=${encodeURIComponent(q)}&size=30`);
     if (!d.items.length) { box.innerHTML = `<div class="mnt-empty">'${esc(q)}' 검색 결과가 없어요.</div>`; return; }
     box.innerHTML =
-      `<div class="mnt-empty" style="text-align:left;padding:2px 2px 8px">전국 ${d.total.toLocaleString()}개 중 ${d.items.length}개</div>` +
+      `<div class="mnt-empty" style="text-align:left;padding:2px 2px 8px">전국 ${d.total.toLocaleString()}개 중 ${d.items.length}개 · <b>탭하면 산행지수</b></div>` +
       d.items.map((m) => `
-        <div class="mnt-row">
+        <div class="mnt-row" data-id="${esc(m.list_no)}" data-name="${esc(m.name)}">
           <div><b>${esc(m.name)}${m.top100 ? '<span class="top">100대명산</span>' : ""}</b>
             <div class="loc">📍 ${esc(m.addr || m.sido || "")}</div></div>
-          <div class="h">${m.height ? m.height + "m" : "—"}</div>
+          <div class="h">${m.height ? m.height + "m" : "—"} ›</div>
         </div>`).join("");
   } catch {
     box.innerHTML = `<div class="mnt-empty">검색 중 오류가 났어요. 잠시 후 다시 시도해주세요.</div>`;
@@ -828,6 +857,10 @@ $("mntQ").addEventListener("input", (e) => {
   clearTimeout(mntTimer);
   const v = e.target.value;
   mntTimer = setTimeout(() => runMntSearch(v), 320);
+});
+$("mntResults").addEventListener("click", (e) => {
+  const row = e.target.closest(".mnt-row");
+  if (row && row.dataset.id) selectMountainIndex(row.dataset.id, row.dataset.name);
 });
 
 /* ---------------- 초기화 ---------------- */
