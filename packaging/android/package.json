@@ -1,0 +1,16 @@
+{
+  "name": "forestmate-android-apk",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ForestMate Android TWA APK packaging",
+  "scripts": {
+    "init:project": "./scripts/init-project.sh",
+    "build:apk": "./scripts/build-apk.sh",
+    "fingerprint": "./scripts/print-fingerprint.sh",
+    "doctor": "bubblewrap doctor",
+    "validate:pwa": "bubblewrap validate --url=https://forestmate.onrender.com/index.html"
+  },
+  "devDependencies": {
+    "@bubblewrap/cli": "1.24.1"
+  }
+}
