@@ -223,6 +223,19 @@ nav a.sosnav{color:var(--danger)}
 .mnt-row .h{font-size:13px; font-weight:800; color:#40916C; white-space:nowrap}
 .mnt-row .top{font-size:10px; font-weight:800; color:#B35309; background:#FFF4E8; border-radius:99px; padding:2px 7px; margin-left:6px}
 .mnt-empty{font-size:12.5px; color:var(--sub); text-align:center; padding:18px 0}
+.rep-extra{display:flex; justify-content:space-around; gap:6px; margin:10px 0 4px; padding:9px 0; background:#F2F7F1; border-radius:11px; font-size:11.5px; color:var(--sub)}
+.rep-extra b{color:var(--pine); font-weight:900; font-size:13px}
+
+/* 산행 중 GPS 동기화 표시 */
+.gps-tag{margin-top:10px; padding:9px 12px; border-radius:11px; font-size:11.5px; font-weight:700; background:#FFF7EC; color:#B35309; border:1px solid #F4D9B5}
+.gps-tag.on{background:#EAF4EC; color:#2D6A4F; border-color:#CFE6D4}
+
+/* 산 상세 — 사진·시설 */
+.mtn-hero{width:100%; height:150px; object-fit:cover; border-radius:14px; margin-bottom:12px; background:#E3EDE4; display:block}
+.mtn-score{margin:10px 0; padding:10px 12px; background:#F0F7F1; border-radius:11px; font-size:12.5px; color:var(--sub)}
+.mtn-score b{color:var(--pine); font-size:16px; font-weight:900}
+.facs{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 2px}
+.fac{font-size:11px; font-weight:700; color:#2D6A4F; background:#EAF4EC; border:1px solid #D6E8D9; border-radius:99px; padding:4px 9px}
 
 /* 숲나들e 연동 모달 */
 .ext-row{font-size:12.5px; padding:9px 0; border-bottom:1px solid #EEF3EE; line-height:1.5}

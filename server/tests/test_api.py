@@ -158,6 +158,12 @@ def test_full_hike_flow(client):
     assert rep["total_km"] > 0 and rep["total_kcal"] > 0
     assert rep["active_days"] >= 1
     assert sum(m["count"] for m in rep["monthly"]) == 1  # 완료 1건이 월별에 반영
+    # 배지 — 실집계 기반(첫 산행 달성, 10회 미달성, 진척 포함)
+    assert rep["distinct_courses"] >= 1 and rep["regions"] >= 1
+    badges = {b["id"]: b for b in rep["badges"]}
+    assert badges["first"]["earned"] is True       # 1회 완주 → 첫 산행 달성
+    assert badges["ten"]["earned"] is False        # 10회 미달성
+    assert badges["ten"]["progress"] == 1 and badges["ten"]["goal"] == 10
 
 
 def test_dashboard_websocket_receives_sos(client):

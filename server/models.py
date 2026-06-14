@@ -65,6 +65,8 @@ class TrackPoint(Base):
     progress: Mapped[float] = mapped_column(Float)
     alt: Mapped[int] = mapped_column(Integer, default=0)
     hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)  # 실제 GPS
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     hike: Mapped[Hike] = relationship(back_populates="points")

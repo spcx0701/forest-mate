@@ -68,7 +68,8 @@ async def track(hike_id: str, body: TrackIn, device: Device = Depends(get_device
     prev = hike.progress
     hike.progress = body.progress
     hike.distance_km = round(course["km"] * body.progress, 2)
-    db.add(TrackPoint(hike_id=hike.id, progress=body.progress, alt=body.alt, hr=body.hr))
+    db.add(TrackPoint(hike_id=hike.id, progress=body.progress, alt=body.alt, hr=body.hr,
+                      lat=body.lat, lon=body.lon))
     db.commit()
 
     # 위험구간 접근 경고 (진행률 창 통과 시 1회)
@@ -112,6 +113,28 @@ async def end_hike(hike_id: str, device: Device = Depends(get_device),
                       kcal=hike.kcal, duration_min=duration)
 
 
+def _badge(bid, icon, label, value, goal):
+    """진척형 배지 1개 — value/goal 달성 시 earned."""
+    return {"id": bid, "icon": icon, "label": label,
+            "progress": round(min(value, goal), 1), "goal": goal,
+            "earned": value >= goal}
+
+
+def _compute_badges(total, total_km, total_kcal, active_days, regions, distinct, n_courses):
+    """실제 기록 기반 배지 — 하드코딩 아님(진척도 포함)."""
+    return [
+        _badge("first", "🥾", "첫 산행", total, 1),
+        _badge("five", "🏔", "5회 등반", total, 5),
+        _badge("ten", "🗺", "10회 등반", total, 10),
+        _badge("km50", "📏", "누적 50km", total_km, 50),
+        _badge("km100", "💯", "누적 100km", total_km, 100),
+        _badge("kcal", "🔥", "5,000kcal", total_kcal, 5000),
+        _badge("days30", "📅", "30일 활동", active_days, 30),
+        _badge("regions", "🧭", "지역 탐험 3곳", regions, 3),
+        _badge("master", "⛰", "전 코스 완등", distinct, max(1, n_courses)),
+    ]
+
+
 @router.get("/hikes/summary", response_model=HikeSummaryOut)
 async def hike_summary(device: Device = Depends(get_device), db: Session = Depends(get_db)):
     """마이 리포트 — 이 기기의 완료된 산행을 DB에서 집계(하드코딩 아님)."""
@@ -123,6 +146,12 @@ async def hike_summary(device: Device = Depends(get_device), db: Session = Depen
     total_kcal = sum(h.kcal for h in hikes)
     created = device.created_at if device.created_at.tzinfo else device.created_at.replace(tzinfo=timezone.utc)
     active_days = (datetime.now(timezone.utc) - created).days + 1
+
+    # 지역 다양성·완등 코스 — course_id → 지역(시·도) 매핑
+    course_region = {c["id"]: c["region"] for c in COURSES}
+    done_courses = {h.course_id for h in hikes if h.course_id}
+    regions = len({course_region.get(cid) for cid in done_courses if cid in course_region})
+    distinct_courses = len(done_courses)
 
     # 최근 6개월 월별 집계(완료 산행 기준)
     now = datetime.now(timezone.utc)
@@ -145,6 +174,9 @@ async def hike_summary(device: Device = Depends(get_device), db: Session = Depen
         total_hikes=total, total_km=total_km, total_kcal=total_kcal,
         co2_kg=round(total_km * 0.38, 1), active_days=active_days,
         level=1 + total // 3, monthly=list(months.values()),
+        distinct_courses=distinct_courses, regions=regions,
+        badges=_compute_badges(total, total_km, total_kcal, active_days,
+                               regions, distinct_courses, len(COURSES)),
     )
 
 

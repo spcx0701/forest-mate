@@ -226,6 +226,7 @@ function openCourse(id) {
   const s = matchScore(c);
   $("courseSheet").innerHTML = `
     <div class="grab"></div>
+    <img id="courseHero" class="mtn-hero" alt="${c.name} 전경">
     <h3>${c.name} <span style="color:#40916C;font-size:13px">매칭 ${s}%</span></h3>
     <p class="sub">${c.route} · ${FM_DATA.regions[c.region].name}</p>
     ${sparkline(c.elev)}
@@ -241,6 +242,7 @@ function openCourse(id) {
       <button class="btn primary" id="btnStartCourse">🥾 이 코스로 산행 시작</button>
     </div>`;
   $("courseModal").classList.add("show");
+  loadHero($("courseHero"), c.name.split(" ")[0], parseInt((c.peak || "").replace(/\D/g, "")) || 0);
   $("btnStartCourse").addEventListener("click", () => {
     $("courseModal").classList.remove("show");
     selectCourse(c.id);
@@ -339,6 +341,12 @@ function renderHikeUI() {
   $("stDistCap").textContent = `이동 / ${c.km}km`;
   $("stAlt").innerHTML = `${interp(c.elev, Hike.prog)}<small>m</small>`;
   $("stHr").innerHTML = Hike.active || Hike.prog > 0 ? `${Hike.hr}<small>bpm</small>` : "—";
+  const gt = $("gpsTag");
+  if (gt) {
+    if (Hike.active && Hike.gps) { gt.style.display = "block"; gt.className = "gps-tag on"; gt.innerHTML = `📍 실시간 GPS 동기화 중 · 위도 ${Hike.gps.lat}, 경도 ${Hike.gps.lon} (정확도 ±${Hike.gps.acc}m)`; }
+    else if (Hike.active) { gt.style.display = "block"; gt.className = "gps-tag"; gt.innerHTML = `📍 GPS 위치 확인 중… (권한 허용 시 실시간 동기화)`; }
+    else { gt.style.display = "none"; }
+  }
   // SOS 가드 상태
   $("guardMon").innerHTML = Hike.active
     ? `<span class="dot-ok"></span>자동 조난감지 작동 중`
@@ -359,15 +367,23 @@ function startHike() {
   }
   logEvent(`입산 체크인 — ${Hike.course.name} (예상 하산 ${fmtMin(Hike.course.minutes)} 후)`);
   if (S.settings.family) logEvent("가족 안심 공유 시작 (어머니, 동생)");
-  toast("산행을 시작합니다", "AI 안전 감시가 켜졌어요. 데모: 코스가 자동 진행됩니다", "🥾");
+  // 실제 GPS 위치 동기화 — watchPosition으로 좌표 추적(서버 트랙·관제 반영)
+  if (navigator.geolocation) {
+    Hike.geoId = navigator.geolocation.watchPosition(
+      (pos) => { Hike.gps = { lat: +pos.coords.latitude.toFixed(6), lon: +pos.coords.longitude.toFixed(6), acc: Math.round(pos.coords.accuracy) }; renderHikeUI(); },
+      () => { Hike.gps = null; },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+  }
+  toast("산행을 시작합니다", "AI 안전 감시 + 실시간 GPS 위치 동기화가 켜졌어요", "🥾");
   renderHikeUI();
 }
-function pauseHike() { Hike.active = false; clearInterval(Hike.timer); renderHikeUI(); }
+function stopGeo() { if (Hike.geoId != null && navigator.geolocation) { navigator.geolocation.clearWatch(Hike.geoId); Hike.geoId = null; } }
+function pauseHike() { Hike.active = false; clearInterval(Hike.timer); stopGeo(); renderHikeUI(); }
 function endHike(byUser = true) {
   clearInterval(Hike.timer);
   const c = Hike.course;
   const doneKm = +(c.km * Hike.prog).toFixed(1);
-  Hike.active = false; Hike.ended = true;
+  Hike.active = false; Hike.ended = true; stopGeo();
   S.june.cnt += 1; S.june.km = +(S.june.km + doneKm).toFixed(1);
   S.june.kcal += Math.round(doneKm * 260);
   S.june.co2 = +(S.june.co2 + doneKm * 0.38).toFixed(1);
@@ -387,9 +403,9 @@ function tick() {
   const c = Hike.course;
   // 5초마다 서버에 트랙 전송 → 서버측 조난감지·관제 반영 (실서비스: 백그라운드 위치)
   if (API.mode === "cloud" && API.hikeId && ++tickCount % 5 === 0) {
-    API.post(`/hikes/${API.hikeId}/track`,
-      { progress: +Hike.prog.toFixed(4), alt: interp(c.elev, Hike.prog), hr: Hike.hr })
-      .catch(() => {});
+    const t = { progress: +Hike.prog.toFixed(4), alt: interp(c.elev, Hike.prog), hr: Hike.hr };
+    if (Hike.gps) { t.lat = Hike.gps.lat; t.lon = Hike.gps.lon; }   // 실제 GPS 동기화
+    API.post(`/hikes/${API.hikeId}/track`, t).catch(() => {});
   }
   c.hazards.forEach((hz, i) => {
     if (!Hike.alerted[i] && Hike.prog > hz.at - 0.08 && Hike.prog < hz.at) {
@@ -694,6 +710,7 @@ async function renderMy() {
       const s = await API.get("/hikes/summary");
       days = s.active_days; cnt = s.total_hikes; km = s.total_km;
       kcal = s.total_kcal; co2 = s.co2_kg; level = s.level;
+      lastSum = s;   // 배지·지역 다양성 캐시
       const byKey = Object.fromEntries(s.monthly.map((m) => [m.month, m.km]));
       const maxKm = Math.max(1, ...s.monthly.map((m) => m.km));
       bars = months.map((m) => ({ h: Math.round(((byKey[m.key] || 0) / maxKm) * 100), label: m.label }));
@@ -715,19 +732,36 @@ async function renderMy() {
   $("repCo2").textContent = `${co2}kg`;
   $("repBars").innerHTML = bars.map((b, i) => `
     <div class="b ${i === bars.length - 1 ? "cur" : ""}"><i style="height:${b.h}%"></i><span>${b.label}</span></div>`).join("");
+  if ($("repExtra")) {
+    const earned = lastSum && lastSum.badges ? lastSum.badges.filter((b) => b.earned).length + (S.aiCount >= 10 ? 1 : 0) : (S.aiCount >= 10 ? 1 : 0);
+    const total = lastSum && lastSum.badges ? lastSum.badges.length + 1 : 4;
+    const regions = lastSum ? lastSum.regions : 0;
+    const courses = lastSum ? lastSum.distinct_courses : 0;
+    $("repExtra").innerHTML =
+      `<span>🧭 방문 지역 <b>${regions}</b>곳</span><span>⛰ 완등 코스 <b>${courses}</b></span><span>🏅 배지 <b>${earned}/${total}</b></span>`;
+  }
   renderBadges(); renderIns();
 }
+let lastSum = null;
 function renderBadges() {
-  const defs = [
-    ["⛰", "백대명산<br>12좌", true],
-    ["🌅", "일출 산행<br>5회", true],
-    ["🛡", "무사고<br>100일", true],
-    ["🌲", "숲길 해설<br>30회 청취", true],
-    ["♻️", "클린하이킹<br>3.2kg", true],
-    ["🥾", "시뮬 산행<br>완주", S.hikesDone > 0],
-    ["💬", `숲이와 대화<br>${Math.min(S.aiCount, 10)}/10회`, S.aiCount >= 10],
-  ];
-  $("badgeRow").innerHTML = defs.map(([ic, tx, ok]) => `
+  // 서버 실집계 배지(진척·달성) + 클라이언트 AI 대화 배지. 하드코딩 아님.
+  let cards;
+  if (lastSum && lastSum.badges && lastSum.badges.length) {
+    cards = lastSum.badges.map((b) => {
+      const unit = b.id.startsWith("km") ? "km" : b.id === "kcal" ? "" : b.id === "days30" ? "일" : "";
+      const prog = b.earned ? "달성!" : `${b.progress}/${b.goal}${unit}`;
+      return [b.icon, `${b.label}<br>${prog}`, b.earned];
+    });
+  } else {  // 오프라인 폴백 — 로컬 기록 기준
+    const cnt = S.hikesDone || 0, km = S.june.km || 0;
+    cards = [
+      ["🥾", `첫 산행<br>${Math.min(cnt, 1)}/1`, cnt >= 1],
+      ["🏔", `5회 등반<br>${Math.min(cnt, 5)}/5`, cnt >= 5],
+      ["📏", `누적 50km<br>${km.toFixed(0)}/50km`, km >= 50],
+    ];
+  }
+  cards.push(["💬", `숲이와 대화<br>${Math.min(S.aiCount, 10)}/10회`, S.aiCount >= 10]);
+  $("badgeRow").innerHTML = cards.map(([ic, tx, ok]) => `
     <div class="bd ${ok ? "" : "lock"}"><div class="ic">${ic}</div><span>${tx}</span></div>`).join("");
 }
 function renderIns() {
@@ -885,8 +919,58 @@ $("mntQ").addEventListener("input", (e) => {
 });
 $("mntResults").addEventListener("click", (e) => {
   const row = e.target.closest(".mnt-row");
-  if (row && row.dataset.id) selectMountainIndex(row.dataset.id, row.dataset.name);
+  if (row && row.dataset.id) openMountainDetail(row.dataset.id, row.dataset.name);
 });
+
+/* ---------------- 산 상세 (사진·시설·산행지수) ---------------- */
+const FAC_ICON = { 정상: "🏔", 대피소: "🏠", 조망점: "🔭", 위험지역: "⚠️", 헬기장: "🚁", 화장실: "🚻", 음수대: "💧", 약수터: "💧" };
+function themedHero(name, height) {
+  // 사진 폴백 — 높이/이름 기반 테마 SVG(외부 의존 없음)
+  const h = height || 0;
+  const top = h >= 1200 ? "#2D6A4F" : h >= 600 ? "#40916C" : "#52B788";
+  const sky = h >= 1200 ? "#A8C7B5" : "#CDE7D4";
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300'>
+    <defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='${sky}'/><stop offset='1' stop-color='#EAF4EC'/></linearGradient></defs>
+    <rect width='600' height='300' fill='url(#g)'/>
+    <polygon points='0,300 150,150 260,220 380,90 500,210 600,150 600,300' fill='${top}' opacity='0.9'/>
+    <polygon points='320,300 460,120 600,260 600,300' fill='${top}'/>
+    <text x='24' y='280' font-family='sans-serif' font-size='22' font-weight='800' fill='#1B4332'>${name}${h ? " · " + h + "m" : ""}</text></svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+async function loadHero(img, name, height) {
+  img.src = themedHero(name, height);                 // 즉시 폴백
+  try {                                               // 공개 사진 시도(위키 공개자료)
+    const r = await fetch(`https://ko.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name.split(" ")[0])}`);
+    if (r.ok) { const j = await r.json(); if (j.thumbnail && j.thumbnail.source) img.src = j.thumbnail.source; }
+  } catch { /* 폴백 유지 */ }
+}
+async function openMountainDetail(listNo, name) {
+  $("extModal").classList.add("show");
+  $("extSheet").innerHTML = `<h3>${esc(name)}</h3><p class="sub">정보를 불러오는 중…</p>`;
+  if (API.mode !== "cloud") { return selectMountainIndex(listNo, name); }
+  try {
+    const d = await API.get(`/mountains/${encodeURIComponent(listNo)}/index`);
+    const m = d.mountain, fac = m.facilities || {};
+    const facHtml = Object.keys(fac).length
+      ? Object.entries(fac).map(([k, v]) => `<span class="fac">${FAC_ICON[k] || "•"} ${k} ${v}</span>`).join("")
+      : `<span class="sub" style="font-size:11.5px">등록된 등산로 시설 정보 없음</span>`;
+    $("extSheet").innerHTML = `
+      <img id="mtnHero" class="mtn-hero" alt="${esc(m.name)} 전경">
+      <h3>${esc(m.name)}${m.top100 ? ' <span class="top">100대명산</span>' : ""}</h3>
+      <p class="sub">📍 ${esc(m.addr || m.sido || "")} · ⛰ ${m.height ? m.height + "m" : "높이 미상"}</p>
+      <div class="mtn-score">오늘의 산행지수 <b>${d.score}</b><br>🌡 ${d.conditions.weather.temp}°C · 🔥 산불 ${d.conditions.fire.level} · ${esc(d.place)}</div>
+      <b style="font-size:12px">🥾 등산로 시설 (산림청 주요지점)</b>
+      <div class="facs">${facHtml}</div>
+      <div class="btnrow">
+        <button class="btn primary" id="mtnSetHome">🏠 홈 산행지수로 설정</button>
+        <button class="btn ghost" data-close="extModal">닫기</button>
+      </div>`;
+    loadHero($("mtnHero"), m.name, m.height);
+    $("mtnSetHome").addEventListener("click", () => { $("extModal").classList.remove("show"); selectMountainIndex(listNo, m.name); });
+  } catch {
+    $("extSheet").innerHTML = `<h3>${esc(name)}</h3><p class="sub">정보를 불러오지 못했어요.</p><div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>`;
+  }
+}
 
 /* ---------------- 숲나들e 연동 (숲 소식 · 치유의숲) ---------------- */
 const FOREST_URL = "https://www.foresttrip.go.kr";
