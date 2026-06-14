@@ -180,6 +180,21 @@ async def hike_summary(device: Device = Depends(get_device), db: Session = Depen
     )
 
 
+@router.get("/hikes")
+async def hike_list(device: Device = Depends(get_device), db: Session = Depends(get_db)):
+    """이 기기의 산행 기록 — 어느 산을 얼마나(거리·칼로리) 다녔는지 최신순."""
+    hikes = db.execute(
+        select(Hike).where(Hike.device_id == device.id, Hike.status == "done")
+    ).scalars().all()
+    name = {c["id"]: c["name"] for c in COURSES}
+    rows = sorted(hikes, key=lambda h: (h.ended_at or h.started_at), reverse=True)
+    return {"items": [{
+        "course": name.get(h.course_id, h.course_id or "산행"),
+        "km": round(h.distance_km, 1), "kcal": h.kcal,
+        "date": (h.ended_at or h.started_at).strftime("%Y-%m-%d"),
+    } for h in rows]}
+
+
 @router.post("/sos", response_model=SosOut, status_code=201)
 async def sos(body: SosCreate, device: Device = Depends(get_device),
               db: Session = Depends(get_db)):
