@@ -1,25 +1,55 @@
-# 숲길동무 (ForestMate)
+<p align="center">
+  <img src="assets/brand/forestmate-logo.png" alt="ForestMate · 숲길동무" width="720">
+</p>
 
-「2026년 산림 공공데이터·AI 활용 창업경진대회」 **제품 및 서비스 개발 부문** 출품 패키지.
-산림 공공데이터 10종과 AI를 융합한 **국민 산행 안전 플랫폼** — 맞춤 추천 → 위험 경고 → 조난 자동 감지 → B2G 관제.
+<p align="center">
+  <strong>산림 공공데이터와 AI로 산행 전 위험을 예측하고, 산행 중 위험 상황을 빠르게 감지하는 산행 안전 동반자.</strong>
+</p>
 
-> 접수 마감: **2026. 6. 19.(금) 18:00**, 산림청 누리집 온라인 접수
+<p align="center">
+  <a href="https://forestmate.onrender.com/home.html">
+    <img alt="Service live" src="https://img.shields.io/badge/service-live-1B4332?style=for-the-badge">
+  </a>
+  <a href="https://forestmate.onrender.com/index.html">
+    <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-2D6A4F?style=for-the-badge">
+  </a>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest">
+    <img alt="Android APK" src="https://img.shields.io/badge/Android-APK-3DDC84?style=for-the-badge&logo=android&logoColor=white">
+  </a>
+  <a href="packaging/fdroid/README.md">
+    <img alt="F-Droid candidate" src="https://img.shields.io/badge/F--Droid-candidate-1976D2?style=for-the-badge&logo=fdroid&logoColor=white">
+  </a>
+  <img alt="No tracking SDK" src="https://img.shields.io/badge/no_tracking_SDK-verified-0B7A75?style=for-the-badge">
+  <img alt="License Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge">
+</p>
 
-데모 목업이 아니라 **실제 백엔드(FastAPI) + 클라이언트(PWA·관제 웹)** 로 동작하는 상용 수준 구현이다.
-앱·관제는 `/api/v1`의 클라이언트이며, 백엔드가 없으면 자동으로 로컬 엔진으로 폴백한다(통신 음영지역 대비).
+<p align="center">
+  <a href="https://forestmate.onrender.com/index.html"><strong>Web App</strong></a>
+  ·
+  <a href="https://forestmate.onrender.com/home.html"><strong>Service Intro</strong></a>
+  ·
+  <a href="https://forestmate.onrender.com/dashboard.html"><strong>Dashboard</strong></a>
+  ·
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest/download/forestmate-android-v1.0.0.apk"><strong>Android APK</strong></a>
+  ·
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>GitHub Release</strong></a>
+  ·
+  <a href="packaging/fdroid/README.md"><strong>F-Droid Candidate</strong></a>
+</p>
 
-## 바로가기
+<p align="center">
+  <img src="assets/readme/forestmate-hero.png" alt="ForestMate app preview showing hiking safety, trail risk alerts, SOS, and dashboard views" width="100%">
+</p>
 
-- **웹 앱**: https://forestmate.onrender.com/index.html
-- **서비스 소개**: https://forestmate.onrender.com/home.html
-- **관제 대시보드**: https://forestmate.onrender.com/dashboard.html
-- **Android APK 설치**: https://github.com/spcx0701/forest-mate/releases/latest/download/forestmate-android-v1.0.0.apk
-- **APK SHA-256**: https://github.com/spcx0701/forest-mate/releases/latest/download/forestmate-android-v1.0.0.apk.sha256
-- **F-Droid 제출 준비**: [packaging/fdroid/README.md](packaging/fdroid/README.md)
+## 개요
 
-Android APK는 Play Store가 아닌 직접 배포 파일이다. 설치 시 Android 설정에서 "알 수 없는 앱 설치" 허용이 필요할 수 있다.
+ForestMate(숲길동무)는 산림 공공데이터 10종과 AI를 융합한 산행 안전 플랫폼이다. 맞춤 추천, 위험 경고, 조난 자동 감지, B2G 관제를 하나의 PWA·Android TWA·FastAPI 서비스로 연결한다.
 
-F-Droid용 배포는 APK 직접 업로드가 아니라 `.fdroid.yml` 기준 소스 빌드로 준비되어 있다. 기본 Android 빌드는 `forestmate.onrender.com` hosted service를 여는 TWA라서 F-Droid 메타데이터에 `NonFreeNet` Anti-Feature를 명시한다.
+데모 목업이 아니라 실제 백엔드와 클라이언트로 동작한다. 앱·관제는 `/api/v1`의 클라이언트이며, 백엔드가 없으면 로컬 엔진으로 폴백해 통신 음영지역 시나리오를 다룬다.
+
+Android APK는 Play Store가 아닌 직접 배포 파일이다. 설치 시 Android 설정에서 "알 수 없는 앱 설치" 허용이 필요할 수 있다. F-Droid용 배포는 APK 직접 업로드가 아니라 `.fdroid.yml` 기준 소스 빌드로 준비되어 있으며, 기본 Android 빌드는 `forestmate.onrender.com` hosted service를 여는 TWA라서 F-Droid 메타데이터에 `NonFreeNet` Anti-Feature를 명시한다.
+
+> 「2026년 산림 공공데이터·AI 활용 창업경진대회」 제품 및 서비스 개발 부문 출품 패키지.
 
 ## 아키텍처
 

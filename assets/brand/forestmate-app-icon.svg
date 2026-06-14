@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">ForestMate app icon</title>
+  <desc id="desc">A simple ForestMate app icon with a white pine tree and a mint location dot.</desc>
+  <rect width="512" height="512" rx="108" fill="#1B4332"/>
+  <path fill="#FFFFFF" d="M256 96 176 216h45l-68 76h58l-84 104h258l-84-104h58l-68-76h45L256 96Z"/>
+  <rect x="234" y="348" width="44" height="76" rx="18" fill="#D8F3DC"/>
+  <circle cx="256" cy="132" r="24" fill="#74C69D"/>
+</svg>

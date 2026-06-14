@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 260" role="img" aria-labelledby="title desc">
+  <title id="title">ForestMate logo</title>
+  <desc id="desc">ForestMate horizontal logo with a simple app icon and Korean product name.</desc>
+  <rect x="22" y="22" width="216" height="216" rx="52" fill="#1B4332"/>
+  <g transform="translate(62 52) scale(.30)">
+    <path fill="#FFFFFF" d="M256 96 176 216h45l-68 76h58l-84 104h258l-84-104h58l-68-76h45L256 96Z"/>
+    <rect x="234" y="348" width="44" height="76" rx="18" fill="#D8F3DC"/>
+    <circle cx="256" cy="132" r="24" fill="#74C69D"/>
+  </g>
+  <text x="278" y="116" fill="#1B4332" font-family="Inter, Pretendard, system-ui, sans-serif" font-size="68" font-weight="800" letter-spacing="0">ForestMate</text>
+  <text x="282" y="174" fill="#2D6A4F" font-family="Pretendard, Apple SD Gothic Neo, system-ui, sans-serif" font-size="42" font-weight="700" letter-spacing="0">숲길동무</text>
+  <text x="282" y="216" fill="#5F7168" font-family="Inter, Pretendard, system-ui, sans-serif" font-size="24" font-weight="600" letter-spacing="0">Public-data hiking safety companion</text>
+</svg>
