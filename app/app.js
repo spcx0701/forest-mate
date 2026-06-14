@@ -65,8 +65,13 @@ const API = {
     if (auth && this.token) h.Authorization = "Bearer " + this.token;
     return h;
   },
-  async get(path) {
-    const r = await fetch(this.base + path, { signal: AbortSignal.timeout(2500) });
+  async get(path, auth = true, retry = true) {
+    const r = await fetch(this.base + path, { headers: this.headers(auth), signal: AbortSignal.timeout(3000) });
+    if (r.status === 401 && auth && this.token && retry) {   // 토큰 무효 → 재등록 후 1회 재시도
+      localStorage.removeItem("fm_token"); this.token = null;
+      await this.register();
+      return this.get(path, auth, false);
+    }
     if (!r.ok) throw new Error(path + " " + r.status);
     return r.json();
   },
@@ -199,6 +204,26 @@ async function renderReco() {
   notes.push(`체력 ${["", "초급", "중급", "상급"][p.fit]}`);
   if (p.knee) notes.push("무릎 주의 이력");
   if (p.heart) notes.push("심혈관 주의");
+  // 활성 위치(시도/GPS)가 있으면 그 주변 산을 추천 — 지역 변경이 추천에 반영됨
+  const loc = API.mode === "cloud" ? S.activeLoc : null;
+  if (loc) {
+    try {
+      const d = await API.get(`/mountains/nearby?lat=${loc.lat}&lon=${loc.lon}&radius=60&limit=6`);
+      if (d.items && d.items.length) {
+        $("recoNote").textContent = `${loc.label} 주변 · ${notes.join(" · ")} 반영`;
+        $("recoList").innerHTML = d.items.map((m) => `
+          <button class="r" data-mtn-id="${esc(m.list_no)}" data-mtn-name="${esc(m.name)}">
+            <div class="thumb t1"><img class="thumb-img" data-mtn="${esc((m.name || "").split(" ")[0])}" data-h="${m.height || 0}" alt="">
+              <span class="match">${m.dist_km}km</span></div>
+            <div class="body"><b>${esc(m.name)}${m.top100 ? " 🏅" : ""}</b>
+              <div class="meta"><span>📍 ${esc(m.sido || "")}</span><span>⛰ ${m.height ? m.height + "m" : "—"}</span><span>${loc.label} 인근</span></div>
+            </div></button>`).join("");
+        qsa("#recoList .r").forEach((b) => b.addEventListener("click", () => openMountainDetail(b.dataset.mtnId, b.dataset.mtnName)));
+        qsa("#recoList .thumb-img").forEach((img) => loadHero(img, img.dataset.mtn, +img.dataset.h));
+        return;
+      }
+    } catch { /* 아래 큐레이션 코스로 폴백 */ }
+  }
   $("recoNote").textContent = notes.join(" · ") + " 반영";
   let list = FM_DATA.courses.map((c) => ({ c, s: matchScore(c) })).sort((a, b) => b.s - a.s);
   if (API.mode === "cloud") {
@@ -246,18 +271,22 @@ function openCourse(id) {
       <div class="kv"><b>${c.crowd}</b><span>혼잡(빅데이터)</span></div>
     </div>
     ${c.hazards.map((hz) => `<div class="haz">⚠️ <div><b>${hz.type} — ${hz.grade}</b>${hz.note}</div></div>`).join("")}
+    <b style="font-size:12px">🗺 들머리 위치 · 가는 길</b>
+    <div id="courseMap" class="detail-map"></div>
+    ${dirButtons(courseLatLon(c)[0], courseLatLon(c)[1], c.name.split(" ")[0] + " " + c.startLabel)}
     <div class="btnrow">
       <button class="btn ghost" data-close="courseModal">닫기</button>
-      <button class="btn primary" id="btnStartCourse">🥾 이 코스로 산행 시작</button>
+      <button class="btn primary" id="btnStartCourse">🧭 이 코스 선택 · 가는 길 보기</button>
     </div>`;
+  { const [la, lo] = courseLatLon(c); setTimeout(() => miniMap("courseMap", la, lo, c.startLabel + " · 들머리"), 60); }
   $("courseModal").classList.add("show");
   loadHero($("courseHero"), c.name.split(" ")[0], parseInt((c.peak || "").replace(/\D/g, "")) || 0);
   $("btnStartCourse").addEventListener("click", () => {
     $("courseModal").classList.remove("show");
-    selectCourse(c.id);
-    startHike();
+    selectCourse(c.id);          // 산행 탭으로 — 들머리까지 '가는 길' 표시(아직 시작 아님)
     history.replaceState(null, "", "#trail");
     show("trail");
+    toast("코스 선택됨", `${Hike.course.name} · 들머리까지 가는 길을 확인하고, 도착하면 '산행 시작'을 누르세요`, "🧭");
   });
 }
 
@@ -350,7 +379,19 @@ function renderHikeUI() {
   if (!c) return;
   if (Hike.active) { live.className = "live"; tx.textContent = "안전 산행 중"; }
   else if (Hike.ended) { live.className = "live"; tx.textContent = "산행 완료 🎉"; }
-  else { live.className = "live idle"; tx.textContent = Hike.prog > 0 ? "일시정지" : "준비 완료"; }
+  else { live.className = "live idle"; tx.textContent = Hike.prog > 0 ? "일시정지" : "들머리로 이동"; }
+  // 시작 전: 들머리까지 '가는 길' 안내 카드(도착 후 산행 시작). 산행 중이면 숨김.
+  const way = $("wayCard");
+  if (way) {
+    if (!Hike.active && !Hike.ended && Hike.prog === 0) {
+      const [la, lo] = courseLatLon(c);
+      way.style.display = "block";
+      way.innerHTML = `<b>🧭 들머리까지 가는 길</b>
+        <p>${c.startLabel} · ${c.route.split("→")[0].trim()}</p>
+        ${dirButtons(la, lo, c.name.split(" ")[0] + " " + c.startLabel)}
+        <div class="way-tip">들머리에 도착하면 아래 <b>산행 시작</b>을 눌러 GPS 추적을 켜세요.</div>`;
+    } else { way.style.display = "none"; }
+  }
   $("btnHike").textContent = Hike.active ? "⏸ 일시정지" : Hike.prog > 0 && !Hike.ended ? "▶ 이어가기" : "▶ 산행 시작";
   $("btnHike").disabled = Hike.ended;
   $("btnEnd").disabled = !(Hike.active || Hike.prog > 0) || Hike.ended;
@@ -725,8 +766,13 @@ async function renderMy() {
       bars = months.map((m) => ({ h: Math.round(((byKey[m.key] || 0) / maxKm) * 100), label: m.label }));
     } catch { /* 아래 로컬 폴백 */ }
   }
-  if (days === undefined) {  // 오프라인 폴백 — 가짜 247 대신 최초 사용일 기준 경과일
-    days = Math.floor((Date.now() - (S.installAt || Date.now())) / 86400000) + 1;
+  const elapsed = Math.floor((Date.now() - (S.installAt || Date.now())) / 86400000) + 1;
+  if (days === undefined && API.mode === "cloud") {
+    // 클라우드인데 일시적 실패 — 서버와 일관되게 0으로(로컬 S.june로 가짜 산행 표시 안 함)
+    days = elapsed; cnt = 0; km = 0; kcal = 0; co2 = 0; level = 1;
+    bars = months.map((m) => ({ h: 0, label: m.label }));
+  } else if (days === undefined) {  // 진짜 오프라인 — 로컬 기록
+    days = elapsed;
     cnt = S.june.cnt; km = S.june.km; kcal = S.june.kcal; co2 = S.june.co2;
     level = 1 + Math.floor((S.hikesDone || 0) / 3);
     const curH = Math.min(100, (S.june.km || 0) * 6);
@@ -749,12 +795,13 @@ async function renderMy() {
     $("repExtra").innerHTML =
       `<span>🧭 방문 지역 <b>${regions}</b>곳</span><span>⛰ 완등 코스 <b>${courses}</b></span><span>🏅 배지 <b>${earned}/${total}</b></span>`;
   }
-  renderBadges(); renderHikeLog(); renderFavs(); renderIns();
+  let hikes = [];
+  if (API.mode === "cloud") { try { hikes = (await API.get("/hikes")).items || []; } catch { /* */ } }
+  renderHikeLog(hikes); renderCalendar(hikes);
+  renderBadges(); renderFavs(); renderIns();
 }
-async function renderHikeLog() {
+function renderHikeLog(items) {
   const box = $("hikeLog"); if (!box) return;
-  let items = [];
-  if (API.mode === "cloud") { try { items = (await API.get("/hikes")).items; } catch { /* */ } }
   if (!items.length) {
     box.innerHTML = `<div class="card" style="font-size:12px;color:var(--sub);text-align:center;padding:16px">아직 완료한 산행이 없어요. 산행을 완주하면 산별 거리·칼로리가 여기 쌓여요.</div>`;
     return;
@@ -762,6 +809,23 @@ async function renderHikeLog() {
   box.innerHTML = items.map((h) => `
     <div class="log-row"><div><b>${esc(h.course)}</b><span>${h.date}</span></div>
       <div class="log-stat">${h.km}km · ${(h.kcal || 0).toLocaleString()}kcal</div></div>`).join("");
+}
+function renderCalendar(hikes) {
+  const box = $("hikeCal"); if (!box) return;
+  const now = new Date(), y = now.getFullYear(), mo = now.getMonth();
+  const first = new Date(y, mo, 1).getDay(), dim = new Date(y, mo + 1, 0).getDate();
+  const p2 = (n) => String(n).padStart(2, "0");
+  const hk = new Set((hikes || []).map((h) => h.date));            // YYYY-MM-DD
+  const pl = new Set((S.plans || []).map((p) => p.date));          // YYYYMMDD
+  let cells = ["일", "월", "화", "수", "목", "금", "토"].map((w) => `<div class="cal-h">${w}</div>`).join("");
+  for (let i = 0; i < first; i++) cells += "<div></div>";
+  for (let d = 1; d <= dim; d++) {
+    const isHk = hk.has(`${y}-${p2(mo + 1)}-${p2(d)}`), isPl = pl.has(`${y}${p2(mo + 1)}${p2(d)}`);
+    const today = d === now.getDate();
+    cells += `<div class="cal-d ${today ? "today" : ""}">${d}<div class="cal-dots">${isHk ? '<i class="dot-hk"></i>' : ""}${isPl ? '<i class="dot-pl"></i>' : ""}</div></div>`;
+  }
+  box.innerHTML = `<div class="cal-head">${y}년 ${mo + 1}월</div><div class="cal-grid">${cells}</div>
+    <div class="cal-legend"><span><i class="dot-hk"></i> 다녀온 산</span><span><i class="dot-pl"></i> 예정 일정</span></div>`;
 }
 let lastSum = null;
 const BADGE_DESC = {
@@ -886,6 +950,12 @@ document.addEventListener("click", (e) => {
   if (e.target.classList && e.target.classList.contains("overlay")) e.target.classList.remove("show");
   const dc = e.target.closest && e.target.closest("[data-close]");
   if (dc) $(dc.dataset.close).classList.remove("show");
+  if (e.target && e.target.id === "setHomeBtn") {           // 길찾기 '집 등록'(전역)
+    if (!navigator.geolocation) return toast("위치 미지원", "이 기기는 GPS를 지원하지 않아요", "🏠");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { S.home = { lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5) }; save(); toast("집 등록 완료", "현재 위치를 집으로 저장했어요. 길찾기를 다시 열면 '집에서'가 보여요", "🏠"); },
+      () => toast("위치 권한 필요", "집 등록에 위치 권한이 필요해요", "🏠"));
+  }
 });
 /* ---------------- 위치 선택 (현재위치/시도/검색) ---------------- */
 const SIDO_LOCS = [
@@ -925,8 +995,54 @@ $("locGps").addEventListener("click", () => {
     { enableHighAccuracy: true, timeout: 10000 });
 });
 $("locSearch").addEventListener("click", () => { $("locModal").classList.remove("show"); openMntSearch(); });
-$("bellBtn").addEventListener("click", () =>
-  toast("기상 특보 알림", "도봉산 Y계곡 강풍주의보 — 우회 코스를 추천해요 (산악기상관측망)", "🌬", false, 4200));
+
+/* ---------------- 알림 — 지역·즐겨찾기·일정 맞춤 (req6) ---------------- */
+function daysUntil(yyyymmdd) {
+  if (!yyyymmdd || yyyymmdd.length !== 8) return null;
+  const t = new Date(+yyyymmdd.slice(0, 4), +yyyymmdd.slice(4, 6) - 1, +yyyymmdd.slice(6, 8));
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  return Math.round((t - now) / 86400000);
+}
+async function openNotifs() {
+  $("extModal").classList.add("show");
+  $("extSheet").innerHTML = `<h3>🔔 알림</h3><p class="sub">불러오는 중…</p>`;
+  const items = [];
+  // 1) 등록한 산행 일정 (D-day + 그날 적합도)
+  for (const p of (S.plans || []).slice(-4).reverse()) {
+    const dd = daysUntil(p.date);
+    const when = dd === null ? "예정" : dd === 0 ? "오늘" : dd > 0 ? `D-${dd}` : "지난 일정";
+    items.push({ ic: "📅", t: `${esc(p.name)} 산행 ${when}`, b: `등록한 일정 (${esc(p.label || "")}) · 그날 날씨·산불을 확인하세요` });
+  }
+  // 2) 즐겨찾기 산 알림
+  for (const f of (S.favs || []).slice(0, 3)) {
+    items.push({ ic: "⭐", t: `${esc(f.name)} 산행 조건`, b: `즐겨찾기 · ${esc(f.sido || "")} 오늘 산행지수를 눌러 확인하세요`, fav: f });
+  }
+  // 3) 현재 위치/지역 기상 특보
+  const locLabel = S.activeLoc ? S.activeLoc.label : (FM_DATA.regions[S.region] ? FM_DATA.regions[S.region].name : "내 지역");
+  if (S.activeLoc && API.mode === "cloud") {
+    try {
+      const g = await API.get(`/index/gps?lat=${S.activeLoc.lat}&lon=${S.activeLoc.lon}`);
+      items.push({ ic: "📍", t: `${esc(locLabel)} 오늘 산행지수 ${g.score}`, b: `🌡${g.conditions.weather.temp}° · ☔${g.conditions.weather.rain_prob}% · 🔥산불 ${g.conditions.fire.level}` });
+    } catch { /* */ }
+  }
+  items.push({ ic: "🌬", t: `${esc(locLabel)} 기상 특보`, b: "능선부 강풍 주의 — 노출 구간은 우회로 권장 (산악기상관측망)" });
+  if (!S.plans?.length && !S.favs?.length) {
+    items.push({ ic: "💡", t: "맞춤 알림을 받아보세요", b: "산을 즐겨찾기하거나 산행 일정을 등록하면 그 산·날짜에 맞춘 알림을 여기서 드려요" });
+  }
+  $("extSheet").innerHTML = `
+    <h3>🔔 알림 <small style="font-size:11px;font-weight:600;color:var(--sub)">${esc(locLabel)}·즐겨찾기·일정 기준</small></h3>
+    <div id="notifList">${items.map((n, i) => `<div class="notif-item" data-i="${i}"><div class="ni-ic">${n.ic}</div><div><b>${n.t}</b><span>${n.b}</span></div></div>`).join("")}</div>
+    <div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>`;
+  $("notifList").querySelectorAll(".notif-item").forEach((el, i) => {
+    if (items[i].fav) el.addEventListener("click", () => openMountainDetail(items[i].fav.list_no, items[i].fav.name));
+  });
+  const dot = $("bellBtn").querySelector("i"); if (dot) dot.style.display = "none";
+}
+$("bellBtn").addEventListener("click", openNotifs);
+function refreshBellDot() {
+  const dot = $("bellBtn") && $("bellBtn").querySelector("i");
+  if (dot) dot.style.display = ((S.plans || []).length || (S.favs || []).length) ? "block" : "block";
+}
 
 /* ---------------- 전국 산 검색 (산림청 산정보) ---------------- */
 let mntTimer;
@@ -1046,10 +1162,6 @@ async function openMountainDetail(listNo, name) {
     $("mtnSetHome").addEventListener("click", () => { $("extModal").classList.remove("show"); selectMountainIndex(listNo, m.name); });
     $("mtnFav").addEventListener("click", () => { toggleFav({ list_no: listNo, name: m.name, sido: m.sido, lat: m.lat, lon: m.lon }); $("mtnFav").textContent = isFav(listNo) ? "⭐ 즐겨찾기됨" : "☆ 즐겨찾기"; });
     $("mtnPlan").addEventListener("click", () => openPlan({ list_no: listNo, name: m.name, lat: m.lat, lon: m.lon }));
-    const sh = $("setHomeBtn");
-    if (sh) sh.addEventListener("click", () => navigator.geolocation && navigator.geolocation.getCurrentPosition(
-      (pos) => { S.home = { lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5) }; save(); toast("집 등록", "현재 위치를 집으로 저장했어요", "🏠"); openMountainDetail(listNo, m.name); },
-      () => toast("위치 권한 필요", "집 등록에 위치 권한이 필요해요", "🏠")));
   } catch {
     $("extSheet").innerHTML = `<h3>${esc(name)}</h3><p class="sub">정보를 불러오지 못했어요.</p><div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>`;
   }
@@ -1133,20 +1245,21 @@ function openExt(html) { $("extSheet").innerHTML = html; $("extModal").classList
 function openRest() {
   openExt(`
     <h3>🏕 축령산 치유의숲 · 숲 명상</h3>
-    <p class="sub">한국산림복지진흥원 숲나들e 연동 · 산림치유 프로그램</p>
-    <div class="ext-row"><b>일정</b> 이번 주 토요일 10:00 (90분)</div>
+    <p class="sub">산림치유 프로그램 추천 (산림복지진흥원 숲나들e)</p>
     <div class="ext-row"><b>장소</b> 전남 장성 축령산 편백숲 치유센터</div>
-    <div class="ext-row"><b>잔여</b> <span style="color:#2D6A4F;font-weight:800">예약 가능</span> · 회복지수 낮은 주간 추천</div>
     <div class="ext-row"><b>효과</b> 편백 피톤치드 · 호흡 명상으로 스트레스·혈압 완화</div>
-    <p class="sub" style="margin-top:12px">최근 산행 패턴상 휴식이 필요해요. 숲나들e에서 실시간 예약현황 확인·신청하세요.</p>
+    <div class="ext-row"><b>추천</b> 최근 산행 패턴상 회복이 필요한 주간이에요</div>
+    <p class="sub" style="margin-top:12px">⚠️ <b>실시간 예약 가능 일정·잔여석은 숲나들e에서 확인하세요.</b> 본 화면은 추천이며, 정확한 운영일정은 아래 숲나들e 공식 페이지가 최신입니다.</p>
     <div class="btnrow">
-      <a class="btn primary" href="${FOREST_URL}/cs/hsfr/healingForestList.do" target="_blank" rel="noopener">숲나들e에서 예약하기 ↗</a>
+      <a class="btn primary" href="${FOREST_URL}/cms/hm/main/main.do" target="_blank" rel="noopener">숲나들e에서 일정·예약 ↗</a>
       <button class="btn ghost" data-close="extModal">닫기</button>
     </div>`);
 }
 function openNews() {
-  const items = (FM_DATA.news || []).map((n, i) =>
-    `<div class="news-item" data-i="${i}">🌿 <b>${esc(n.title || n)}</b><span>›</span></div>`).join("");
+  const items = (FM_DATA.news || []).map((n, i) => {
+    const meta = (typeof n === "object" && (n.date || n.region)) ? `<small>${esc(n.date || "")}${n.date && n.region ? " · " : ""}${esc(n.region || "")}</small>` : "";
+    return `<div class="news-item" data-i="${i}"><div class="ni-tx">🌿 <b>${esc(n.title || n)}</b>${meta}</div><span>›</span></div>`;
+  }).join("");
   openExt(`
     <h3>🌿 이번 주 숲 소식</h3>
     <p class="sub">산림청 · 숲나들e · 국립공원 주간 소식 · 항목을 누르면 자세히</p>
@@ -1165,7 +1278,7 @@ function openNewsDetail(i) {
   if (typeof n === "string") n = { title: n, detail: n, url: "https://www.foresttrip.go.kr" };
   openExt(`
     <h3>🌿 ${esc(n.title)}</h3>
-    <p class="sub">이번 주 숲 소식</p>
+    <p class="sub">${esc(n.date || "이번 주")}${n.region ? " · " + esc(n.region) : ""} · 숲 소식</p>
     <p style="font-size:13px;line-height:1.65;margin:6px 0 4px">${esc(n.detail)}</p>
     <div class="btnrow">
       <a class="btn primary" href="${n.url}" target="_blank" rel="noopener">자세히 보기 ↗</a>

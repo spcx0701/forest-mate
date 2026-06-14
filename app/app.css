@@ -232,6 +232,18 @@ nav a.sosnav{color:var(--danger)}
 .rep-extra{display:flex; justify-content:space-around; gap:6px; margin:10px 0 4px; padding:9px 0; background:#F2F7F1; border-radius:11px; font-size:11.5px; color:var(--sub)}
 .rep-extra b{color:var(--pine); font-weight:900; font-size:13px}
 
+/* 산행 캘린더 */
+.cal-head{font-size:13px; font-weight:800; text-align:center; margin-bottom:8px}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px}
+.cal-h{font-size:10px; color:var(--sub); text-align:center; font-weight:700; padding:2px 0}
+.cal-d{position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:11.5px; color:var(--ink,#1B4332); border-radius:8px}
+.cal-d.today{background:#1B4332; color:#fff; font-weight:800}
+.cal-dots{position:absolute; bottom:3px; display:flex; gap:2px}
+.cal-dots i, .cal-legend i{width:5px; height:5px; border-radius:50%; display:inline-block}
+.dot-hk{background:#2D6A4F} .dot-pl{background:#F4A261}
+.cal-legend{display:flex; gap:14px; justify-content:center; margin-top:9px; font-size:10.5px; color:var(--sub)}
+.cal-legend span{display:flex; align-items:center; gap:4px}
+
 /* 산행 기록 로그 */
 .log-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; margin-bottom:7px; background:#fff; border:1px solid #E8EFE9; border-radius:12px; box-shadow:var(--shadow)}
 .log-row b{font-size:13.5px; font-weight:800}
@@ -245,6 +257,11 @@ nav a.sosnav{color:var(--danger)}
 /* 산행 중 GPS 동기화 표시 */
 .gps-tag{margin-top:10px; padding:9px 12px; border-radius:11px; font-size:11.5px; font-weight:700; background:#FFF7EC; color:#B35309; border:1px solid #F4D9B5}
 .gps-tag.on{background:#EAF4EC; color:#2D6A4F; border-color:#CFE6D4}
+
+/* 산행 탭 — 가는 길(시작 전) */
+.way-card{background:#EAF4EC; border:1px solid #CFE6D4; border-radius:14px; padding:13px 15px; margin-bottom:12px}
+.way-card b{font-size:13px} .way-card p{font-size:12px; color:var(--sub); margin:4px 0 10px}
+.way-tip{font-size:11px; color:var(--sub); margin-top:8px; line-height:1.5}
 
 /* 지도 · 길찾기 (req5) */
 .detail-map{width:100%; height:170px; border-radius:13px; margin:8px 0 10px; z-index:0}
@@ -271,9 +288,15 @@ nav a.sosnav{color:var(--danger)}
 
 /* 숲나들e 연동 모달 */
 .news-item{display:flex; align-items:center; gap:8px; font-size:12.5px; padding:12px 12px; margin-bottom:7px; background:#F2F7F1; border:1px solid #E3EDE4; border-radius:11px; cursor:pointer}
-.news-item b{flex:1; font-weight:700}
-.news-item span{color:var(--leaf); font-weight:900}
+.news-item .ni-tx{flex:1}
+.news-item b{font-weight:700}
+.news-item small{display:block; font-size:10.5px; color:var(--sub); margin-top:3px; margin-left:18px}
+.news-item>span{color:var(--leaf); font-weight:900}
 .news-item:active{background:#E3EDE4}
+.notif-item{display:flex; gap:11px; align-items:flex-start; padding:12px 12px; margin-bottom:7px; background:#F2F7F1; border:1px solid #E3EDE4; border-radius:11px}
+.notif-item .ni-ic{font-size:20px; line-height:1.2}
+.notif-item b{display:block; font-size:13px; font-weight:800}
+.notif-item span{display:block; font-size:11.5px; color:var(--sub); margin-top:3px; line-height:1.5}
 .ext-row{font-size:12.5px; padding:9px 0; border-bottom:1px solid #EEF3EE; line-height:1.5}
 .ext-row b{display:inline-block; min-width:42px; color:var(--sub); font-weight:800; margin-right:6px}
 .sheet .btnrow a.btn{display:flex; align-items:center; justify-content:center; text-decoration:none}
