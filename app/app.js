@@ -274,63 +274,72 @@ function selectCourse(id) {
   renderHikeUI();
   renderLocCard();
 }
+function courseLatLon(c) {
+  const m = (c.gps || "").match(/([\d.]+)[^\d]*N[^\d]*([\d.]+)/i) || (c.gps || "").match(/([\d.]+)[^\d]+([\d.]+)/);
+  return m ? [parseFloat(m[1]), parseFloat(m[2])] : [37.6, 127.0];
+}
+function haversineKm(a, b, c, d) {
+  const R = 6371, r = Math.PI / 180;
+  const dp = (c - a) * r, dl = (d - b) * r;
+  const x = Math.sin(dp / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(dl / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
 function buildMap() {
   const c = Hike.course;
-  $("mapHost").innerHTML = `
-  <svg viewBox="0 0 394 330" width="100%" style="display:block" id="trailSvg">
-    <defs><linearGradient id="terr" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#DCEFD6"/><stop offset="1" stop-color="#C4E3C0"/></linearGradient></defs>
-    <rect width="394" height="330" fill="url(#terr)"/>
-    <ellipse cx="240" cy="95" rx="150" ry="86" fill="none" stroke="#A8CBA0" stroke-width="1.4"/>
-    <ellipse cx="245" cy="92" rx="118" ry="64" fill="none" stroke="#9CC394" stroke-width="1.4"/>
-    <ellipse cx="252" cy="88" rx="86" ry="45" fill="none" stroke="#8FBA87" stroke-width="1.4"/>
-    <ellipse cx="258" cy="84" rx="56" ry="28" fill="#BBDCAF" stroke="#83B07A" stroke-width="1.4"/>
-    <ellipse cx="262" cy="82" rx="30" ry="14" fill="#A9D09B" stroke="#76A56E" stroke-width="1.4"/>
-    <ellipse cx="100" cy="250" rx="120" ry="70" fill="none" stroke="#A8CBA0" stroke-width="1.4"/>
-    <ellipse cx="95" cy="255" rx="80" ry="44" fill="none" stroke="#9CC394" stroke-width="1.4"/>
-    <path d="M10,300 C80,285 120,300 180,288 C240,276 300,290 388,272" fill="none" stroke="#9DC6E0" stroke-width="5" stroke-linecap="round" opacity=".8"/>
-    <path id="pRemain" d="${c.path}" fill="none" stroke="#2D6A4F" stroke-width="5" stroke-linecap="round" stroke-dasharray="2 10" opacity=".75"/>
-    <path id="pWalked" d="${c.path}" fill="none" stroke="#2D6A4F" stroke-width="5" stroke-linecap="round"/>
-    <g id="hazG"></g>
-    <g transform="translate(${c.shelter.xy[0]},${c.shelter.xy[1]})">
-      <rect x="-9" y="-9" width="18" height="18" rx="5" fill="#457B9D"/><text y="4" text-anchor="middle" font-size="10">⛺</text></g>
-    <text x="${c.shelter.xy[0]}" y="${c.shelter.xy[1] + 22}" text-anchor="middle" font-size="9.5" fill="#2B5876" font-weight="800">${c.shelter.name}</text>
-    <text x="${c.summitXY[0]}" y="${c.summitXY[1] - 6}" text-anchor="middle" font-size="11" font-weight="900" fill="#1B4332">▲ ${c.peak}</text>
-    <g id="posG"><circle id="posPulse" r="17" fill="#2D6A4F" opacity=".18">
-        <animate attributeName="r" values="12;22;12" dur="2s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values=".3;.05;.3" dur="2s" repeatCount="indefinite"/></circle>
-      <circle r="8" fill="#1B4332" stroke="#fff" stroke-width="3"/></g>
-    <rect x="14" y="14" width="54" height="4" rx="2" fill="#33523f" opacity=".6"/>
-    <text x="14" y="30" font-size="9" fill="#33523f" font-weight="700">500m</text>
-  </svg>`;
-  const path = qs("#pWalked");
-  const L = path.getTotalLength();
-  Hike.len = L;
-  // 시작점/라벨
-  const p0 = path.getPointAtLength(0);
-  const svg = $("trailSvg");
-  svg.insertAdjacentHTML("beforeend",
-    `<circle cx="${p0.x}" cy="${p0.y}" r="6" fill="#fff" stroke="#2D6A4F" stroke-width="3"/>
-     <text x="${p0.x + 14}" y="${p0.y + 4}" font-size="9.5" fill="#33523f" font-weight="700">${Hike.course.startLabel}</text>`);
-  // 위험 마커
-  const hg = qs("#hazG");
-  hg.innerHTML = Hike.course.hazards.map((hz) => {
-    const pt = path.getPointAtLength(L * hz.at);
-    const col = hz.type.includes("낙석") || hz.grade.includes("사고다발") ? "#E63946" : "#F4A261";
-    const lab = hz.type;
-    return `<g transform="translate(${pt.x},${pt.y})"><circle r="12" fill="${col}" opacity=".18"/><circle r="8.5" fill="${col}"/>
-      <text y="3.5" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">!</text></g>
-      <text x="${pt.x}" y="${pt.y - 15}" text-anchor="middle" font-size="9.5" fill="${col === "#E63946" ? "#A4161A" : "#B35309"}" font-weight="800">${lab}</text>`;
-  }).join("");
+  const [lat, lon] = courseLatLon(c);
+  Hike.origin = [lat, lon]; Hike.gpsTrack = []; Hike.gpsKm = 0;
+  $("mapHost").innerHTML = `<div id="hikeMap"></div>`;
+  setTimeout(() => {
+    if (!window.L) { $("mapHost").innerHTML = `<div class="map-fallback">🗺 지도를 불러오려면 네트워크 연결이 필요해요</div>`; return; }
+    const map = L.map("hikeMap", { attributionControl: false }).setView([lat, lon], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
+    L.marker([lat, lon]).addTo(map).bindPopup(`${c.startLabel} · 들머리`);
+    Hike.map = map;
+    Hike.trackLine = L.polyline([], { color: "#2D6A4F", weight: 6, opacity: 0.85 }).addTo(map);
+    Hike.posMarker = L.circleMarker([lat, lon], { radius: 9, color: "#fff", weight: 3, fillColor: "#1B4332", fillOpacity: 1 }).addTo(map).bindPopup("내 위치");
+    setTimeout(() => map.invalidateSize(), 160);
+  }, 60);
   drawProgress();
 }
-function drawProgress() {
-  if (!Hike.course) return;
-  const L = Hike.len, p = Hike.prog;
-  qs("#pWalked").setAttribute("stroke-dasharray", `${L * p} ${L}`);
-  const pt = qs("#pWalked").getPointAtLength(L * p);
-  qs("#posG").setAttribute("transform", `translate(${pt.x},${pt.y})`);
+function onGps(lat, lon, acc) {
+  Hike.gps = { lat: +lat.toFixed(6), lon: +lon.toFixed(6), acc: Math.round(acc || 0) };
+  if (Hike.gpsTrack) {
+    const last = Hike.gpsTrack[Hike.gpsTrack.length - 1];
+    if (last) {
+      const step = haversineKm(last[0], last[1], lat, lon);
+      if (step < 5) Hike.gpsKm = (Hike.gpsKm || 0) + step;   // 이상치(>5km 점프) 무시
+    }
+    Hike.gpsTrack.push([lat, lon]);
+    if (Hike.trackLine) Hike.trackLine.setLatLngs(Hike.gpsTrack);
+    if (Hike.posMarker) Hike.posMarker.setLatLng([lat, lon]);
+    if (Hike.map) Hike.map.panTo([lat, lon], { animate: true });
+    if (Hike.course) Hike.prog = Math.min(1, (Hike.gpsKm || 0) / Hike.course.km);
+  }
+  checkHazards();
+  renderHikeUI();
+  if (Hike.prog >= 1 && Hike.active) endHike(false);
 }
+function demoStep() {
+  // 테스트용 — 실제 걷지 않고 약 90m씩 북동진(GPS 이동 시뮬레이션)
+  const [lat, lon] = Hike.origin || [37.6, 127.0];
+  const n = Hike.gpsTrack ? Hike.gpsTrack.length : 0;
+  onGps(lat + n * 0.0006, lon + n * 0.0007, 6);
+}
+function checkHazards() {
+  const c = Hike.course; if (!c) return;
+  c.hazards.forEach((hz, i) => {
+    if (!Hike.alerted[i] && Hike.prog > hz.at - 0.08 && Hike.prog < hz.at + 0.02) {
+      Hike.alerted[i] = true;
+      $("trailAlert").style.display = "flex";
+      $("alertTitle").textContent = `${hz.type} 구간 접근`;
+      $("alertBody").textContent = `${hz.grade} — ${hz.note}`;
+      toast(`⚠️ ${hz.type} 구간 접근`, hz.note, "⚠️", true, 4200);
+      logEvent(`${hz.type} 구간 접근 알림 → 안내 수락`);
+    }
+    if (Hike.alerted[i] && Hike.prog > hz.at + 0.06) $("trailAlert").style.display = "none";
+  });
+}
+function drawProgress() { /* 실지도(Leaflet)에서는 onGps가 마커·트랙을 갱신 */ }
 function interp(arr, t) {
   const f = t * (arr.length - 1), i = Math.floor(f), r = f - i;
   return Math.round(arr[Math.min(i, arr.length - 1)] * (1 - r) + arr[Math.min(i + 1, arr.length - 1)] * r);
@@ -376,14 +385,14 @@ function startHike() {
   }
   logEvent(`입산 체크인 — ${Hike.course.name} (예상 하산 ${fmtMin(Hike.course.minutes)} 후)`);
   if (S.settings.family) logEvent("가족 안심 공유 시작 (어머니, 동생)");
-  // 실제 GPS 위치 동기화 — watchPosition으로 좌표 추적(서버 트랙·관제 반영)
+  // 실제 GPS 위치 동기화 — watchPosition으로 실 위치대로 이동·기록(자동 진행 아님)
   if (navigator.geolocation) {
     Hike.geoId = navigator.geolocation.watchPosition(
-      (pos) => { Hike.gps = { lat: +pos.coords.latitude.toFixed(6), lon: +pos.coords.longitude.toFixed(6), acc: Math.round(pos.coords.accuracy) }; renderHikeUI(); },
-      () => { Hike.gps = null; },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+      (pos) => onGps(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+      () => { Hike.gps = null; renderHikeUI(); },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 });
   }
-  toast("산행을 시작합니다", "AI 안전 감시 + 실시간 GPS 위치 동기화가 켜졌어요", "🥾");
+  toast("산행을 시작합니다", "실제 GPS 위치대로 경로가 기록돼요. 안전 감시 ON", "🥾");
   renderHikeUI();
 }
 function stopGeo() { if (Hike.geoId != null && navigator.geolocation) { navigator.geolocation.clearWatch(Hike.geoId); Hike.geoId = null; } }
@@ -407,28 +416,15 @@ function endHike(byUser = true) {
 }
 let tickCount = 0;
 function tick() {
-  Hike.prog = Math.min(1, Hike.prog + 1 / 110);
+  // 진행도는 GPS(onGps)가 갱신 — tick은 심박·서버 트랙 전송만(자동 전진 없음).
   Hike.hr = Math.round(92 + 18 * Math.sin(Hike.prog * 6) + Math.random() * 6);
   const c = Hike.course;
-  // 5초마다 서버에 트랙 전송 → 서버측 조난감지·관제 반영 (실서비스: 백그라운드 위치)
   if (API.mode === "cloud" && API.hikeId && ++tickCount % 5 === 0) {
     const t = { progress: +Hike.prog.toFixed(4), alt: interp(c.elev, Hike.prog), hr: Hike.hr };
     if (Hike.gps) { t.lat = Hike.gps.lat; t.lon = Hike.gps.lon; }   // 실제 GPS 동기화
     API.post(`/hikes/${API.hikeId}/track`, t).catch(() => {});
   }
-  c.hazards.forEach((hz, i) => {
-    if (!Hike.alerted[i] && Hike.prog > hz.at - 0.08 && Hike.prog < hz.at) {
-      Hike.alerted[i] = true;
-      $("trailAlert").style.display = "flex";
-      $("alertTitle").textContent = `300m 앞 ${hz.type} 구간`;
-      $("alertBody").textContent = `${hz.grade} — ${hz.note}`;
-      toast(`⚠️ ${hz.type} 구간 접근`, hz.note, "⚠️", true, 4200);
-      logEvent(`${hz.type} 구간 접근 알림 → 안내 수락`);
-    }
-    if (Hike.alerted[i] && Hike.prog > hz.at + 0.06) $("trailAlert").style.display = "none";
-  });
-  if (Hike.prog >= 1) endHike(false);
-  drawProgress(); renderHikeUI();
+  renderHikeUI();
 }
 /* 일몰 카운트다운 — 지역 일몰시각 기준 실시간 */
 function sunsetTick() {
@@ -448,6 +444,10 @@ setInterval(sunsetTick, 1000);
 
 $("btnHike").addEventListener("click", () => (Hike.active ? pauseHike() : startHike()));
 $("btnEnd").addEventListener("click", () => endHike(true));
+$("btnDemo").addEventListener("click", () => {
+  if (!Hike.active) return toast("먼저 산행을 시작하세요", "데모 이동은 산행 중에만 동작해요", "🧪");
+  demoStep();
+});
 
 /* 토글 스위치 */
 qsa(".sw").forEach((sw) => {
@@ -749,7 +749,7 @@ async function renderMy() {
     $("repExtra").innerHTML =
       `<span>🧭 방문 지역 <b>${regions}</b>곳</span><span>⛰ 완등 코스 <b>${courses}</b></span><span>🏅 배지 <b>${earned}/${total}</b></span>`;
   }
-  renderBadges(); renderHikeLog(); renderIns();
+  renderBadges(); renderHikeLog(); renderFavs(); renderIns();
 }
 async function renderHikeLog() {
   const box = $("hikeLog"); if (!box) return;
@@ -1033,17 +1033,98 @@ async function openMountainDetail(listNo, name) {
       <h3>${esc(m.name)}${m.top100 ? ' <span class="top">100대명산</span>' : ""}</h3>
       <p class="sub">📍 ${esc(m.addr || m.sido || "")} · ⛰ ${m.height ? m.height + "m" : "높이 미상"}</p>
       <div class="mtn-score">오늘의 산행지수 <b>${d.score}</b><br>🌡 ${d.conditions.weather.temp}°C · 🔥 산불 ${d.conditions.fire.level} · ${esc(d.place)}</div>
+      ${m.lat ? `<b style="font-size:12px">🗺 위치 · 길찾기</b><div id="mtnMap" class="detail-map"></div>${dirButtons(m.lat, m.lon, m.name)}` : ""}
       <b style="font-size:12px">🥾 등산로 시설 (산림청 주요지점)</b>
       <div class="facs">${facHtml}</div>
       <div class="btnrow">
         <button class="btn primary" id="mtnSetHome">🏠 홈 산행지수로 설정</button>
-        <button class="btn ghost" data-close="extModal">닫기</button>
-      </div>`;
+        <button class="btn ghost" id="mtnFav">${isFav(listNo) ? "⭐ 즐겨찾기됨" : "☆ 즐겨찾기"}</button>
+      </div>
+      <div class="btnrow" style="margin-top:9px"><button class="btn ghost" id="mtnPlan">📅 산행 일정 잡기</button><button class="btn ghost" data-close="extModal">닫기</button></div>`;
     loadHero($("mtnHero"), m.name, m.height);
+    if (m.lat) setTimeout(() => miniMap("mtnMap", m.lat, m.lon, m.name), 60);
     $("mtnSetHome").addEventListener("click", () => { $("extModal").classList.remove("show"); selectMountainIndex(listNo, m.name); });
+    $("mtnFav").addEventListener("click", () => { toggleFav({ list_no: listNo, name: m.name, sido: m.sido, lat: m.lat, lon: m.lon }); $("mtnFav").textContent = isFav(listNo) ? "⭐ 즐겨찾기됨" : "☆ 즐겨찾기"; });
+    $("mtnPlan").addEventListener("click", () => openPlan({ list_no: listNo, name: m.name, lat: m.lat, lon: m.lon }));
+    const sh = $("setHomeBtn");
+    if (sh) sh.addEventListener("click", () => navigator.geolocation && navigator.geolocation.getCurrentPosition(
+      (pos) => { S.home = { lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5) }; save(); toast("집 등록", "현재 위치를 집으로 저장했어요", "🏠"); openMountainDetail(listNo, m.name); },
+      () => toast("위치 권한 필요", "집 등록에 위치 권한이 필요해요", "🏠")));
   } catch {
     $("extSheet").innerHTML = `<h3>${esc(name)}</h3><p class="sub">정보를 불러오지 못했어요.</p><div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>`;
   }
+}
+
+/* ---------------- 지도 · 길찾기 (req5) ---------------- */
+const _maps = {};
+function miniMap(elId, lat, lon, name, zoom = 12) {
+  const el = document.getElementById(elId);
+  if (!el || !window.L) return null;
+  if (_maps[elId]) { _maps[elId].remove(); delete _maps[elId]; }
+  const map = L.map(el, { attributionControl: false }).setView([lat, lon], zoom);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
+  L.marker([lat, lon]).addTo(map).bindPopup(name).openPopup();
+  _maps[elId] = map;
+  setTimeout(() => map.invalidateSize(), 120);
+  return map;
+}
+function homeLoc() { return S.home || null; }
+function dirButtons(lat, lon, name) {
+  const n = encodeURIComponent(name), h = homeLoc();
+  return `<div class="dir-row">
+    <a class="dir-btn kakao" href="https://map.kakao.com/link/to/${n},${lat},${lon}" target="_blank" rel="noopener">📍 현재위치→ 카카오맵</a>
+    <a class="dir-btn" href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" rel="noopener">구글맵</a>
+    ${h ? `<a class="dir-btn home" href="https://map.kakao.com/link/from/우리집,${h.lat},${h.lon}/to/${n},${lat},${lon}" target="_blank" rel="noopener">🏠 집에서</a>`
+        : `<button class="dir-btn" id="setHomeBtn">🏠 집 등록</button>`}
+  </div>`;
+}
+
+/* ---------------- 즐겨찾기 (req6) ---------------- */
+function favs() { return S.favs || (S.favs = []); }
+function isFav(id) { return favs().some((f) => f.list_no === id); }
+function toggleFav(m) {
+  const i = favs().findIndex((f) => f.list_no === m.list_no);
+  if (i >= 0) { favs().splice(i, 1); toast("즐겨찾기 해제", m.name, "☆"); }
+  else { favs().push(m); toast("즐겨찾기 추가", `${m.name} — 마이 탭에서 모아봐요`, "⭐"); }
+  save(); renderFavs();
+}
+function renderFavs() {
+  const box = $("favList"); if (!box) return;
+  if (!favs().length) { box.innerHTML = `<div class="card" style="font-size:12px;color:var(--sub);text-align:center;padding:16px">산 상세에서 ☆를 누르면 즐겨찾기에 담겨요.</div>`; return; }
+  box.innerHTML = favs().map((f) => `
+    <div class="log-row fav-row" data-id="${esc(f.list_no)}" data-name="${esc(f.name)}">
+      <div><b>⭐ ${esc(f.name)}</b><span>${esc(f.sido || "")}</span></div>
+      <div class="log-stat">산행지수 ›</div></div>`).join("");
+  box.querySelectorAll(".fav-row").forEach((el) => el.addEventListener("click", () => openMountainDetail(el.dataset.id, el.dataset.name)));
+}
+
+/* ---------------- 산행 일정 계획 (req6) ---------------- */
+async function openPlan(m) {
+  $("extModal").classList.add("show");
+  $("extSheet").innerHTML = `<h3>📅 ${esc(m.name)} 산행 일정</h3><p class="sub">예보를 불러오는 중…</p>`;
+  let days = [];
+  if (API.mode === "cloud" && m.lat) {
+    try { days = (await API.get(`/forecast?lat=${m.lat}&lon=${m.lon}`)).days; } catch { /* */ }
+  }
+  const rows = days.length ? days.map((d) => {
+    const ok = d.score >= 70 ? "good" : d.score >= 50 ? "mid" : "bad";
+    const tip = d.score >= 70 ? "산행하기 좋아요" : d.score >= 50 ? "기상 변화 유의" : "산행 비권장";
+    return `<div class="plan-row ${ok}">
+      <div><b>${d.label}</b><span>${d.dow}</span></div>
+      <div class="plan-wx">🌡${d.temp}° · ☔${d.rain_prob}% · 🔥${d.fire}</div>
+      <div class="plan-score">${d.score}<small>${tip}</small></div></div>`;
+  }).join("") : `<p class="sub">예보를 불러오지 못했어요(오프라인). 온라인에서 다시 시도해 주세요.</p>`;
+  $("extSheet").innerHTML = `
+    <h3>📅 ${esc(m.name)} 산행 일정</h3>
+    <p class="sub">날짜별 날씨·산불 적합도 (기상청 단기예보). 날짜를 눌러 일정을 저장하세요.</p>
+    <div id="planList">${rows}</div>
+    <div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>`;
+  $("planList").querySelectorAll(".plan-row").forEach((el, i) => el.addEventListener("click", () => {
+    S.plans = S.plans || [];
+    S.plans.push({ list_no: m.list_no, name: m.name, date: days[i] ? days[i].date : "", label: days[i] ? days[i].label : "" });
+    save();
+    toast("일정 저장", `${m.name} · ${days[i] ? days[i].label : ""} 산행 일정을 저장했어요`, "📅");
+  }));
 }
 
 /* ---------------- 숲나들e 연동 (숲 소식 · 치유의숲) ---------------- */

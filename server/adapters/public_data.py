@@ -68,6 +68,49 @@ async def get_weather(region: dict) -> dict:
         return {**snap["weather"], "source": "snapshot"}
 
 
+async def get_forecast(region: dict, days: int = 3) -> list[dict]:
+    """단기예보 일자별 집계 — 산행 일정 계획용. [{date, temp, rain_prob, score}]."""
+    settings = get_settings()
+    if not settings.live_data:
+        base = region["snapshot"]["weather"]
+        out = []
+        for i in range(days):
+            d = (datetime.now() + timedelta(days=i)).strftime("%Y%m%d")
+            out.append({"date": d, "temp": int(base["temp"]), "rain_prob": base["rain_prob"],
+                        "score": base["score"], "source": "snapshot"})
+        return out
+
+    base_date, base_time = _kma_base()
+    params = {
+        "serviceKey": service_key(), "dataType": "JSON", "numOfRows": 1000, "pageNo": 1,
+        "base_date": base_date, "base_time": base_time, "nx": region["nx"], "ny": region["ny"],
+    }
+    try:
+        data = await fetch_json(KMA_URL, params, cache_key=f"fc:{region['id']}")
+        items = data["response"]["body"]["items"]["item"]
+        per: dict[str, dict] = {}
+        for it in items:
+            d = per.setdefault(it["fcstDate"], {"pop": 0, "tmps": [], "wsd": []})
+            cat, val = it["category"], it["fcstValue"]
+            if cat == "POP":
+                d["pop"] = max(d["pop"], int(float(val)))
+            elif cat == "TMP":
+                d["tmps"].append(float(val))
+            elif cat == "WSD":
+                d["wsd"].append(float(val))
+        out = []
+        for date in sorted(per)[:days]:
+            d = per[date]
+            temp = round(sum(d["tmps"]) / len(d["tmps"])) if d["tmps"] else 18
+            wind = max(d["wsd"]) if d["wsd"] else 3
+            score = max(0, min(100, 100 - d["pop"] - max(0, (wind - 4)) * 5))
+            out.append({"date": date, "temp": temp, "rain_prob": d["pop"],
+                        "score": int(score), "source": "live"})
+        return out
+    except (AdapterError, KeyError, ValueError):
+        return []
+
+
 async def get_fire_risk(region: dict) -> dict:
     """산불위험지수 — 국립산림과학원 예보. source: live|snapshot."""
     settings = get_settings()

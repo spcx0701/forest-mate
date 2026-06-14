@@ -126,6 +126,30 @@ async def index(region: str = "eunpyeong"):
     return {**idx, "conditions": cond}
 
 
+@router.get("/forecast")
+async def forecast(lat: float, lon: float, db: Session = Depends(get_db)):
+    """산행 일정용 일자별 예보 — 날씨·산불 적합도(현 위치 최근접 산의 시군구로 산불)."""
+    from datetime import datetime, timedelta
+
+    from ..adapters.public_data import get_fire_risk, get_forecast
+    rows = db.execute(select(Mountain).where(Mountain.lat.is_not(None))).scalars().all()
+    sgg = min(((_haversine(lat, lon, m.lat, m.lon), m) for m in rows),
+              key=lambda x: x[0])[1].sgg if rows else ""
+    region = region_for_coords(lat, lon, sgg)
+    fire = await get_fire_risk(region)
+    days_raw = await get_forecast(region)
+    dows = ["월", "화", "수", "목", "금", "토", "일"]
+    out = []
+    for i, d in enumerate(days_raw):
+        dt = datetime.strptime(d["date"], "%Y%m%d")
+        # 적합도 = 날씨점수·산불점수 결합
+        score = int(d["score"] * 0.6 + fire["score"] * 0.4)
+        out.append({"date": d["date"], "label": "오늘" if i == 0 else "내일" if i == 1 else f"{dt.month}/{dt.day}",
+                    "dow": dows[dt.weekday()], "temp": d["temp"], "rain_prob": d["rain_prob"],
+                    "fire": fire["level"], "score": score})
+    return {"days": out}
+
+
 @router.get("/index/gps")
 async def index_gps(lat: float, lon: float, db: Session = Depends(get_db)):
     """현재 위치(GPS) 산행지수 — 정밀 날씨격자 + 최근접 산의 시군구로 산불."""

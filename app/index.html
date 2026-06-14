@@ -13,6 +13,8 @@
 <meta name="apple-mobile-web-app-title" content="숲길동무">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="stylesheet" href="app.css">
 <title>숲길동무 ForestMate — AI 산행 안전 동반자</title>
 </head>
@@ -87,6 +89,7 @@
       <button class="btn primary" id="btnHike">▶ 산행 시작</button>
       <button class="btn ghost" id="btnEnd" disabled>산행 종료</button>
     </div>
+    <button class="btn ghost" id="btnDemo" style="width:100%;margin-top:8px;font-size:12px">🧪 데모 이동 +90m (실제 걷지 않고 GPS 시뮬레이션)</button>
 
     <div class="toggles">
       <div class="tg">🧭 코스 이탈 알림<span class="sw" data-set="offRoute"></span></div>
@@ -158,6 +161,9 @@
       <div class="bars" id="repBars"></div>
       <div class="src">* 숲가꾸기 챌린지 참여 환산치 (산림청 탄소흡수량 고시 기준)</div>
     </div>
+
+    <h2 class="sec">⭐ 즐겨찾기 <small style="font-weight:600;color:var(--sub)">눌러서 상세·길찾기</small></h2>
+    <div id="favList"></div>
 
     <h2 class="sec">📜 산행 기록 <small style="font-weight:600;color:var(--sub)">산별 거리·칼로리</small></h2>
     <div id="hikeLog"></div>

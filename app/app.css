@@ -84,6 +84,8 @@ header{padding:14px 18px 6px; display:flex; align-items:center; gap:8px}
 .live.idle i{background:#9fb0a4; animation:none}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(45,106,79,.5)}70%{box-shadow:0 0 0 7px rgba(45,106,79,0)}100%{box-shadow:0 0 0 0 rgba(45,106,79,0)}}
 .mapwrap{border-radius:20px; overflow:hidden; box-shadow:var(--shadow); position:relative; background:#EAF3E6}
+#hikeMap{width:100%; height:240px; z-index:0}
+#mapHost .map-fallback{height:240px; display:flex; align-items:center; justify-content:center; font-size:12.5px; color:var(--sub); text-align:center; padding:20px}
 .gridtag{position:absolute; top:10px; left:10px; background:rgba(16,48,31,.82); color:#fff; font-size:10.5px; padding:6px 10px; border-radius:9px; line-height:1.5; z-index:2}
 .gridtag b{font-size:12px; letter-spacing:.5px}
 .offline{position:absolute; top:10px; right:10px; background:rgba(255,255,255,.93); color:var(--pine); font-size:10px; font-weight:800; padding:5px 9px; border-radius:99px; z-index:2}
@@ -243,6 +245,22 @@ nav a.sosnav{color:var(--danger)}
 /* 산행 중 GPS 동기화 표시 */
 .gps-tag{margin-top:10px; padding:9px 12px; border-radius:11px; font-size:11.5px; font-weight:700; background:#FFF7EC; color:#B35309; border:1px solid #F4D9B5}
 .gps-tag.on{background:#EAF4EC; color:#2D6A4F; border-color:#CFE6D4}
+
+/* 지도 · 길찾기 (req5) */
+.detail-map{width:100%; height:170px; border-radius:13px; margin:8px 0 10px; z-index:0}
+.dir-row{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px}
+.dir-btn{flex:1; min-width:96px; text-align:center; padding:10px 8px; border-radius:11px; font-size:12px; font-weight:800; text-decoration:none; background:#F2F7F1; color:var(--pine); border:1.5px solid #DCE6DE; cursor:pointer}
+.dir-btn.kakao{background:#FEE500; color:#3A2929; border-color:#FEE500}
+.dir-btn.home{background:#EAF4EC}
+/* 산행 일정 계획 (req6) */
+.plan-row{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 13px; margin-bottom:8px; border-radius:12px; background:#fff; border:1px solid #E8EFE9; cursor:pointer; box-shadow:var(--shadow)}
+.plan-row b{font-size:14px; font-weight:800}
+.plan-row span{display:block; font-size:11px; color:var(--sub)}
+.plan-wx{font-size:11.5px; color:var(--sub); text-align:center; flex:1}
+.plan-score{font-size:18px; font-weight:900; text-align:right}
+.plan-score small{display:block; font-size:9.5px; font-weight:700}
+.plan-row.good .plan-score{color:#2D6A4F} .plan-row.mid .plan-score{color:#B35309} .plan-row.bad .plan-score{color:#C9304E}
+.plan-row.good{border-left:4px solid #52B788} .plan-row.mid{border-left:4px solid #F4A261} .plan-row.bad{border-left:4px solid #E5697F}
 
 /* 산 상세 — 사진·시설 */
 .mtn-hero{width:100%; height:150px; object-fit:cover; border-radius:14px; margin-bottom:12px; background:#E3EDE4; display:block}
