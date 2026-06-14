@@ -1,3 +1,5 @@
+# ForestMate · 숲길동무
+
 <p align="center">
   <img src="assets/brand/forestmate-logo.png" alt="ForestMate · 숲길동무" width="720">
 </p>
@@ -43,11 +45,11 @@
 
 ## 개요
 
-ForestMate(숲길동무)는 산림 공공데이터 10종과 AI를 융합한 산행 안전 플랫폼이다. 맞춤 추천, 위험 경고, 조난 자동 감지, B2G 관제를 하나의 PWA·Android TWA·FastAPI 서비스로 연결한다.
+ForestMate(숲길동무)는 산림 공공데이터와 AI 기반 안전 판단 로직을 활용해 산행 전 코스 선택, 위험 확인, 산행 중 SOS 흐름, 관제 대시보드를 지원하는 산행 안전 서비스다.
 
-데모 목업이 아니라 실제 백엔드와 클라이언트로 동작한다. 앱·관제는 `/api/v1`의 클라이언트이며, 백엔드가 없으면 로컬 엔진으로 폴백해 통신 음영지역 시나리오를 다룬다.
+웹 앱, 관제 대시보드, Android APK를 함께 제공한다. 백엔드 연결 환경에서는 `/api/v1`을 통해 실시간 데이터와 산행 기록을 사용하고, 정적 호스팅 환경에서는 로컬 데이터와 규칙 기반 폴백으로 주요 화면을 확인할 수 있다.
 
-Android APK는 Play Store가 아닌 직접 배포 파일이다. 설치 시 Android 설정에서 "알 수 없는 앱 설치" 허용이 필요할 수 있다. F-Droid용 배포는 APK 직접 업로드가 아니라 `.fdroid.yml` 기준 소스 빌드로 준비되어 있으며, 기본 Android 빌드는 `forestmate.onrender.com` hosted service를 여는 TWA라서 F-Droid 메타데이터에 `NonFreeNet` Anti-Feature를 명시한다.
+Android 사용자는 GitHub Release에서 APK를 내려받아 설치할 수 있다. F-Droid 제출을 위한 소스 빌드 메타데이터도 포함되어 있으며, 현재 Android TWA는 `forestmate.onrender.com` hosted service를 열기 때문에 F-Droid 메타데이터에 `NonFreeNet` Anti-Feature를 명시한다.
 
 > 「2026년 산림 공공데이터·AI 활용 창업경진대회」 제품 및 서비스 개발 부문 출품 패키지.
 
