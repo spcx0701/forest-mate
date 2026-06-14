@@ -155,6 +155,13 @@ async function renderHome() {
       placeLabel = `🏔 ${sel.name} · ${c.place}`;
     } catch { S.selectedMountain = null; }
   }
+  if (placeLabel === null && API.mode === "cloud" && S.activeLoc) {
+    try {
+      const c = await fetchConditions(`/index/gps?lat=${S.activeLoc.lat}&lon=${S.activeLoc.lon}`);
+      ({ v, fire, landslide, weather, sunsetAt } = c);
+      placeLabel = `📍 ${S.activeLoc.label}`;
+    } catch { S.activeLoc = null; }
+  }
   if (placeLabel === null) {
     const r = FM_DATA.regions[S.region];
     v = calcIndex(r); fire = r.fire; landslide = r.landslide; weather = r.weather; sunsetAt = r.sunsetAt;
@@ -164,9 +171,10 @@ async function renderHome() {
     }
   }
   paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel);
+  updateLocLabel();
   renderReco();
   $("briefing").innerHTML = `<b>${FM_DATA.briefings[new Date().getDay() % FM_DATA.briefings.length].split(".")[0]}.</b><br>${FM_DATA.briefings[new Date().getDay() % FM_DATA.briefings.length].split(".").slice(1).join(".").trim()}`;
-  $("newsLine").textContent = FM_DATA.news.slice(0, 3).join(" · ");
+  $("newsLine").textContent = FM_DATA.news.slice(0, 3).map((n) => n.title || n).join(" · ");
 }
 
 async function selectMountainIndex(listNo, name) {
@@ -203,12 +211,13 @@ async function renderReco() {
   }
   $("recoList").innerHTML = list.map(({ c, s }) => `
     <button class="r" data-course="${c.id}">
-      <div class="thumb ${c.theme}"><span class="match">매칭 ${s}%</span></div>
+      <div class="thumb ${c.theme}"><img class="thumb-img" data-mtn="${c.name.split(" ")[0]}" data-h="${parseInt((c.peak || "").replace(/\D/g, "")) || 0}" alt=""><span class="match">매칭 ${s}%</span></div>
       <div class="body"><b>${c.name}</b>
         <div class="meta"><span>⛰ ${c.km}km</span><span>⏱ ${fmtMin(c.minutes)}</span><span>난이도 ${c.level}</span><span>${c.view >= 5 ? "전망 ★★★" : "혼잡 " + c.crowd}</span></div>
       </div>
     </button>`).join("");
   qsa("#recoList .r").forEach((b) => b.addEventListener("click", () => openCourse(b.dataset.course)));
+  qsa("#recoList .thumb-img").forEach((img) => loadHero(img, img.dataset.mtn, +img.dataset.h));
 }
 const fmtMin = (m) => (m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60 ? (m % 60) + "분" : ""}` : `${m}분`).trim();
 
@@ -740,29 +749,62 @@ async function renderMy() {
     $("repExtra").innerHTML =
       `<span>🧭 방문 지역 <b>${regions}</b>곳</span><span>⛰ 완등 코스 <b>${courses}</b></span><span>🏅 배지 <b>${earned}/${total}</b></span>`;
   }
-  renderBadges(); renderIns();
+  renderBadges(); renderHikeLog(); renderIns();
+}
+async function renderHikeLog() {
+  const box = $("hikeLog"); if (!box) return;
+  let items = [];
+  if (API.mode === "cloud") { try { items = (await API.get("/hikes")).items; } catch { /* */ } }
+  if (!items.length) {
+    box.innerHTML = `<div class="card" style="font-size:12px;color:var(--sub);text-align:center;padding:16px">아직 완료한 산행이 없어요. 산행을 완주하면 산별 거리·칼로리가 여기 쌓여요.</div>`;
+    return;
+  }
+  box.innerHTML = items.map((h) => `
+    <div class="log-row"><div><b>${esc(h.course)}</b><span>${h.date}</span></div>
+      <div class="log-stat">${h.km}km · ${(h.kcal || 0).toLocaleString()}kcal</div></div>`).join("");
 }
 let lastSum = null;
+const BADGE_DESC = {
+  first: "산행을 1회 완주하면 획득해요.", five: "산행을 5회 완주하면 획득해요.",
+  ten: "산행을 10회 완주하면 획득해요.", km50: "누적 이동거리 50km를 넘기면 획득해요.",
+  km100: "누적 이동거리 100km를 넘기면 획득해요.", kcal: "누적 소모 5,000kcal를 넘기면 획득해요.",
+  days30: "가입 후 30일 동안 활동하면 획득해요.", regions: "서로 다른 지역(시·도) 3곳을 산행하면 획득해요.",
+  master: "추천 코스를 모두 완등하면 획득해요.", ai: "AI 숲이와 10회 대화하면 획득해요.",
+};
+let lastBadges = [];
 function renderBadges() {
   // 서버 실집계 배지(진척·달성) + 클라이언트 AI 대화 배지. 하드코딩 아님.
   let cards;
   if (lastSum && lastSum.badges && lastSum.badges.length) {
     cards = lastSum.badges.map((b) => {
-      const unit = b.id.startsWith("km") ? "km" : b.id === "kcal" ? "" : b.id === "days30" ? "일" : "";
+      const unit = b.id.startsWith("km") ? "km" : b.id === "days30" ? "일" : "";
       const prog = b.earned ? "달성!" : `${b.progress}/${b.goal}${unit}`;
-      return [b.icon, `${b.label}<br>${prog}`, b.earned];
+      return { id: b.id, ic: b.icon, label: b.label, prog, ok: b.earned, goal: b.goal, cur: b.progress, unit };
     });
   } else {  // 오프라인 폴백 — 로컬 기록 기준
     const cnt = S.hikesDone || 0, km = S.june.km || 0;
     cards = [
-      ["🥾", `첫 산행<br>${Math.min(cnt, 1)}/1`, cnt >= 1],
-      ["🏔", `5회 등반<br>${Math.min(cnt, 5)}/5`, cnt >= 5],
-      ["📏", `누적 50km<br>${km.toFixed(0)}/50km`, km >= 50],
+      { id: "first", ic: "🥾", label: "첫 산행", prog: `${Math.min(cnt, 1)}/1`, ok: cnt >= 1, goal: 1, cur: cnt, unit: "" },
+      { id: "five", ic: "🏔", label: "5회 등반", prog: `${Math.min(cnt, 5)}/5`, ok: cnt >= 5, goal: 5, cur: cnt, unit: "" },
+      { id: "km50", ic: "📏", label: "누적 50km", prog: `${km.toFixed(0)}/50km`, ok: km >= 50, goal: 50, cur: km, unit: "km" },
     ];
   }
-  cards.push(["💬", `숲이와 대화<br>${Math.min(S.aiCount, 10)}/10회`, S.aiCount >= 10]);
-  $("badgeRow").innerHTML = cards.map(([ic, tx, ok]) => `
-    <div class="bd ${ok ? "" : "lock"}"><div class="ic">${ic}</div><span>${tx}</span></div>`).join("");
+  cards.push({ id: "ai", ic: "💬", label: "숲이와 대화", prog: `${Math.min(S.aiCount, 10)}/10회`, ok: S.aiCount >= 10, goal: 10, cur: S.aiCount, unit: "회" });
+  lastBadges = cards;
+  $("badgeRow").innerHTML = cards.map((c) => `
+    <div class="bd ${c.ok ? "" : "lock"}" data-bid="${c.id}"><div class="ic">${c.ic}</div><span>${c.label}<br>${c.prog}</span></div>`).join("");
+  $("badgeRow").querySelectorAll(".bd").forEach((el) => el.addEventListener("click", () => openBadgeDetail(el.dataset.bid)));
+}
+function openBadgeDetail(bid) {
+  const b = lastBadges.find((x) => x.id === bid); if (!b) return;
+  const pct = Math.min(100, Math.round((b.cur / b.goal) * 100));
+  openExt(`
+    <div style="text-align:center;font-size:46px;margin:6px 0">${b.ic}</div>
+    <h3 style="text-align:center">${b.label} ${b.ok ? "✅" : "🔒"}</h3>
+    <p class="sub" style="text-align:center">${BADGE_DESC[bid] || "활동으로 획득하는 배지예요."}</p>
+    <div class="bd-bar"><i style="width:${pct}%"></i></div>
+    <p style="text-align:center;font-size:13px;font-weight:700;margin-top:8px">${b.ok ? "달성 완료! 🎉" : `진행 ${b.cur}/${b.goal}${b.unit} (${pct}%)`}</p>
+    <div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>`);
 }
 function renderIns() {
   const idx = calcIndex(FM_DATA.regions[S.region]);
@@ -845,12 +887,44 @@ document.addEventListener("click", (e) => {
   const dc = e.target.closest && e.target.closest("[data-close]");
   if (dc) $(dc.dataset.close).classList.remove("show");
 });
-$("locSel").value = S.region;
-$("locSel").addEventListener("change", () => {
-  S.region = $("locSel").value; save();
-  renderHome(); renderIns();
-  toast("지역 변경", `${FM_DATA.regions[S.region].name} 기준으로 산행지수를 다시 계산했어요`, "📍");
+/* ---------------- 위치 선택 (현재위치/시도/검색) ---------------- */
+const SIDO_LOCS = [
+  ["서울", 37.5663, 126.9779], ["부산", 35.1798, 129.0750], ["대구", 35.8714, 128.6014],
+  ["인천", 37.4563, 126.7052], ["광주", 35.1601, 126.8514], ["대전", 36.3504, 127.3845],
+  ["울산", 35.5384, 129.3114], ["세종", 36.4801, 127.2890], ["경기", 37.2636, 127.0286],
+  ["강원", 37.8813, 127.7298], ["충북", 36.6357, 127.4914], ["충남", 36.6588, 126.6728],
+  ["전북", 35.8203, 127.1088], ["전남", 34.8161, 126.4629], ["경북", 36.5760, 128.5056],
+  ["경남", 35.2383, 128.6924], ["제주", 33.4890, 126.4983],
+];
+function updateLocLabel() {
+  const el = $("locLabel"); if (!el) return;
+  if (S.selectedMountain) el.textContent = S.selectedMountain.name;
+  else if (S.activeLoc) el.textContent = S.activeLoc.label;
+  else el.textContent = FM_DATA.regions[S.region] ? FM_DATA.regions[S.region].name : "서울 은평구";
+}
+function setLoc(loc) {            // loc: {lat,lon,label} | null(시도 기본)
+  S.selectedMountain = null; S.activeLoc = loc; save();
+  $("locModal").classList.remove("show");
+  updateLocLabel(); renderHome(); renderIns();
+  if (loc) toast("위치 변경", `${loc.label} 기준으로 산행지수를 계산했어요`, "📍");
+}
+function openLocPicker() {
+  $("sidoGrid").innerHTML = SIDO_LOCS.map(([nm, la, lo]) =>
+    `<button class="sido-chip" data-la="${la}" data-lo="${lo}" data-nm="${nm}">${nm}</button>`).join("");
+  $("sidoGrid").querySelectorAll(".sido-chip").forEach((b) => b.addEventListener("click", () =>
+    setLoc({ lat: +b.dataset.la, lon: +b.dataset.lo, label: b.dataset.nm })));
+  $("locModal").classList.add("show");
+}
+$("locBtn").addEventListener("click", openLocPicker);
+$("locGps").addEventListener("click", () => {
+  if (!navigator.geolocation) return toast("위치 미지원", "이 기기는 GPS를 지원하지 않아요", "📍");
+  toast("현재 위치 확인 중", "잠시만요…", "📍", false, 1500);
+  navigator.geolocation.getCurrentPosition(
+    (pos) => setLoc({ lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5), label: "현재 위치" }),
+    () => toast("위치 권한 필요", "권한을 허용하거나 시·도를 선택해 주세요", "📍"),
+    { enableHighAccuracy: true, timeout: 10000 });
 });
+$("locSearch").addEventListener("click", () => { $("locModal").classList.remove("show"); openMntSearch(); });
 $("bellBtn").addEventListener("click", () =>
   toast("기상 특보 알림", "도봉산 Y계곡 강풍주의보 — 우회 코스를 추천해요 (산악기상관측망)", "🌬", false, 4200));
 
@@ -990,16 +1064,33 @@ function openRest() {
     </div>`);
 }
 function openNews() {
-  const items = (FM_DATA.news || []).map((n) => `<div class="ext-row">🌿 ${esc(n)}</div>`).join("");
+  const items = (FM_DATA.news || []).map((n, i) =>
+    `<div class="news-item" data-i="${i}">🌿 <b>${esc(n.title || n)}</b><span>›</span></div>`).join("");
   openExt(`
     <h3>🌿 이번 주 숲 소식</h3>
-    <p class="sub">산림청 · 숲나들e · 국립공원 주간 소식</p>
-    ${items}
-    <p class="sub" style="margin-top:12px">휴양림·치유의숲 예약과 개장 정보는 숲나들e에서 확인할 수 있어요.</p>
+    <p class="sub">산림청 · 숲나들e · 국립공원 주간 소식 · 항목을 누르면 자세히</p>
+    <div id="newsList">${items}</div>
     <div class="btnrow">
       <a class="btn primary" href="${FOREST_URL}" target="_blank" rel="noopener">숲나들e 바로가기 ↗</a>
       <a class="btn ghost" href="https://www.forest.go.kr" target="_blank" rel="noopener">산림청 소식 ↗</a>
     </div>`);
+  $("newsList").addEventListener("click", (e) => {
+    const it = e.target.closest(".news-item");
+    if (it) openNewsDetail(+it.dataset.i);
+  });
+}
+function openNewsDetail(i) {
+  let n = FM_DATA.news[i];
+  if (typeof n === "string") n = { title: n, detail: n, url: "https://www.foresttrip.go.kr" };
+  openExt(`
+    <h3>🌿 ${esc(n.title)}</h3>
+    <p class="sub">이번 주 숲 소식</p>
+    <p style="font-size:13px;line-height:1.65;margin:6px 0 4px">${esc(n.detail)}</p>
+    <div class="btnrow">
+      <a class="btn primary" href="${n.url}" target="_blank" rel="noopener">자세히 보기 ↗</a>
+      <button class="btn ghost" id="newsBack">← 목록</button>
+    </div>`);
+  $("newsBack").addEventListener("click", openNews);
 }
 $("restCard").addEventListener("click", openRest);
 $("newsCard").addEventListener("click", openNews);

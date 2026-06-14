@@ -21,11 +21,7 @@
   <div class="statusbar"></div>
   <header>
     <div class="logo"><div class="mark"><img src="icon-192.png" alt="숲길동무"></div>숲길동무<span id="cloudDot" title="실시간 서버 연결됨">LIVE</span></div>
-    <select class="loc" id="locSel" aria-label="지역 선택">
-      <option value="eunpyeong">📍 서울 은평구</option>
-      <option value="jongno">📍 서울 종로구</option>
-      <option value="guri">📍 경기 구리시</option>
-    </select>
+    <button class="loc" id="locBtn" aria-label="지역 선택">📍 <span id="locLabel">서울 은평구</span> ▾</button>
     <button class="bell" id="bellBtn">🔔<i></i></button>
   </header>
 
@@ -163,7 +159,10 @@
       <div class="src">* 숲가꾸기 챌린지 참여 환산치 (산림청 탄소흡수량 고시 기준)</div>
     </div>
 
-    <h2 class="sec">🏅 배지</h2>
+    <h2 class="sec">📜 산행 기록 <small style="font-weight:600;color:var(--sub)">산별 거리·칼로리</small></h2>
+    <div id="hikeLog"></div>
+
+    <h2 class="sec">🏅 배지 <small style="font-weight:600;color:var(--sub)">눌러서 달성 조건 보기</small></h2>
     <div class="badges" id="badgeRow"></div>
 
     <h2 class="sec">🎫 안심 서비스</h2>
@@ -254,6 +253,19 @@
   <!-- ============ 숲나들e 연동(숲 소식·치유의숲) ============ -->
   <div class="overlay" id="extModal">
     <div class="sheet" id="extSheet"></div>
+  </div>
+
+  <!-- ============ 위치 선택 ============ -->
+  <div class="overlay" id="locModal">
+    <div class="sheet">
+      <h3>📍 위치 선택</h3>
+      <p class="sub">산행지수를 계산할 지역을 고르세요. 전국 어디든 가능해요.</p>
+      <button class="btn primary" id="locGps" style="width:100%;margin-bottom:8px">📍 현재 위치(GPS)로 설정</button>
+      <button class="btn ghost" id="locSearch" style="width:100%;margin-bottom:12px">🔍 전국 산에서 검색</button>
+      <b style="font-size:12px;color:var(--sub)">시·도 선택</b>
+      <div class="sido-grid" id="sidoGrid"></div>
+      <div class="btnrow"><button class="btn ghost" data-close="locModal">닫기</button></div>
+    </div>
   </div>
 </div>
 

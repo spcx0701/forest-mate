@@ -165,6 +165,11 @@ def test_full_hike_flow(client):
     assert badges["ten"]["earned"] is False        # 10회 미달성
     assert badges["ten"]["progress"] == 1 and badges["ten"]["goal"] == 10
 
+    # 산행 기록 목록 — 산별 거리·칼로리
+    log = client.get("/api/v1/hikes", headers=auth).json()
+    assert len(log["items"]) == 1
+    assert log["items"][0]["km"] > 0 and log["items"][0]["kcal"] > 0 and log["items"][0]["course"]
+
 
 def test_dashboard_websocket_receives_sos(client):
     res = client.post("/api/v1/devices", json={"name": "WS", "fit": 2})

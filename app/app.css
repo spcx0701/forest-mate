@@ -37,7 +37,10 @@ header{padding:14px 18px 6px; display:flex; align-items:center; gap:8px}
 #cloudDot{display:none;align-items:center;gap:3px;margin-left:4px;font-size:9px;font-weight:800;letter-spacing:.5px;color:#1B7A4B;background:#D8F3E3;border-radius:6px;padding:2px 5px}
 #cloudDot::before{content:"";width:5px;height:5px;border-radius:50%;background:#1B7A4B;animation:cloudPulse 1.6s infinite}
 @keyframes cloudPulse{0%,100%{opacity:1}50%{opacity:.25}}
-.loc{margin-left:auto; font-size:12px; color:var(--sub); font-weight:700; appearance:none; -webkit-appearance:none; border:none; background:transparent; text-align:right}
+.loc{margin-left:auto; font-size:12px; color:var(--sub); font-weight:700; appearance:none; -webkit-appearance:none; border:none; background:transparent; text-align:right; cursor:pointer}
+.sido-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin:8px 0 4px}
+.sido-chip{padding:10px 4px; border-radius:11px; background:#F2F7F1; border:1.5px solid #E3EDE4; font-size:12.5px; font-weight:700; color:var(--pine); cursor:pointer}
+.sido-chip:active{background:#D6E8D9}
 .bell{width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font-size:15px;position:relative}
 .bell i{position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
 /* home index */
@@ -60,8 +63,9 @@ header{padding:14px 18px 6px; display:flex; align-items:center; gap:8px}
 .reco{display:flex; gap:12px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none}
 .reco::-webkit-scrollbar{display:none}
 .reco .r{flex:0 0 218px; background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; text-align:left}
-.r .thumb{height:86px; position:relative; display:flex; align-items:flex-end; padding:8px}
-.r .thumb .match{background:rgba(255,255,255,.94); color:var(--pine); font-weight:900; font-size:12px; border-radius:9px; padding:4px 8px}
+.r .thumb{height:86px; position:relative; display:flex; align-items:flex-end; padding:8px; overflow:hidden}
+.r .thumb .thumb-img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0}
+.r .thumb .match{position:relative; z-index:1; background:rgba(255,255,255,.94); color:var(--pine); font-weight:900; font-size:12px; border-radius:9px; padding:4px 8px}
 .r .body{padding:11px 12px 13px}
 .r .body b{font-size:14px}
 .r .meta{display:flex; gap:7px; margin-top:7px; font-size:10.5px; color:var(--sub); font-weight:600; flex-wrap:wrap}
@@ -226,6 +230,16 @@ nav a.sosnav{color:var(--danger)}
 .rep-extra{display:flex; justify-content:space-around; gap:6px; margin:10px 0 4px; padding:9px 0; background:#F2F7F1; border-radius:11px; font-size:11.5px; color:var(--sub)}
 .rep-extra b{color:var(--pine); font-weight:900; font-size:13px}
 
+/* 산행 기록 로그 */
+.log-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; margin-bottom:7px; background:#fff; border:1px solid #E8EFE9; border-radius:12px; box-shadow:var(--shadow)}
+.log-row b{font-size:13.5px; font-weight:800}
+.log-row span{display:block; font-size:11px; color:var(--sub); margin-top:2px}
+.log-stat{font-size:12.5px; font-weight:800; color:#40916C; white-space:nowrap}
+/* 배지 — 클릭 가능 + 진행바 */
+.bd{cursor:pointer}
+.bd-bar{height:9px; background:#E8EFE9; border-radius:99px; overflow:hidden; margin-top:12px}
+.bd-bar i{display:block; height:100%; background:linear-gradient(90deg,#52B788,#2D6A4F); border-radius:99px}
+
 /* 산행 중 GPS 동기화 표시 */
 .gps-tag{margin-top:10px; padding:9px 12px; border-radius:11px; font-size:11.5px; font-weight:700; background:#FFF7EC; color:#B35309; border:1px solid #F4D9B5}
 .gps-tag.on{background:#EAF4EC; color:#2D6A4F; border-color:#CFE6D4}
@@ -238,6 +252,10 @@ nav a.sosnav{color:var(--danger)}
 .fac{font-size:11px; font-weight:700; color:#2D6A4F; background:#EAF4EC; border:1px solid #D6E8D9; border-radius:99px; padding:4px 9px}
 
 /* 숲나들e 연동 모달 */
+.news-item{display:flex; align-items:center; gap:8px; font-size:12.5px; padding:12px 12px; margin-bottom:7px; background:#F2F7F1; border:1px solid #E3EDE4; border-radius:11px; cursor:pointer}
+.news-item b{flex:1; font-weight:700}
+.news-item span{color:var(--leaf); font-weight:900}
+.news-item:active{background:#E3EDE4}
 .ext-row{font-size:12.5px; padding:9px 0; border-bottom:1px solid #EEF3EE; line-height:1.5}
 .ext-row b{display:inline-block; min-width:42px; color:var(--sub); font-weight:800; margin-right:6px}
 .sheet .btnrow a.btn{display:flex; align-items:center; justify-content:center; text-decoration:none}
