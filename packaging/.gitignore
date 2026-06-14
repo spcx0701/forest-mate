@@ -2,9 +2,12 @@
 node_modules/
 android/app-release-bundle.aab
 android/app-release-signed.apk
+android/dist/
+android/.android-signing.env
 android/*.keystore
 android/.gradle/
 android/build/
+android/app/build/
 ios/www/
 ios/ios/
 ios/node_modules/
