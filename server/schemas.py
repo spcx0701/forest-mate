@@ -25,6 +25,8 @@ class TrackIn(BaseModel):
     progress: float = Field(ge=0.0, le=1.0)
     alt: int = 0
     hr: int | None = Field(default=None, ge=20, le=250)
+    lat: float | None = None   # 실제 GPS 위경도(있으면 동기화)
+    lon: float | None = None
 
 
 class TrackOut(BaseModel):
@@ -64,6 +66,9 @@ class HikeSummaryOut(BaseModel):
     active_days: int           # 가입(기기 등록)일로부터 경과 일수
     level: int
     monthly: list[dict]        # 최근 6개월 [{month, km, count}]
+    distinct_courses: int = 0  # 완등한 서로 다른 코스 수
+    regions: int = 0           # 방문한 서로 다른 지역(시·도) 수
+    badges: list[dict] = []    # 배지 진척 [{id,icon,label,earned,progress,goal}]
 
 
 class ChatIn(BaseModel):
