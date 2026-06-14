@@ -2,6 +2,7 @@
 import asyncio
 import json
 import math
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
@@ -148,6 +149,18 @@ async def forecast(lat: float, lon: float, db: Session = Depends(get_db)):
                     "dow": dows[dt.weekday()], "temp": d["temp"], "rain_prob": d["rain_prob"],
                     "fire": fire["level"], "score": score})
     return {"days": out}
+
+
+_TRAILS_DIR = Path(__file__).resolve().parents[1] / "data" / "trails"
+
+
+@router.get("/mountains/{list_no}/trails")
+async def mountain_trails(list_no: str):
+    """등산로 선(line) — 산림청 등산로 공간정보(FRT000801) 산별 경로. 없으면 빈 목록."""
+    f = _TRAILS_DIR / f"{list_no}.json"
+    if not f.exists():
+        return {"name": "", "segs": []}
+    return json.loads(f.read_text(encoding="utf-8"))
 
 
 @router.get("/index/gps")
