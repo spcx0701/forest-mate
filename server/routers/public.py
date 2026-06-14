@@ -1,5 +1,7 @@
-"""공개 API — 산행지수·코스·추천·AI 챗·종 판별·전국 산 검색."""
+"""공개 API — 산행지수·코스·추천·AI 챗·종 판별·전국 산 검색·GPS 주변."""
 import asyncio
+import json
+import math
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
@@ -8,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..adapters.public_data import conditions_for_region, get_region_conditions
 from ..config import get_settings
 from ..db import get_db
-from ..geo import region_for_mountain
+from ..geo import region_for_coords, region_for_mountain
 from ..models import Mountain
 from ..schemas import ChatIn, SpeciesIn
 from ..seed import COURSES, REGIONS, SPECIES
@@ -49,7 +51,39 @@ async def mountains(q: str = "", sido: str = "", page: int = 1, size: int = 30,
         "total": total, "page": page, "size": size,
         "items": [{"list_no": m.list_no, "name": m.name, "addr": m.addr,
                    "sido": m.sido, "height": m.height, "top100": m.is_top100,
-                   "summary": m.summary} for m in rows],
+                   "lat": m.lat, "lon": m.lon, "summary": m.summary} for m in rows],
+    }
+
+
+def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """두 좌표 간 거리(km)."""
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+@router.get("/mountains/nearby")
+async def mountains_nearby(lat: float, lon: float, radius: float = 30, limit: int = 20,
+                           db: Session = Depends(get_db)):
+    """현재 위치(GPS) 주변 산 — 좌표 보유 산 중 거리순. radius km 이내."""
+    rows = db.execute(
+        select(Mountain).where(Mountain.lat.is_not(None))
+    ).scalars().all()
+    out = []
+    for m in rows:
+        d = _haversine(lat, lon, m.lat, m.lon)
+        if d <= radius:
+            out.append((d, m))
+    out.sort(key=lambda x: x[0])
+    return {
+        "origin": {"lat": lat, "lon": lon}, "radius_km": radius,
+        "count": len(out),
+        "items": [{"list_no": m.list_no, "name": m.name, "addr": m.addr,
+                   "sido": m.sido, "height": m.height, "top100": m.is_top100,
+                   "lat": m.lat, "lon": m.lon, "dist_km": round(d, 1)}
+                  for d, m in out[:limit]],
     }
 
 
@@ -64,18 +98,21 @@ async def mountains_by_sido(db: Session = Depends(get_db)):
 
 @router.get("/mountains/{list_no}/index")
 async def mountain_index(list_no: str, db: Session = Depends(get_db)):
-    """선택한 산의 산행지수 — 산의 시도 대표지점 기상·산불로 계산."""
+    """선택한 산의 산행지수 — 실측 좌표가 있으면 정밀 격자·시군구로 계산."""
     m = db.get(Mountain, list_no)
     if not m:
         raise HTTPException(404, "mountain not found")
     region = region_for_mountain(m)
     cond = await conditions_for_region(region)
     idx = hike_index(cond)
+    place = (m.addr or m.name) if region.get("precise") else f"{m.sido} 대표지점 추정"
     return {
         **idx, "conditions": cond,
         "mountain": {"list_no": m.list_no, "name": m.name, "sido": m.sido,
-                     "addr": m.addr, "height": m.height, "top100": m.is_top100},
-        "place": f"{m.sido} 대표지점 추정",
+                     "addr": m.addr, "height": m.height, "top100": m.is_top100,
+                     "lat": m.lat, "lon": m.lon,
+                     "facilities": json.loads(m.facilities or "{}")},
+        "place": place,
     }
 
 
@@ -87,6 +124,19 @@ async def index(region: str = "eunpyeong"):
         raise HTTPException(404, f"unknown region: {region}")
     idx = hike_index(cond)
     return {**idx, "conditions": cond}
+
+
+@router.get("/index/gps")
+async def index_gps(lat: float, lon: float, db: Session = Depends(get_db)):
+    """현재 위치(GPS) 산행지수 — 정밀 날씨격자 + 최근접 산의 시군구로 산불."""
+    rows = db.execute(select(Mountain).where(Mountain.lat.is_not(None))).scalars().all()
+    sgg, nearest_name = "", ""
+    if rows:
+        d, nm = min(((_haversine(lat, lon, m.lat, m.lon), m) for m in rows), key=lambda x: x[0])
+        sgg, nearest_name = nm.sgg, nm.name
+    cond = await conditions_for_region(region_for_coords(lat, lon, sgg))
+    idx = hike_index(cond)
+    return {**idx, "conditions": cond, "place": "현재 위치", "nearest": nearest_name}
 
 
 @router.get("/courses")

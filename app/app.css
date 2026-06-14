@@ -223,6 +223,11 @@ nav a.sosnav{color:var(--danger)}
 .mnt-row .h{font-size:13px; font-weight:800; color:#40916C; white-space:nowrap}
 .mnt-row .top{font-size:10px; font-weight:800; color:#B35309; background:#FFF4E8; border-radius:99px; padding:2px 7px; margin-left:6px}
 .mnt-empty{font-size:12.5px; color:var(--sub); text-align:center; padding:18px 0}
+
+/* 숲나들e 연동 모달 */
+.ext-row{font-size:12.5px; padding:9px 0; border-bottom:1px solid #EEF3EE; line-height:1.5}
+.ext-row b{display:inline-block; min-width:42px; color:var(--sub); font-weight:800; margin-right:6px}
+.sheet .btnrow a.btn{display:flex; align-items:center; justify-content:center; text-decoration:none}
 .checks{display:flex; gap:8px; flex-wrap:wrap}
 .ckc{padding:9px 13px; border-radius:99px; background:#F2F7F1; font-size:12px; font-weight:700; color:var(--sub); border:1.5px solid transparent}
 .ckc.on{background:#FFF4E8; color:#B35309; border-color:#F4A261}
