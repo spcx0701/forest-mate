@@ -1,0 +1,5 @@
+Android Trusted Web Activity 최초 릴리스.
+
+- ForestMate 모바일 웹 앱을 엽니다.
+- 산행지수, AI 안내, SOS 흐름 바로가기를 제공합니다.
+- F-Droid 서명을 위한 unsigned release APK 빌드 경로를 유지합니다.

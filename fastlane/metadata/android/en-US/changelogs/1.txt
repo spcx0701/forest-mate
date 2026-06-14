@@ -1,0 +1,5 @@
+Initial Android Trusted Web Activity release.
+
+- Opens the ForestMate mobile web app.
+- Provides shortcuts for safety index, AI guide, and SOS flows.
+- Uses committed Android resources and an unsigned release build path suitable for F-Droid signing.
