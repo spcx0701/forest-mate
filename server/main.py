@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 
 from .config import get_settings
 from .db import SessionLocal, init_db
-from .routers import dashboard, hikes, public
+from .routers import dashboard, hikes, public, push
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("forestmate")
@@ -79,6 +79,7 @@ def create_app() -> FastAPI:
     app.include_router(public.router, prefix="/api/v1", tags=["public"])
     app.include_router(hikes.router, prefix="/api/v1", tags=["hikes"])
     app.include_router(dashboard.router, prefix="/api/v1", tags=["dashboard"])
+    app.include_router(push.router, prefix="/api/v1", tags=["push"])
 
     # TWA(Android) Digital Asset Links — 정적 마운트가 .well-known 점(.) 경로를
     # 막는 프록시도 있어 명시 라우트로 보장. Play 앱 서명키 지문을 채워 배포한다.

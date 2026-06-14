@@ -327,6 +327,12 @@ function buildMap() {
     Hike.trackLine = L.polyline([], { color: "#2D6A4F", weight: 6, opacity: 0.85 }).addTo(map);
     Hike.posMarker = L.circleMarker([lat, lon], { radius: 9, color: "#fff", weight: 3, fillColor: "#1B4332", fillOpacity: 1 }).addTo(map).bindPopup("내 위치");
     setTimeout(() => map.invalidateSize(), 160);
+    // 코스 산의 실제 등산로 선 표시(이름→카탈로그 코드 해석)
+    if (API.mode === "cloud") {
+      API.get(`/mountains?q=${encodeURIComponent(c.name.split(" ")[0])}&size=1`)
+        .then((r) => { if (r.items && r.items[0]) drawTrails(map, r.items[0].list_no); })
+        .catch(() => {});
+    }
   }, 60);
   drawProgress();
 }
@@ -1031,12 +1037,33 @@ async function openNotifs() {
   }
   $("extSheet").innerHTML = `
     <h3>🔔 알림 <small style="font-size:11px;font-weight:600;color:var(--sub)">${esc(locLabel)}·즐겨찾기·일정 기준</small></h3>
+    <button class="btn primary" id="pushBtn" style="width:100%;margin-bottom:10px">🔔 푸시 알림 받기 (앱 닫아도 알림)</button>
     <div id="notifList">${items.map((n, i) => `<div class="notif-item" data-i="${i}"><div class="ni-ic">${n.ic}</div><div><b>${n.t}</b><span>${n.b}</span></div></div>`).join("")}</div>
     <div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>`;
+  $("pushBtn").addEventListener("click", enablePush);
   $("notifList").querySelectorAll(".notif-item").forEach((el, i) => {
     if (items[i].fav) el.addEventListener("click", () => openMountainDetail(items[i].fav.list_no, items[i].fav.name));
   });
   const dot = $("bellBtn").querySelector("i"); if (dot) dot.style.display = "none";
+}
+function urlB64ToUint8(b64) {
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+async function enablePush() {
+  if (API.mode !== "cloud") return toast("온라인 필요", "서버 연결 시 가능해요", "🔔");
+  try {
+    const v = await API.get("/push/vapid");
+    if (!v.enabled || !v.publicKey) return toast("푸시 준비 중", "관리자가 VAPID 키를 설정하면 켜져요(지금은 인앱 알림으로 동작)", "🔔", false, 4500);
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return toast("미지원", "이 기기는 푸시를 지원하지 않아요", "🔔");
+    if ((await Notification.requestPermission()) !== "granted") return toast("알림 권한 필요", "브라우저 알림 권한을 허용해주세요", "🔔");
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(v.publicKey) });
+    await API.post("/push/subscribe", sub.toJSON());
+    const t = await API.post("/push/test", {});
+    toast("푸시 알림 켜짐 🔔", t.sent ? "테스트 알림을 보냈어요. 일정·즐겨찾기 산 소식을 받아요" : "구독 완료(테스트 발송은 곧 반영)", "🔔");
+  } catch { toast("푸시 설정 실패", "잠시 후 다시 시도해주세요", "🔔"); }
 }
 $("bellBtn").addEventListener("click", openNotifs);
 function refreshBellDot() {
@@ -1158,7 +1185,7 @@ async function openMountainDetail(listNo, name) {
       </div>
       <div class="btnrow" style="margin-top:9px"><button class="btn ghost" id="mtnPlan">📅 산행 일정 잡기</button><button class="btn ghost" data-close="extModal">닫기</button></div>`;
     loadHero($("mtnHero"), m.name, m.height);
-    if (m.lat) setTimeout(() => miniMap("mtnMap", m.lat, m.lon, m.name), 60);
+    if (m.lat) setTimeout(() => miniMap("mtnMap", m.lat, m.lon, m.name, listNo), 60);
     $("mtnSetHome").addEventListener("click", () => { $("extModal").classList.remove("show"); selectMountainIndex(listNo, m.name); });
     $("mtnFav").addEventListener("click", () => { toggleFav({ list_no: listNo, name: m.name, sido: m.sido, lat: m.lat, lon: m.lon }); $("mtnFav").textContent = isFav(listNo) ? "⭐ 즐겨찾기됨" : "☆ 즐겨찾기"; });
     $("mtnPlan").addEventListener("click", () => openPlan({ list_no: listNo, name: m.name, lat: m.lat, lon: m.lon }));
@@ -1169,16 +1196,34 @@ async function openMountainDetail(listNo, name) {
 
 /* ---------------- 지도 · 길찾기 (req5) ---------------- */
 const _maps = {};
-function miniMap(elId, lat, lon, name, zoom = 12) {
+function miniMap(elId, lat, lon, name, listNo) {
   const el = document.getElementById(elId);
   if (!el || !window.L) return null;
   if (_maps[elId]) { _maps[elId].remove(); delete _maps[elId]; }
-  const map = L.map(el, { attributionControl: false }).setView([lat, lon], zoom);
+  const map = L.map(el, { attributionControl: false }).setView([lat, lon], 13);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
   L.marker([lat, lon]).addTo(map).bindPopup(name).openPopup();
   _maps[elId] = map;
   setTimeout(() => map.invalidateSize(), 120);
+  if (listNo) drawTrails(map, listNo);   // 실제 등산로 선
   return map;
+}
+const TRAIL_COLOR = { 쉬움: "#2D6A4F", 보통: "#E08A1E", 어려움: "#C9304E" };
+async function drawTrails(map, listNo) {
+  if (!map || !listNo || API.mode !== "cloud") return 0;
+  try {
+    const d = await API.get(`/mountains/${encodeURIComponent(listNo)}/trails`);
+    if (!d.segs || !d.segs.length) return 0;
+    const bounds = [];
+    d.segs.forEach((s) => {
+      if (!s.pts || s.pts.length < 2) return;
+      L.polyline(s.pts, { color: TRAIL_COLOR[s.dffl] || "#40916C", weight: 4, opacity: 0.85 })
+        .addTo(map).bindPopup(`${esc(s.nm || "등산로")} · ${esc(s.dffl || "")} ${s.lt ? s.lt + "km" : ""}`);
+      bounds.push(...s.pts);
+    });
+    if (bounds.length) map.fitBounds(bounds, { padding: [22, 22], maxZoom: 15 });
+    return d.segs.length;
+  } catch { return 0; }
 }
 function homeLoc() { return S.home || null; }
 function dirButtons(lat, lon, name) {

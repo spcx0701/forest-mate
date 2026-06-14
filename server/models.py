@@ -87,6 +87,17 @@ class SosEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class PushSub(Base):
+    """Web Push 구독 — 기기별 푸시 발송 대상(VAPID)."""
+    __tablename__ = "push_subs"
+
+    endpoint: Mapped[str] = mapped_column(String(512), primary_key=True)
+    device_id: Mapped[str] = mapped_column(String(32), index=True)
+    p256dh: Mapped[str] = mapped_column(String(255))
+    auth: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Mountain(Base):
     """전국 산 카탈로그 — 산림청 산정보 서비스(3,368개) ETL 적재 결과.
 
