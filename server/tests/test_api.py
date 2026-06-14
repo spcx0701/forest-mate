@@ -53,6 +53,29 @@ def test_mountains_search_empty(client):
     assert client.get("/api/v1/mountains/sido").status_code == 200
 
 
+def test_mountain_index_resolves_region(client):
+    # 산 1개 시드 후, 선택한 산의 산행지수가 시도 대표지점으로 계산되는지
+    from server.db import SessionLocal
+    from server.models import Mountain
+    db = SessionLocal()
+    db.merge(Mountain(list_no="GEO1", name="지리산", sido="경상남도",
+                      addr="경상남도 산청군 시천면", height=1915, is_top100=True))
+    db.commit()
+    db.close()
+
+    res = client.get("/api/v1/mountains/GEO1/index")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["mountain"]["name"] == "지리산"
+    assert "경상남도" in body["place"]
+    assert "weather" in body["conditions"] and "fire" in body["conditions"]
+    # 키 없는 환경이므로 스냅샷으로 폴백(엔드포인트·해석 경로는 정상 동작)
+    assert body["conditions"]["weather"]["source"] == "snapshot"
+    assert isinstance(body["score"], int) and 0 <= body["score"] <= 100
+
+    assert client.get("/api/v1/mountains/NOPE/index").status_code == 404
+
+
 def test_full_hike_flow(client):
     # 1) 기기 등록(익명)
     res = client.post("/api/v1/devices", json={"name": "테스터", "fit": 2, "knee": True})

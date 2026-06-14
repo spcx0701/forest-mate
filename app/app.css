@@ -50,6 +50,8 @@ header{padding:14px 18px 6px; display:flex; align-items:center; gap:8px}
 .ring .val span{font-size:11px; opacity:.85; margin-top:3px}
 .idx-right{flex:1}
 .idx-right h3{font-size:15px; margin-bottom:9px; font-weight:800}
+.idx-place{display:block; margin-top:4px; font-size:11px; font-weight:700; color:rgba(255,255,255,.78)}
+.idx-place a{color:#fff; background:rgba(255,255,255,.18); border-radius:99px; padding:1px 7px; margin-left:4px; cursor:pointer; white-space:nowrap}
 .idx-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px}
 .idx-item{background:rgba(255,255,255,.13); border-radius:11px; padding:7px 9px; font-size:11px; line-height:1.45}
 .idx-item b{display:block; font-size:12px}
@@ -214,7 +216,8 @@ nav a.sosnav{color:var(--danger)}
 .mnt-search span{font-size:11px; font-weight:600; color:var(--sub)}
 #mntQ{width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid #DCE6DE; font-size:14px; outline:none; margin-bottom:10px}
 .mnt-results{max-height:46vh; overflow-y:auto; display:flex; flex-direction:column; gap:7px}
-.mnt-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 13px; border-radius:12px; background:#F2F7F1; border:1px solid #E3EDE4}
+.mnt-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 13px; border-radius:12px; background:#F2F7F1; border:1px solid #E3EDE4; cursor:pointer; transition:background .12s}
+.mnt-row:active{background:#E3EDE4}
 .mnt-row b{font-size:14px; font-weight:800}
 .mnt-row .loc{font-size:11px; color:var(--sub); margin-top:2px}
 .mnt-row .h{font-size:13px; font-weight:800; color:#40916C; white-space:nowrap}

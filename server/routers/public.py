@@ -5,9 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..adapters.public_data import get_region_conditions
+from ..adapters.public_data import conditions_for_region, get_region_conditions
 from ..config import get_settings
 from ..db import get_db
+from ..geo import region_for_mountain
 from ..models import Mountain
 from ..schemas import ChatIn, SpeciesIn
 from ..seed import COURSES, REGIONS, SPECIES
@@ -59,6 +60,23 @@ async def mountains_by_sido(db: Session = Depends(get_db)):
         select(Mountain.sido, func.count()).group_by(Mountain.sido).order_by(func.count().desc())
     ).all()
     return [{"sido": s or "(미상)", "count": n} for s, n in rows]
+
+
+@router.get("/mountains/{list_no}/index")
+async def mountain_index(list_no: str, db: Session = Depends(get_db)):
+    """선택한 산의 산행지수 — 산의 시도 대표지점 기상·산불로 계산."""
+    m = db.get(Mountain, list_no)
+    if not m:
+        raise HTTPException(404, "mountain not found")
+    region = region_for_mountain(m)
+    cond = await conditions_for_region(region)
+    idx = hike_index(cond)
+    return {
+        **idx, "conditions": cond,
+        "mountain": {"list_no": m.list_no, "name": m.name, "sido": m.sido,
+                     "addr": m.addr, "height": m.height, "top100": m.is_top100},
+        "place": f"{m.sido} 대표지점 추정",
+    }
 
 
 @router.get("/index")
