@@ -22,6 +22,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("forestmate")
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
+STATIC_SHORT_CACHE_EXTENSIONS = (".css", ".js")
+STATIC_LONG_CACHE_EXTENSIONS = (
+    ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2"
+)
 
 
 def _load_baked_catalog() -> bool:
@@ -71,6 +75,18 @@ async def lifespan(_: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="숲길동무 ForestMate API", version="1.0.0", lifespan=lifespan)
+
+    @app.middleware("http")
+    async def add_static_cache_headers(request, call_next):
+        response = await call_next(request)
+        path = request.url.path.lower()
+        if response.status_code != 200:
+            return response
+        if path.endswith(STATIC_LONG_CACHE_EXTENSIONS):
+            response.headers.setdefault("Cache-Control", "public, max-age=31536000, immutable")
+        elif path.endswith(STATIC_SHORT_CACHE_EXTENSIONS):
+            response.headers.setdefault("Cache-Control", "public, max-age=604800")
+        return response
 
     origins = [o.strip() for o in settings.cors_origins.split(",")]
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"],
