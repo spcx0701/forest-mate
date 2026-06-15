@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">ForestMate mark</title>
+  <desc id="desc">A simple white pine tree with a mint location dot for ForestMate.</desc>
+  <path fill="#1B4332" d="M256 72 160 216h54l-82 92h70L101 432h310L310 308h70l-82-92h54L256 72Z"/>
+  <rect x="232" y="374" width="48" height="72" rx="18" fill="#74C69D"/>
+  <circle cx="256" cy="116" r="28" fill="#74C69D"/>
+</svg>

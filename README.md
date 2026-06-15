@@ -1,25 +1,90 @@
-# 숲길동무 (ForestMate)
+# ForestMate · 숲길동무
 
-「2026년 산림 공공데이터·AI 활용 창업경진대회」 **제품 및 서비스 개발 부문** 출품 패키지.
-산림 공공데이터 10종과 AI를 융합한 **국민 산행 안전 플랫폼** — 맞춤 추천 → 위험 경고 → 조난 자동 감지 → B2G 관제.
+<p align="center">
+  <img src="assets/brand/forestmate-logo.png" alt="ForestMate · 숲길동무" width="720">
+</p>
 
-> 접수 마감: **2026. 6. 19.(금) 18:00**, 산림청 누리집 온라인 접수
+<p align="center">
+  <strong>산림 공공데이터와 AI로 산행 전 위험을 예측하고, 산행 중 위험 상황을 빠르게 감지하는 산행 안전 동반자.</strong>
+</p>
 
-데모 목업이 아니라 **실제 백엔드(FastAPI) + 클라이언트(PWA·관제 웹)** 로 동작하는 상용 수준 구현이다.
-앱·관제는 `/api/v1`의 클라이언트이며, 백엔드가 없으면 자동으로 로컬 엔진으로 폴백한다(통신 음영지역 대비).
+<p align="center">
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/spcx0701/forest-mate?sort=date&display_name=tag&color=2D6A4F&logo=github"></a>
+  <a href="https://github.com/spcx0701/forest-mate/actions/workflows/ci.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/spcx0701/forest-mate/ci.yml?branch=main&logo=github"></a>
+  <a href="https://www.codefactor.io/repository/github/spcx0701/forest-mate"><img alt="CodeFactor" src="https://img.shields.io/codefactor/grade/github/spcx0701/forest-mate?label=code%20quality&logo=codefactor"></a>
+  <a href="https://codecov.io/gh/spcx0701/forest-mate"><img alt="Coverage" src="https://img.shields.io/codecov/c/github/spcx0701/forest-mate?label=coverage&logo=codecov"></a>
+  <img alt="Top language" src="https://img.shields.io/github/languages/top/spcx0701/forest-mate">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/spcx0701/forest-mate?color=blue"></a>
+  <br>
+  <a href="https://forestmate.onrender.com/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Android APK" src="https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white"></a>
+  <a href="packaging/fdroid/README.md"><img alt="F-Droid candidate" src="https://img.shields.io/badge/F--Droid-candidate-1976D2?logo=fdroid&logoColor=white"></a>
+  <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-5A0FC8?logo=pwa&logoColor=white">
+  <img alt="No tracking SDK" src="https://img.shields.io/badge/no_tracking_SDK-verified-0B7A75">
+</p>
 
-## 바로가기
+<p align="center">
+  <a href="https://forestmate.onrender.com/index.html"><strong>Web App</strong></a>
+  ·
+  <a href="https://forestmate.onrender.com/home.html"><strong>Service Intro</strong></a>
+  ·
+  <a href="https://forestmate.onrender.com/dashboard.html"><strong>Dashboard</strong></a>
+  ·
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>Android APK</strong></a>
+  ·
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>GitHub Release</strong></a>
+  ·
+  <a href="packaging/fdroid/README.md"><strong>F-Droid Candidate</strong></a>
+</p>
 
-- **웹 앱**: https://forestmate.onrender.com/index.html
-- **서비스 소개**: https://forestmate.onrender.com/home.html
-- **관제 대시보드**: https://forestmate.onrender.com/dashboard.html
-- **Android APK 설치**: https://github.com/spcx0701/forest-mate/releases/latest/download/forestmate-android-v1.0.0.apk
-- **APK SHA-256**: https://github.com/spcx0701/forest-mate/releases/latest/download/forestmate-android-v1.0.0.apk.sha256
-- **F-Droid 제출 준비**: [packaging/fdroid/README.md](packaging/fdroid/README.md)
+<p align="center">
+  <img src="assets/readme/forestmate-hero.png" alt="ForestMate 앱 화면 — 홈(산행지수) · 산행(실시간 지도) · 안전(원터치 SOS) · AI동무" width="100%">
+</p>
 
-Android APK는 Play Store가 아닌 직접 배포 파일이다. 설치 시 Android 설정에서 "알 수 없는 앱 설치" 허용이 필요할 수 있다.
+ForestMate(숲길동무)는 산림 공공데이터와 AI 기반 안전 판단 로직을 활용해 **산행 전 코스 선택 → 산행 중 위험 감지·SOS → B2G 관제**까지 잇는 산행 안전 서비스입니다. 통신 음영지역에서는 자동으로 로컬 엔진으로 폴백해 핵심 기능이 끊기지 않습니다.
 
-F-Droid용 배포는 APK 직접 업로드가 아니라 `.fdroid.yml` 기준 소스 빌드로 준비되어 있다. 기본 Android 빌드는 `forestmate.onrender.com` hosted service를 여는 TWA라서 F-Droid 메타데이터에 `NonFreeNet` Anti-Feature를 명시한다.
+웹 앱, 관제 대시보드, Android APK를 함께 제공합니다. 백엔드 연결 시 `/api/v1`로 실시간 공공데이터와 산행 기록을 사용하고, 정적 호스팅 환경에서는 로컬 데이터·규칙 기반 폴백으로 주요 화면을 확인할 수 있습니다.
+
+> 「2026년 산림 공공데이터·AI 활용 창업경진대회」 제품 및 서비스 개발 부문 출품 패키지.
+
+## 주요 기능
+
+- **전국 산 카탈로그** — 산림청 산정보 4,600여 개 산을 VWorld 지오코딩으로 좌표화해 검색·즐겨찾기. 현재 위치(GPS)·17개 시도별 탐색.
+- **실시간 산행지수** — 기상청 단기예보 + 국립산림과학원 산불위험예보(V2) + 산사태·일몰을 결합. 선택한 산의 위치 격자로 정밀 산출.
+- **실제 등산로 지도** — 산림청 등산로 공간정보(2,200여 산, 5만여 구간)를 난이도색 경로로 Leaflet 지도에 표시. 들머리까지 카카오맵/구글맵 길찾기.
+- **GPS 산행 추적** — 실제 위치(`watchPosition`)대로 경로·거리 기록(자동 진행 아님), 이동 멈춤+심박 이상 시 **자동 조난 감지** → 보호자·119 전파.
+- **AI 숲이** — 규칙 엔진/LLM(RAG) 의도 응답, 식물·버섯 식별 데모.
+- **개인화** — 실집계 배지·산행 캘린더·산행 일정 계획(날짜별 적합도)·위치/즐겨찾기 맞춤 알림(Web Push).
+- **B2G 관제 대시보드** — 실시간 KPI + WebSocket 피드 + k-익명화 위험 히트맵.
+
+Android 사용자는 GitHub Release에서 APK를 내려받아 설치할 수 있습니다. F-Droid 제출용 소스 빌드 메타데이터도 포함되며, 현재 Android TWA는 `forestmate.onrender.com` hosted service를 열기 때문에 F-Droid 메타데이터에 `NonFreeNet` Anti-Feature를 명시합니다.
+
+## B2G 관제 대시보드
+
+모바일 앱과 함께, 지자체·소방 대상 **실시간 관제 웹**을 제공합니다.
+
+<p align="center">
+  <img src="app/screens/dashboard.png" alt="B2G 관제 대시보드" width="92%">
+</p>
+<p align="center"><sub>실시간 KPI · k-익명화 위험 히트맵 · WebSocket 라이브 피드</sub></p>
+
+## 기술 스택
+
+<p align="center">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white">
+  <img alt="Python 3.12" src="https://img.shields.io/badge/Python_3.12-3776AB?logo=python&logoColor=white">
+  <img alt="SQLAlchemy" src="https://img.shields.io/badge/SQLAlchemy-D71F00?logo=sqlalchemy&logoColor=white">
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white">
+  <img alt="Leaflet" src="https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white">
+  <img alt="PWA" src="https://img.shields.io/badge/PWA-5A0FC8?logo=pwa&logoColor=white">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white">
+  <img alt="Claude" src="https://img.shields.io/badge/Claude_LLM-D97757?logo=anthropic&logoColor=white">
+</p>
+
+- **백엔드** FastAPI · SQLAlchemy(SQLite/PostgreSQL) · Pydantic · pytest · WebSocket
+- **프런트** PWA(서비스워커·오프라인·Web Push) · Vanilla JS · Leaflet 지도
+- **데이터·AI** 공공데이터포털(기상청·산림청) · VWorld 지오코딩 · Claude(LLM RAG)
+- **인프라** Docker · Render · GitHub Actions(CI)
 
 ## 아키텍처
 
@@ -28,12 +93,14 @@ forest-mate/
 ├── server/               # FastAPI 백엔드
 │   ├── main.py           #   앱 조립 + 정적 프런트(app/) 동일 오리진 서빙
 │   ├── config.py         #   설정(.env) — 키 없으면 스냅샷/규칙 폴백
-│   ├── db.py, models.py  #   SQLAlchemy (dev SQLite / prod PostgreSQL+PostGIS)
+│   ├── db.py, models.py  #   SQLAlchemy (dev SQLite / prod PostgreSQL·연결 실패 시 자동 폴백)
 │   ├── adapters/         #   공공데이터 어댑터 (기상청·산불·산악기상 + TTL 캐시 + 폴백)
+│   ├── geo.py            #   KMA 격자 변환 + 시도 좌표 (정밀 산행지수·GPS)
+│   ├── data/             #   영속 카탈로그(catalog.json) + 등산로 선(trails/{code}.json)
 │   ├── services/         #   scoring(산행지수·추천·위험융합) · safety(조난감지·k익명화)
 │   │                     #   chat(의도엔진) · llm(Claude RAG) · bus(관제 WS pub/sub)
 │   ├── routers/          #   public · hikes(토큰인증) · dashboard(WS)
-│   └── tests/            #   pytest 20개 (스코어링·안전·API E2E·WebSocket)
+│   └── tests/            #   pytest 23개 (스코어링·안전·API E2E·WebSocket)
 ├── app/                  # 클라이언트 (정적 호스팅 가능, 백엔드와 동일 오리진 권장)
 │   ├── home.html         #   서비스 소개 랜딩
 │   ├── index.html        #   모바일 PWA — cloud 모드 시 LIVE 배지
@@ -61,7 +128,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ### Docker
 ```bash
 cp .env.example .env          # 키 입력(없어도 폴백 동작)
-docker compose up             # API + PostgreSQL(PostGIS)
+docker compose up             # API + PostgreSQL
 ```
 
 ### 정적만(백엔드 없이)
@@ -87,24 +154,27 @@ LLM 모드는 `server/services/llm.py`에서 Claude Messages API를 호출한다
 
 ## 테스트
 ```bash
-.venv/bin/python -m pytest server/tests -q     # 20 passed
+.venv/bin/python -m pytest server/tests -q     # 23 passed
 ```
 스코어링·조난감지·k익명화 단위 테스트 + 기기등록→산행→위험경고→SOS→관제반영 E2E + WebSocket 수신 검증.
-CI(`.github/workflows/forestmate-ci.yml`)가 push마다 pytest + Docker 빌드/헬스체크 smoke를 수행한다.
-
-## 상용 전환 체크리스트
-1. `DATABASE_URL`을 PostgreSQL(+PostGIS)로, 등산로 ETL로 전국 코스 적재
-2. `DATA_GO_KR_KEY`·`ANTHROPIC_API_KEY` 발급·설정 → 실 데이터/LLM 활성
-3. `K_ANONYMITY=50`, HTTPS, CORS 화이트리스트
-4. 수평 확장 시 `services/bus.py`를 Redis Pub/Sub로, SOS를 119 신고 API·FCM 워커로 팬아웃
-5. **배포**: `render.yaml`로 무료 배포(공개 HTTPS) → Android는 `packaging/android`의 TWA APK로 직접 배포, iOS는 Capacitor(App Store)로 빌드·등록. **전체 절차는 [store/스토어_제출_런북.md](store/스토어_제출_런북.md)** 참고
-6. DOCX 노란 칸(팀명·URL·실적) 교체 후 공고 HWP 양식 제출
-
-## 시연·캡처용 파라미터
-`index.html?t=trail&demo=57` · `dashboard.html?demo=1`(시계 14:07) · `index.html?embed=1`(랜딩 iframe용)
+CI(`.github/workflows/ci.yml`)가 push·PR마다 pytest와 Docker 빌드를 수행한다.
 
 ## 데이터 출처
-산림청 등산로 공간정보 · 국립산림과학원 산불위험예보/산악기상관측망 · 산사태정보시스템 · 국립수목원 국가생물종지식정보 · 한국산림복지진흥원 숲나들e · 산림빅데이터 거래소 · 소방청 산악사고 현황 · 행정안전부 국가지점번호 · 기상청 단기예보
+
+| 데이터 | 제공 기관 | 본 앱 활용 | 출처 |
+|--------|-----------|-----------|------|
+| 전국 산정보(표준데이터) | 산림청 | 4,600여 개 산 카탈로그·검색 | [공공데이터포털](https://www.data.go.kr/data/15029183/standard.do) |
+| 등산로 공간정보 | 산림청 · 산림빅데이터 | 등산로 선·주요지점 지도 | [산림빅데이터 거래소](https://www.bigdata-forest.kr) |
+| 단기예보 | 기상청 | 산행지수·날씨·일정 예보 | [공공데이터포털](https://www.data.go.kr) |
+| 산불위험예보 | 국립산림과학원 | 산불 위험도 | [공공데이터포털](https://www.data.go.kr) |
+| 산악기상관측망 | 국립산림과학원 | 능선부 기상 특보 | [공공데이터포털](https://www.data.go.kr) |
+| 산사태정보 | 산림청 | 산사태 위험등급 | [산사태정보시스템](https://sansatai.forest.go.kr) |
+| 국가생물종지식정보 | 국립수목원 | 식물·버섯 식별 | [국가생물종지식정보](http://www.nature.go.kr) |
+| 산림복지(숲나들e) | 한국산림복지진흥원 | 치유의숲·휴양림 | [숲나들e](https://www.foresttrip.go.kr) |
+| 산악사고 현황 | 소방청 | 위험 구간 안내 | [공공데이터포털](https://www.data.go.kr) |
+| 국가지점번호 | 행정안전부 | 위치 표준 좌표 | [공공데이터포털](https://www.data.go.kr) |
+| 주소·좌표 변환 | 국토교통부 VWorld | 산 좌표·시군구 지오코딩 | [VWorld](https://www.vworld.kr) |
+| 지도 타일 | OpenStreetMap | 실제 지도 렌더 | [OSM](https://www.openstreetmap.org/copyright) |
 
 ## 라이선스
 

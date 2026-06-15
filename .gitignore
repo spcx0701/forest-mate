@@ -6,5 +6,10 @@ __pycache__/
 .DS_Store
 node_modules/
 
+# 테스트 커버리지 산출물
+.coverage
+coverage.xml
+htmlcov/
+
 # Office 임시 잠금파일
 ~$*
