@@ -1,0 +1,4 @@
+F-Droid 스캐너 정리 규칙 보정.
+
+- F-Droid scandelete 대상을 Android와 무관한 iOS package manifest로 한정했습니다.
+- Android Gradle wrapper 파일은 F-Droid 기본 스캐너가 자동 제거하도록 유지했습니다.

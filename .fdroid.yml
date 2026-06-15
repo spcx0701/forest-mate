@@ -27,18 +27,17 @@ AntiFeatures:
 RepoType: git
 Repo: https://github.com/spcx0701/forest-mate.git
 Builds:
-  - versionName: '1.0.2'
-    versionCode: 3
-    commit: android-v1.0.2
+  - versionName: '1.0.3'
+    versionCode: 4
+    commit: android-v1.0.3
     subdir: packaging/android
     gradle:
       - yes
     output: app/build/outputs/apk/release/app-release-unsigned.apk
     scandelete:
-      - packaging/android/gradle/wrapper/gradle-wrapper.jar
       - packaging/ios/package.json
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^android-v[0-9]+\.[0-9]+\.[0-9]+$
 UpdateCheckData: 'packaging/android/app/build.gradle|versionCode\s+(\d+)|.|versionName\s+"([^"]+)"'
-CurrentVersion: '1.0.2'
-CurrentVersionCode: 3
+CurrentVersion: '1.0.3'
+CurrentVersionCode: 4
