@@ -4,14 +4,53 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1B4332">
+<meta name="description" content="숲길동무 ForestMate는 산림 공공데이터와 AI로 산행 전 위험을 예측하고 산행 중 조난·위험 상황을 빠르게 감지하는 산행 안전 플랫폼입니다.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://forestmate.onrender.com/home.html">
 <link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preload" as="image" href="screens/home-preview.webp" type="image/webp" fetchpriority="high">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ForestMate">
+<meta property="og:title" content="숲길동무 ForestMate — 산림 공공데이터·AI 산행 안전 플랫폼">
+<meta property="og:description" content="산림 공공데이터와 AI로 산행 전 위험을 예측하고, 산행 중 위험 상황과 조난 징후를 빠르게 감지합니다.">
+<meta property="og:url" content="https://forestmate.onrender.com/home.html">
+<meta property="og:image" content="https://forestmate.onrender.com/screens/home.png">
+<meta property="og:image:alt" content="숲길동무 ForestMate 모바일 앱 홈 화면">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="숲길동무 ForestMate — 산림 공공데이터·AI 산행 안전 플랫폼">
+<meta name="twitter:description" content="산림 공공데이터와 AI로 산행 전 위험을 예측하고 산행 중 위험 상황을 빠르게 감지합니다.">
+<meta name="twitter:image" content="https://forestmate.onrender.com/screens/home.png">
 <title>숲길동무 ForestMate — 산림 공공데이터·AI 산행 안전 플랫폼</title>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "숲길동무 ForestMate",
+  "alternateName": "ForestMate",
+  "applicationCategory": "HealthApplication",
+  "operatingSystem": "Android, iOS, Web",
+  "url": "https://forestmate.onrender.com/home.html",
+  "image": "https://forestmate.onrender.com/screens/home.png",
+  "description": "산림 공공데이터와 AI로 산행 전 위험을 예측하고 산행 중 위험 상황을 빠르게 감지하는 산행 안전 플랫폼입니다.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "KRW"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ForestMate"
+  }
+}
+</script>
 <style>
 :root{
   --pine:#1B4332; --moss:#2D6A4F; --leaf:#40916C; --mint:#74C69D; --pale:#D8F3DC;
   --bg:#F7FAF6; --ink:#1d2b22; --sub:#5f7568; --amber:#F4A261; --red:#E63946;
 }
 *{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;overflow-x:hidden}
 body{font-family:"Apple SD Gothic Neo","Pretendard",-apple-system,"Noto Sans KR",sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
 a{text-decoration:none;color:inherit}
 .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
@@ -25,7 +64,7 @@ a{text-decoration:none;color:inherit}
 .cta-s{background:var(--pine);color:#fff;font-weight:800;font-size:13px;padding:10px 16px;border-radius:12px}
 /* hero */
 .hero{padding:72px 0 40px;display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
-.badge{display:inline-block;background:var(--pale);color:var(--pine);font-weight:800;font-size:12.5px;padding:7px 13px;border-radius:99px;margin-bottom:18px}
+.badge{display:inline-block;max-width:100%;background:var(--pale);color:var(--pine);font-weight:800;font-size:12.5px;line-height:1.5;padding:7px 13px;border-radius:16px;margin-bottom:18px;white-space:normal;overflow-wrap:anywhere}
 h1{font-size:52px;line-height:1.18;letter-spacing:-1px;color:var(--pine)}
 h1 em{font-style:normal;color:var(--leaf)}
 .hero p.lead{font-size:17px;color:var(--sub);margin:18px 0 26px;max-width:520px}
@@ -34,12 +73,12 @@ h1 em{font-style:normal;color:var(--leaf)}
 .btn:hover{transform:translateY(-2px)}
 .btn.primary{background:var(--pine);color:#fff;box-shadow:0 10px 26px rgba(27,67,50,.3)}
 .btn.ghost{background:#fff;color:var(--pine);border:1.5px solid #D7E3D9}
-.store{display:flex;gap:10px;margin-top:18px;font-size:12px;color:var(--sub)}
+.store{display:flex;gap:10px;margin-top:18px;font-size:12px;color:var(--sub);flex-wrap:wrap}
 .store span{background:#fff;border:1px solid #E5EDE6;border-radius:9px;padding:7px 11px;font-weight:700}
 /* phone demo */
 .demo{position:relative;display:flex;justify-content:center}
 .bezel{width:320px;height:660px;border-radius:42px;border:9px solid #0e1f15;overflow:hidden;box-shadow:0 36px 80px rgba(16,48,31,.35);background:#F4F7F2}
-.bezel iframe{width:100%;height:100%;border:none}
+.bezel iframe,.bezel .phone-shot{width:100%;height:100%;border:none;display:block;object-fit:cover;object-position:top center}
 .float-tag{position:absolute;background:#fff;border-radius:14px;box-shadow:0 14px 34px rgba(16,48,31,.18);padding:11px 14px;font-size:12px;font-weight:800}
 .ft1{top:60px;left:-6px;color:#A4161A}
 .ft2{bottom:90px;right:-10px;color:var(--pine)}
@@ -49,10 +88,10 @@ h1 em{font-style:normal;color:var(--leaf)}
 .stat b{font-size:30px;color:var(--pine);display:block;letter-spacing:-.5px}
 .stat b.red{color:var(--red)}
 .stat span{font-size:12.5px;color:var(--sub);font-weight:700}
-.stat small{display:block;font-size:10.5px;color:#9bab9f;margin-top:4px}
+.stat small{display:block;font-size:11px;color:#4f6658;font-weight:700;margin-top:4px}
 /* sections */
 section{padding:64px 0 8px}
-.kick{color:var(--leaf);font-weight:900;font-size:13px;letter-spacing:2px}
+.kick{color:var(--moss);font-weight:900;font-size:13px;letter-spacing:2px}
 h2{font-size:32px;color:var(--pine);letter-spacing:-.5px;margin:8px 0 10px}
 .sec-sub{color:var(--sub);max-width:640px;font-size:15px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
@@ -62,7 +101,7 @@ h2{font-size:32px;color:var(--pine);letter-spacing:-.5px;margin:8px 0 10px}
 .feat.hot .ico{background:#FDECEC}
 .feat b{font-size:17px;display:block;margin-bottom:6px}
 .feat p{font-size:13.5px;color:var(--sub)}
-.feat .tag{display:inline-block;margin-top:12px;font-size:11px;font-weight:800;color:var(--leaf);background:var(--pale);padding:4px 10px;border-radius:99px}
+.feat .tag{display:inline-block;margin-top:12px;font-size:11px;font-weight:800;color:var(--pine);background:#E7F5EC;padding:4px 10px;border-radius:99px}
 /* b2g */
 .b2g{background:var(--pine);border-radius:26px;color:#fff;padding:42px;display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:center;margin-top:34px}
 .b2g h3{font-size:26px;margin-bottom:10px}
@@ -74,11 +113,20 @@ h2{font-size:32px;color:var(--pine);letter-spacing:-.5px;margin:8px 0 10px}
 /* data strip */
 .datastrip{margin-top:30px;background:#fff;border:1px solid #E5EDE6;border-radius:18px;padding:20px 24px;font-size:12px;color:var(--sub);line-height:1.8}
 .datastrip b{color:var(--pine)}
-footer{margin-top:64px;border-top:1px solid #E5EDE6;padding:28px 0 40px;font-size:12.5px;color:#9bab9f;display:flex;gap:16px;flex-wrap:wrap}
+footer{margin-top:64px;border-top:1px solid #E5EDE6;padding:28px 0 40px;font-size:12.5px;color:#5f7568;display:flex;gap:16px;flex-wrap:wrap}
 footer .wrap{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
 @media(max-width:920px){
   .hero{grid-template-columns:1fr;padding-top:44px}
+  .badge{display:block;width:100%;font-size:11.5px;border-radius:14px}
   h1{font-size:38px}
+  .hero p.lead{max-width:100%;font-size:16px}
+  .btn{padding:14px 18px}
+  .store span{flex:1 1 132px;text-align:center}
+  .demo{overflow:hidden}
+  .bezel{width:min(320px,100%);height:auto;aspect-ratio:320/660}
+  .float-tag{max-width:calc(100% - 32px)}
+  .ft1{left:0}
+  .ft2{right:0}
   .stats,.grid3{grid-template-columns:1fr}
   .b2g{grid-template-columns:1fr;padding:28px}
   .navlinks{display:none}
@@ -87,14 +135,14 @@ footer .wrap{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
 </head>
 <body>
 <div class="topnav"><div class="wrap">
-  <a class="brand" href="home.html"><img src="icon-192.png" alt="">숲길동무</a>
+  <a class="brand" href="home.html"><img src="icon-192.png" alt="숲길동무 ForestMate 로고">숲길동무</a>
   <div class="navlinks">
     <a href="#features">핵심 기능</a><a href="#b2g">관제(B2G)</a><a href="#data">공공데이터</a>
   </div>
   <a class="cta-s" href="index.html">앱 데모 열기</a>
 </div></div>
 
-<div class="wrap">
+<main class="wrap">
   <div class="hero">
     <div>
       <span class="badge">🏆 2026 산림 공공데이터·AI 활용 창업경진대회 — 제품 및 서비스 개발 부문</span>
@@ -107,7 +155,7 @@ footer .wrap{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
       <div class="store"><span>App Store — 준비 중</span><span>Android APK — 직접 배포</span><span>PWA 설치 지원 ✓</span></div>
     </div>
     <div class="demo">
-      <div class="bezel"><iframe src="index.html?embed=1" title="숲길동무 앱 라이브 데모"></iframe></div>
+      <div class="bezel"><img class="phone-shot" src="screens/home-preview.webp" width="320" height="693" alt="숲길동무 앱 홈 화면: 오늘의 산행지수와 추천 산행 코스" fetchpriority="high" decoding="async"></div>
       <div class="float-tag ft1">⚠️ 300m 앞 낙석 주의 — 우회로 안내</div>
       <div class="float-tag ft2">🛡 자동 조난감지 작동 중</div>
     </div>
@@ -159,7 +207,7 @@ footer .wrap{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
       개인 위치정보는 단말·보호자 동의 범위에서만 처리하며, 통계는 k-익명화(k≥50) 후 활용합니다 (위치정보법 준수).
     </div>
   </section>
-</div>
+</main>
 
 <footer><div class="wrap">
   <span>© 2026 숲길동무 ForestMate — 2026년 산림 공공데이터·AI 활용 창업경진대회 출품작 (데모)</span>
