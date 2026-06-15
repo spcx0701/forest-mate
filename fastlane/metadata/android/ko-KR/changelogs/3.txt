@@ -1,0 +1,4 @@
+F-Droid 소스 빌드 스캐너 호환성 개선.
+
+- F-Droid 소스 스캔 중 Android Gradle wrapper JAR을 제거합니다.
+- Android 빌드와 무관한 iOS package manifest를 F-Droid 빌드에서 제외합니다.
