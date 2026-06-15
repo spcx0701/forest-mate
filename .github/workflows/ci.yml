@@ -18,7 +18,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
       - name: Run tests
-        run: python -m pytest server/tests -q
+        run: python -m pytest server/tests -q --cov=server --cov-report=xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: spcx0701/forest-mate
+          files: ./coverage.xml
+          fail_ci_if_error: false
 
   docker:
     name: docker build smoke
