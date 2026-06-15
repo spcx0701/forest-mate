@@ -5,10 +5,6 @@
 # ForestMate · 숲길동무
 
 <p align="center">
-  <strong>산림 공공데이터와 AI로 산행 전 위험을 예측하고, 산행 중 위험 상황을 빠르게 감지하는 산행 안전 동반자.</strong>
-</p>
-
-<p align="center">
   <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/spcx0701/forest-mate?sort=date&display_name=tag&color=2D6A4F&logo=github"></a>
   <a href="https://github.com/spcx0701/forest-mate/actions/workflows/ci.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/spcx0701/forest-mate/ci.yml?branch=main&logo=github"></a>
   <a href="https://www.codefactor.io/repository/github/spcx0701/forest-mate"><img alt="CodeFactor" src="https://img.shields.io/codefactor/grade/github/spcx0701/forest-mate?label=code%20quality&logo=codefactor"></a>
@@ -25,6 +21,16 @@
 </p>
 
 <p align="center">
+  <strong>산림 공공데이터와 AI로 산행 전 위험을 예측하고, 산행 중 위험 상황을 빠르게 감지하는 산행 안전 동반자.</strong>
+</p>
+
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="56"></a>
+  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="56"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" height="56"></a>
+</p>
+
+<p align="center">
   <a href="https://forestmate.onrender.com/index.html"><strong>Web App</strong></a>
   ·
   <a href="https://forestmate.onrender.com/home.html"><strong>Service Intro</strong></a>
@@ -36,12 +42,6 @@
   <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>GitHub Release</strong></a>
   ·
   <a href="packaging/fdroid/README.md"><strong>F-Droid Candidate</strong></a>
-</p>
-
-<p align="center">
-  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="56"></a>
-  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="56"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" height="56"></a>
 </p>
 
 <p align="center">
