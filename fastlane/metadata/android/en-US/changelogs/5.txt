@@ -1,0 +1,4 @@
+F-Droid binary scanner compatibility.
+
+- Removes the Android Browser Helper location delegation dependency.
+- Keeps the Trusted Web Activity wrapper free of Google Play Services classes.

@@ -1,0 +1,4 @@
+F-Droid 바이너리 스캐너 호환성 개선.
+
+- Android Browser Helper location delegation 의존성을 제거했습니다.
+- Trusted Web Activity 래퍼에 Google Play Services 클래스가 포함되지 않도록 했습니다.
