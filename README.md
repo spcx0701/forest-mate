@@ -30,7 +30,7 @@
   ·
   <a href="https://forestmate.onrender.com/dashboard.html"><strong>Dashboard</strong></a>
   ·
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest/download/forestmate-android-v1.0.0.apk"><strong>Android APK</strong></a>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>Android APK</strong></a>
   ·
   <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>GitHub Release</strong></a>
   ·
