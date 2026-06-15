@@ -1,0 +1,4 @@
+F-Droid source-build scanner compatibility.
+
+- Removes Android Gradle wrapper JAR during F-Droid source scans.
+- Excludes the unrelated iOS package manifest from F-Droid Android builds.
