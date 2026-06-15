@@ -1,7 +1,7 @@
 {
   "name": "forestmate-android-apk",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "ForestMate Android TWA APK packaging",
   "scripts": {
     "init:project": "./scripts/init-project.sh",

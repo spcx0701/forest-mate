@@ -20,8 +20,8 @@
     "path": "android-signing.keystore",
     "alias": "forestmate"
   },
-  "appVersionName": "1.0.3",
-  "appVersionCode": 4,
+  "appVersionName": "1.0.4",
+  "appVersionCode": 5,
   "shortcuts": [
     {
       "name": "오늘의 산행지수",
@@ -45,11 +45,6 @@
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://forestmate.onrender.com/manifest.json",
   "fallbackType": "customtabs",
-  "features": {
-    "locationDelegation": {
-      "enabled": true
-    }
-  },
   "alphaDependencies": {
     "enabled": false
   },
@@ -69,5 +64,5 @@
     "standalone",
     "minimal-ui"
   ],
-  "appVersion": "1.0.3"
+  "appVersion": "1.0.4"
 }
