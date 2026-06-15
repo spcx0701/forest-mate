@@ -72,8 +72,8 @@ async def fetch_catalog(client: httpx.AsyncClient) -> list[dict]:
     print("  서버 워밍업…")
     try:
         await client.get(API.replace("/mountains", "/healthz"), timeout=90)
-    except Exception:
-        pass
+    except httpx.HTTPError as e:
+        print(f"  워밍업 실패 무시 ({type(e).__name__})")
     out, page = [], 1
     while True:
         d = await _get_page(client, page)
@@ -155,7 +155,8 @@ async def main() -> None:
                 prev[r["list_no"]] = r
     print(f"이전 정밀좌표 재사용: {len(prev)}개")
     sem = asyncio.Semaphore(3)                 # 저부하 — VWorld 과부하 방지
-    done = [0]; geocoded = [len(prev)]
+    done = [0]
+    geocoded = [len(prev)]
 
     async with httpx.AsyncClient() as client:
         cat = await fetch_catalog(client)
