@@ -37,7 +37,7 @@ section.panel{background:var(--panel);border:1px solid var(--line);border-radius
 .legend{position:absolute;bottom:10px;left:10px;background:rgba(14,26,19,.85);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:10.5px;color:var(--sub);display:flex;gap:12px}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
 .feed{display:flex;flex-direction:column;gap:10px;max-height:340px;overflow-y:auto}
-.ev{display:flex;gap:11px;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:11px 13px;font-size:12.5px;line-height:1.5}
+.ev{display:flex;gap:11px;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:11px 13px;font-size:12.5px;line-height:1.5;transition:border-color .2s, transform .2s;cursor:default}
 .ev .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
 .ev.sos .ic{background:rgba(229,72,77,.16);border:1px solid rgba(229,72,77,.4)}
 .ev.warn .ic{background:rgba(244,162,97,.14);border:1px solid rgba(244,162,97,.35)}
@@ -60,7 +60,6 @@ tr:last-child td{border:none}
 .barrow .bb span{font-size:9px;color:var(--sub);font-weight:700}
 .foot{grid-column:1/-1;color:#5d7466;font-size:11px;padding:4px 4px 14px;line-height:1.6}
 .right-col{display:flex;flex-direction:column;gap:18px}
-.ev{transition:border-color .2s, transform .2s; cursor:default}
 .ev:hover{border-color:#3E6B50}
 .ev.new{animation:slidein .5s cubic-bezier(.2,.9,.3,1)}
 @keyframes slidein{from{opacity:0; transform:translateY(-8px)}to{opacity:1; transform:none}}

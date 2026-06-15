@@ -9,7 +9,7 @@
 필드(가이드 v2.6): mntilistno·mntiname·mntiadd(소재지)·mntihigh(높이)·mntidetails
   ·mntisummary·mntitop·mntiadmin·mntiadminnum. 표준데이터 변형 필드명은 후보키로 흡수.
 """
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 
 from .base import AdapterError, fetch_text, service_key
 

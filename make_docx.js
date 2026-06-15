@@ -188,7 +188,7 @@ const sec2 = [
   dataTable([520, 2300, 1750, 2568, 2500],
     ["No", "데이터명(목록명)", "제공기관", "획득방법 / URL", "서비스 내 활용"],
     dataRows.map((r) => r.map((c) => c.split("\n").map((line, i, arr) =>
-      new Paragraph({ spacing: { after: i === arr.length - 1 ? 0 : 20, line: 264 }, children: [new TextRun({ text: line, size: 16.5 * 1 ? 17 : 17, color: INK })] })).flat())),
+      new Paragraph({ spacing: { after: i === arr.length - 1 ? 0 : 20, line: 264 }, children: [new TextRun({ text: line, size: 17, color: INK })] })).flat())),
     { size: 17 }),
   para([t("※ 1~7번은 산림분야 공공·빅데이터, 8~10번은 타 분야(안전·행정·기상) 공공데이터로, 전 기능이 공공데이터 위에서 동작합니다.", { size: 17, color: SUB })], { spacing: { before: 80 } }),
   h2("2-2. 융복합 활용 — ‘위험도 융합 스코어’"),

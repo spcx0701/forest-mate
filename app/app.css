@@ -183,7 +183,7 @@ header{padding:14px 18px 6px; display:flex; align-items:center; gap:8px}
 .bars .b span{font-size:9px; color:var(--sub); font-weight:700}
 .badges{display:flex; gap:9px; overflow-x:auto; padding:2px; scrollbar-width:none}
 .badges::-webkit-scrollbar{display:none}
-.bd{flex:none; width:74px; text-align:center}
+.bd{flex:none; width:74px; text-align:center; cursor:pointer}
 .bd .ic{width:54px;height:54px;margin:0 auto 5px;border-radius:18px;background:#fff;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font-size:24px}
 .bd.lock .ic{filter:grayscale(1); opacity:.45}
 .bd.lock span{opacity:.55}
@@ -249,8 +249,7 @@ nav a.sosnav{color:var(--danger)}
 .log-row b{font-size:13.5px; font-weight:800}
 .log-row span{display:block; font-size:11px; color:var(--sub); margin-top:2px}
 .log-stat{font-size:12.5px; font-weight:800; color:#40916C; white-space:nowrap}
-/* 배지 — 클릭 가능 + 진행바 */
-.bd{cursor:pointer}
+/* 배지 진행바 */
 .bd-bar{height:9px; background:#E8EFE9; border-radius:99px; overflow:hidden; margin-top:12px}
 .bd-bar i{display:block; height:100%; background:linear-gradient(90deg,#52B788,#2D6A4F); border-radius:99px}
 
