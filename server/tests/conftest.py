@@ -27,6 +27,52 @@ def client():
     with TestClient(app) as c:
         yield c
 
+    from server.db import engine
+    engine.dispose()
     db = ROOT / "test_forestmate.db"
     if db.exists():
         db.unlink()
+
+
+@pytest.fixture(autouse=True)
+def clean_db():
+    from server import models  # noqa: F401
+    from server.db import Base, engine
+
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
+@pytest.fixture
+def seed_mountain():
+    def _seed(**fields):
+        from server.db import SessionLocal
+        from server.models import Mountain
+
+        data = {
+            "list_no": "M1", "name": "테스트산", "sido": "서울특별시",
+            "addr": "서울특별시 은평구", "height": 500, "is_top100": False,
+        }
+        data.update(fields)
+        db = SessionLocal()
+        try:
+            mountain = Mountain(**data)
+            db.merge(mountain)
+            db.commit()
+            return mountain
+        finally:
+            db.close()
+    return _seed
+
+
+@pytest.fixture
+def register_device(client):
+    def _register(**fields):
+        payload = {"name": "테스터", "fit": 2}
+        payload.update(fields)
+        res = client.post("/api/v1/devices", json=payload)
+        assert res.status_code == 201
+        body = res.json()
+        return {"Authorization": f"Bearer {body['token']}"}, body
+    return _register

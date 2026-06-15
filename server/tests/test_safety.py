@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from server.services.safety import assess_distress, k_anonymize
 
 NOW = datetime(2026, 6, 13, 12, 0, tzinfo=timezone.utc)
@@ -10,41 +12,22 @@ def _pt(minutes_ago: float, progress: float, hr: int | None = 95) -> dict:
             "created_at": NOW - timedelta(minutes=minutes_ago)}
 
 
-def test_moving_is_not_distress():
-    pts = [_pt(40, 0.30), _pt(20, 0.40), _pt(1, 0.50)]
-    assert assess_distress(pts, now=NOW)["level"] == 0
+@pytest.mark.parametrize(("points", "expected"), [
+    ([_pt(40, 0.30), _pt(20, 0.40), _pt(1, 0.50)], (0, "moving")),
+    ([_pt(10, 0.50), _pt(5, 0.50), _pt(1, 0.50)], (0, "stall_below_threshold")),
+    ([_pt(45, 0.50), _pt(30, 0.5005), _pt(1, 0.501)], (1, "stalled")),
+    ([_pt(45, 0.50), _pt(30, 0.50), _pt(1, 0.50, hr=152)],
+     (2, "stalled_with_hr_anomaly")),
+    ([_pt(1, 0.1)], (0, "insufficient_data")),
+], ids=["moving", "short-stall", "long-stall", "hr-anomaly", "insufficient"])
+def test_assess_distress_cases(points, expected):
+    res = assess_distress(points, now=NOW)
+    assert (res["level"], res["reason"]) == expected
 
 
-def test_short_stall_below_threshold():
-    pts = [_pt(10, 0.50), _pt(5, 0.50), _pt(1, 0.50)]
-    res = assess_distress(pts, now=NOW)
-    assert res["level"] == 0
-    assert res["reason"] == "stall_below_threshold"
-
-
-def test_long_stall_triggers_level1():
-    pts = [_pt(45, 0.50), _pt(30, 0.5005), _pt(1, 0.501)]
-    res = assess_distress(pts, now=NOW)
-    assert res["level"] == 1
-
-
-def test_stall_with_hr_anomaly_is_level2():
-    pts = [_pt(45, 0.50), _pt(30, 0.50), _pt(1, 0.50, hr=152)]
-    res = assess_distress(pts, now=NOW)
-    assert res["level"] == 2
-
-
-def test_insufficient_data():
-    assert assess_distress([_pt(1, 0.1)], now=NOW)["level"] == 0
-
-
-def test_k_anonymize_hides_small_clusters():
-    progresses = [0.11, 0.12, 0.13, 0.95]  # bin1=3명, bin9=1명
-    cells = k_anonymize(progresses, k=2)
-    assert len(cells) == 1
-    assert cells[0]["bin"] == 1 and cells[0]["count"] == 3
-
-
-def test_k_anonymize_k1_shows_all():
-    cells = k_anonymize([0.1, 0.9], k=1)
-    assert sum(c["count"] for c in cells) == 2
+@pytest.mark.parametrize(("progresses", "k", "expected"), [
+    ([0.11, 0.12, 0.13, 0.95], 2, [(1, 3)]),
+    ([0.1, 0.9], 1, [(1, 1), (9, 1)]),
+], ids=["hide-small-clusters", "k1-shows-all"])
+def test_k_anonymize_cases(progresses, k, expected):
+    assert [(c["bin"], c["count"]) for c in k_anonymize(progresses, k=k)] == expected
