@@ -125,7 +125,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ### Docker
 ```bash
 cp .env.example .env          # 키 입력(없어도 폴백 동작)
-docker compose up             # API + PostgreSQL(PostGIS)
+docker compose up             # API + PostgreSQL
 ```
 
 ### 정적만(백엔드 없이)
@@ -156,19 +156,22 @@ LLM 모드는 `server/services/llm.py`에서 Claude Messages API를 호출한다
 스코어링·조난감지·k익명화 단위 테스트 + 기기등록→산행→위험경고→SOS→관제반영 E2E + WebSocket 수신 검증.
 CI(`.github/workflows/ci.yml`)가 push·PR마다 pytest와 Docker 빌드를 수행한다.
 
-## 상용 전환 체크리스트
-1. `DATABASE_URL`을 PostgreSQL(+PostGIS)로, 등산로 ETL로 전국 코스 적재
-2. `DATA_GO_KR_KEY`·`ANTHROPIC_API_KEY` 발급·설정 → 실 데이터/LLM 활성
-3. `K_ANONYMITY=50`, HTTPS, CORS 화이트리스트
-4. 수평 확장 시 `services/bus.py`를 Redis Pub/Sub로, SOS를 119 신고 API·FCM 워커로 팬아웃
-5. **배포**: `render.yaml`로 무료 배포(공개 HTTPS) → Android는 `packaging/android`의 TWA APK로 직접 배포, iOS는 Capacitor(App Store)로 빌드·등록. **전체 절차는 [store/스토어_제출_런북.md](store/스토어_제출_런북.md)** 참고
-6. DOCX 노란 칸(팀명·URL·실적) 교체 후 공고 HWP 양식 제출
-
-## 시연·캡처용 파라미터
-`index.html?t=trail&demo=57` · `dashboard.html?demo=1`(시계 14:07) · `index.html?embed=1`(랜딩 iframe용)
-
 ## 데이터 출처
-산림청 등산로 공간정보 · 국립산림과학원 산불위험예보/산악기상관측망 · 산사태정보시스템 · 국립수목원 국가생물종지식정보 · 한국산림복지진흥원 숲나들e · 산림빅데이터 거래소 · 소방청 산악사고 현황 · 행정안전부 국가지점번호 · 기상청 단기예보
+
+| 데이터 | 제공 기관 | 본 앱 활용 | 출처 |
+|--------|-----------|-----------|------|
+| 전국 산정보(표준데이터) | 산림청 | 4,600여 개 산 카탈로그·검색 | [공공데이터포털](https://www.data.go.kr/data/15029183/standard.do) |
+| 등산로 공간정보 | 산림청 · 산림빅데이터 | 등산로 선·주요지점 지도 | [산림빅데이터 거래소](https://www.bigdata-forest.kr) |
+| 단기예보 | 기상청 | 산행지수·날씨·일정 예보 | [공공데이터포털](https://www.data.go.kr) |
+| 산불위험예보 | 국립산림과학원 | 산불 위험도 | [공공데이터포털](https://www.data.go.kr) |
+| 산악기상관측망 | 국립산림과학원 | 능선부 기상 특보 | [공공데이터포털](https://www.data.go.kr) |
+| 산사태정보 | 산림청 | 산사태 위험등급 | [산사태정보시스템](https://sansatai.forest.go.kr) |
+| 국가생물종지식정보 | 국립수목원 | 식물·버섯 식별 | [국가생물종지식정보](http://www.nature.go.kr) |
+| 산림복지(숲나들e) | 한국산림복지진흥원 | 치유의숲·휴양림 | [숲나들e](https://www.foresttrip.go.kr) |
+| 산악사고 현황 | 소방청 | 위험 구간 안내 | [공공데이터포털](https://www.data.go.kr) |
+| 국가지점번호 | 행정안전부 | 위치 표준 좌표 | [공공데이터포털](https://www.data.go.kr) |
+| 주소·좌표 변환 | 국토교통부 VWorld | 산 좌표·시군구 지오코딩 | [VWorld](https://www.vworld.kr) |
+| 지도 타일 | OpenStreetMap | 실제 지도 렌더 | [OSM](https://www.openstreetmap.org/copyright) |
 
 ## 라이선스
 
