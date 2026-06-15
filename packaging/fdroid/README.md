@@ -7,9 +7,9 @@ instead of publishing the GitHub Release APK directly.
 
 - Application ID: `kr.forestmate.app`
 - Android source directory: `packaging/android`
-- Current version: `1.0.2`
-- Current version code: `3`
-- Release tag: `android-v1.0.2`
+- Current version: `1.0.3`
+- Current version code: `4`
+- Release tag: `android-v1.0.3`
 - Expected unsigned APK: `packaging/android/app/build/outputs/apk/release/app-release-unsigned.apk`
 
 ## Inclusion fit

@@ -1,0 +1,4 @@
+F-Droid scanner cleanup refinement.
+
+- Keeps F-Droid scandelete focused on the unrelated iOS package manifest.
+- Lets F-Droid automatically remove Android Gradle wrapper files during source scanning.
