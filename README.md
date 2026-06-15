@@ -41,7 +41,7 @@
 <p align="center">
   <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="56"></a>
   <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="56"></a>
-  <a href="https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://img.shields.io/badge/Get%20it%20on-Obtainium-5C6BC0?style=for-the-badge&logo=github&logoColor=white" height="56"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" height="56"></a>
 </p>
 
 <p align="center">
