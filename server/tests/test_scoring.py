@@ -1,3 +1,5 @@
+import pytest
+
 from server.seed import COURSES, REGIONS
 from server.services.scoring import fused_risk, hike_index, match_score, recommend
 
@@ -9,13 +11,15 @@ def _cond(region_id: str) -> dict:
             "sunset_score": region["snapshot"]["sunset_score"]}
 
 
-def test_hike_index_eunpyeong_is_82():
-    assert hike_index(_cond("eunpyeong"))["score"] == 82
-
-
-def test_hike_index_labels():
-    assert "좋음" in hike_index(_cond("eunpyeong"))["label"]
-    assert hike_index(_cond("guri"))["score"] < 80
+@pytest.mark.parametrize(("region_id", "score", "label"), [
+    ("eunpyeong", 82, "좋음"),
+    ("guri", None, "보통"),
+])
+def test_hike_index_cases(region_id, score, label):
+    got = hike_index(_cond(region_id))
+    if score is not None:
+        assert got["score"] == score
+    assert label in got["label"]
 
 
 def test_match_score_default_profile_prefers_bukhansan():
@@ -24,12 +28,15 @@ def test_match_score_default_profile_prefers_bukhansan():
     assert score == 92
 
 
-def test_recommend_orders_by_fit():
+@pytest.mark.parametrize(("fit", "knee", "expected"), [
+    (3, False, "dobong"),
+    (1, False, 1),
+    (2, True, "bukhansan"),
+], ids=["advanced", "beginner", "knee-friendly"])
+def test_recommend_orders_by_profile(fit, knee, expected):
     conds = {rid: _cond(rid) for rid in REGIONS}
-    advanced = recommend(fit=3, knee=False, heart=False, conditions=conds)
-    assert advanced[0]["course"]["id"] == "dobong"
-    beginner = recommend(fit=1, knee=False, heart=False, conditions=conds)
-    assert beginner[0]["course"]["level_n"] == 1
+    top = recommend(fit=fit, knee=knee, heart=False, conditions=conds)[0]["course"]
+    assert (top["level_n"] if isinstance(expected, int) else top["id"]) == expected
 
 
 def test_fused_risk_rain_raises_score():

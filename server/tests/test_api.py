@@ -1,7 +1,9 @@
 """API 통합 테스트 — 기기 등록 → 산행 → 위험경고 → SOS → 관제 반영 전체 흐름."""
 
+import pytest
 
-def test_healthz(client):
+
+def test_healthz_snapshot_mode(client):
     res = client.get("/api/v1/healthz")
     assert res.status_code == 200
     body = res.json()
@@ -9,16 +11,17 @@ def test_healthz(client):
     assert body["live_data"] is False  # 테스트는 스냅샷 모드
 
 
-def test_index_snapshot_score(client):
-    res = client.get("/api/v1/index", params={"region": "eunpyeong"})
-    assert res.status_code == 200
-    body = res.json()
-    assert body["score"] == 82
-    assert body["conditions"]["weather"]["source"] == "snapshot"
-
-
-def test_index_unknown_region_404(client):
-    assert client.get("/api/v1/index", params={"region": "nowhere"}).status_code == 404
+@pytest.mark.parametrize(("region", "status", "score"), [
+    ("eunpyeong", 200, 82),
+    ("nowhere", 404, None),
+])
+def test_index_endpoint(client, region, status, score):
+    res = client.get("/api/v1/index", params={"region": region})
+    assert res.status_code == status
+    if score is not None:
+        body = res.json()
+        assert body["score"] == score
+        assert body["conditions"]["weather"]["source"] == "snapshot"
 
 
 def test_recommend_personalization(client):
@@ -37,31 +40,74 @@ def test_chat_rule_engine(client):
     assert "18" in body["reply"]  # 은평 스냅샷 기온
 
 
-def test_species_identify(client):
-    res = client.post("/api/v1/species/identify", json={"sample_id": "mushroom"})
-    body = res.json()
-    assert body["toxic"] is True
-    assert "개나리광대버섯" in body["name"]
+@pytest.mark.parametrize(("sample_id", "status", "name"), [
+    ("mushroom", 200, "개나리광대버섯"),
+    ("NOPE", 404, None),
+])
+def test_species_identify(client, sample_id, status, name):
+    res = client.post("/api/v1/species/identify", json={"sample_id": sample_id})
+    assert res.status_code == status
+    if name is not None:
+        body = res.json()
+        assert body["toxic"] is True
+        assert name in body["name"]
 
 
 def test_mountains_search_empty(client):
     # 키 없는 테스트 환경 — 카탈로그 비어있어도 검색 API는 정상 스키마 반환
-    res = client.get("/api/v1/mountains?q=북한")
+    res = client.get("/api/v1/mountains?q=절대없는산")
     assert res.status_code == 200
     body = res.json()
     assert body["total"] == 0 and body["items"] == []
     assert client.get("/api/v1/mountains/sido").status_code == 200
 
 
-def test_mountain_index_resolves_region(client):
+def test_public_catalog_routes(client):
+    assert len(client.get("/api/v1/regions").json()) >= 3
+    assert client.get("/api/v1/courses").json()[0]["id"]
+    assert client.get("/api/v1/courses/bukhansan").json()["risks"]
+    assert client.get("/api/v1/courses/NOPE").status_code == 404
+
+
+def test_well_known_routes(client, tmp_path, monkeypatch):
+    from server import main
+    well_known = tmp_path / ".well-known"
+    well_known.mkdir()
+    (well_known / "assetlinks.json").write_text('[{"ok": true}]', encoding="utf-8")
+    (well_known / "apple-app-site-association").write_text('{"applinks": {}}', encoding="utf-8")
+    monkeypatch.setattr(main, "APP_DIR", tmp_path)
+    assert client.get("/.well-known/assetlinks.json").json() == [{"ok": True}]
+    assert client.get("/.well-known/apple-app-site-association").json() == {"applinks": {}}
+
+
+def test_mountains_filters_forecast_and_trails(client, seed_mountain, tmp_path, monkeypatch):
+    seed_mountain(list_no="SEOUL1", name="북한산", sido="서울특별시", addr="서울특별시 은평구",
+                  is_top100=True, lat=37.65, lon=126.98, sgg="11140")
+    seed_mountain(list_no="JEJU1", name="한라산", sido="제주특별자치도", addr="제주시",
+                  lat=33.36, lon=126.53, sgg="50110")
+
+    res = client.get("/api/v1/mountains", params={"q": "산", "sido": "서울", "size": 999})
+    body = res.json()
+    assert body["size"] == 100
+    assert body["total"] == 1 and body["items"][0]["name"] == "북한산"
+    assert client.get("/api/v1/mountains/sido").json()[0]["count"] >= 1
+
+    forecast = client.get("/api/v1/forecast", params={"lat": 37.66, "lon": 126.99}).json()
+    assert len(forecast["days"]) == 3
+    assert {"date", "label", "dow", "fire", "score"} <= set(forecast["days"][0])
+
+    from server.routers import public
+    (tmp_path / "SEOUL1.json").write_text('{"name": "북한산", "segs": [[[1, 2], [3, 4]]]}',
+                                          encoding="utf-8")
+    monkeypatch.setattr(public, "_TRAILS_DIR", tmp_path)
+    assert client.get("/api/v1/mountains/SEOUL1/trails").json()["segs"]
+    assert client.get("/api/v1/mountains/MISSING/trails").json() == {"name": "", "segs": []}
+
+
+def test_mountain_index_resolves_region(client, seed_mountain):
     # 산 1개 시드 후, 선택한 산의 산행지수가 시도 대표지점으로 계산되는지
-    from server.db import SessionLocal
-    from server.models import Mountain
-    db = SessionLocal()
-    db.merge(Mountain(list_no="GEO1", name="지리산", sido="경상남도",
-                      addr="경상남도 산청군 시천면", height=1915, is_top100=True))
-    db.commit()
-    db.close()
+    seed_mountain(list_no="GEO1", name="지리산", sido="경상남도",
+                  addr="경상남도 산청군 시천면", height=1915, is_top100=True)
 
     res = client.get("/api/v1/mountains/GEO1/index")
     assert res.status_code == 200
@@ -76,16 +122,11 @@ def test_mountain_index_resolves_region(client):
     assert client.get("/api/v1/mountains/NOPE/index").status_code == 404
 
 
-def test_gps_nearby_and_precise_index(client):
+def test_gps_nearby_and_precise_index(client, seed_mountain):
     # 실측 좌표 보유 산 → GPS 주변검색·현재위치지수·정밀 산행지수
-    from server.db import SessionLocal
-    from server.models import Mountain
-    db = SessionLocal()
-    db.merge(Mountain(list_no="GPS1", name="청계산", sido="경기도",
-                      addr="경기도 과천시 막계동", height=618,
-                      lat=37.4449, lon=127.0539, sgg="41290"))
-    db.commit()
-    db.close()
+    seed_mountain(list_no="GPS1", name="청계산", sido="경기도",
+                  addr="경기도 과천시 막계동", height=618,
+                  lat=37.4449, lon=127.0539, sgg="41290")
 
     # 주변 검색 — 과천 인근 좌표
     res = client.get("/api/v1/mountains/nearby", params={"lat": 37.45, "lon": 127.05, "radius": 10})
@@ -105,12 +146,9 @@ def test_gps_nearby_and_precise_index(client):
     assert pi["mountain"]["lat"] == 37.4449
 
 
-def test_full_hike_flow(client):
+def test_full_hike_flow(client, register_device):
     # 1) 기기 등록(익명)
-    res = client.post("/api/v1/devices", json={"name": "테스터", "fit": 2, "knee": True})
-    assert res.status_code == 201
-    token = res.json()["token"]
-    auth = {"Authorization": f"Bearer {token}"}
+    auth, _ = register_device(knee=True)
 
     # 2) 인증 없는 호출 거부
     assert client.post("/api/v1/hikes", json={"course_id": "bukhansan"}).status_code == 401
@@ -171,9 +209,21 @@ def test_full_hike_flow(client):
     assert log["items"][0]["km"] > 0 and log["items"][0]["kcal"] > 0 and log["items"][0]["course"]
 
 
-def test_dashboard_websocket_receives_sos(client):
-    res = client.post("/api/v1/devices", json={"name": "WS", "fit": 2})
-    auth = {"Authorization": f"Bearer {res.json()['token']}"}
+def test_push_subscription_flow(client, register_device):
+    auth, _ = register_device(name="Push")
+    assert client.get("/api/v1/push/vapid").json() == {"enabled": False, "publicKey": ""}
+    assert client.post("/api/v1/push/subscribe", json={}, headers=auth).json() == {
+        "ok": False, "reason": "endpoint 없음",
+    }
+    sub = {"endpoint": "https://push.example/sub", "keys": {"p256dh": "p256", "auth": "auth"}}
+    assert client.post("/api/v1/push/subscribe", json=sub, headers=auth).json() == {"ok": True}
+    assert client.post("/api/v1/push/test", headers=auth).json() == {
+        "sent": 0, "subs": 1, "enabled": False,
+    }
+
+
+def test_dashboard_websocket_receives_sos(client, register_device):
+    auth, _ = register_device(name="WS")
     with client.websocket_connect("/api/v1/ws/dashboard") as ws:
         client.post("/api/v1/sos", json={"note": "테스트"}, headers=auth)
         msg = ws.receive_json()
