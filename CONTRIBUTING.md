@@ -71,7 +71,20 @@ For documentation-only changes, run at least:
 
 ```bash
 git diff --check
+.venv/bin/python -m pytest server/tests/test_readme_parity.py -q
 ```
+
+## Documentation Parity
+
+The repository has Korean and English README entrypoints: `README.md` and
+`README.en.md`. Treat them as sibling public surfaces, not independent files.
+
+- When changing the top README banner, status badges, store badges, or primary
+  navigation links in one README, update the other README in the same change.
+- Keep language-specific prose translated, but keep shared assets and badge
+  targets synchronized.
+- Before pushing README changes, run `python -m pytest
+  server/tests/test_readme_parity.py -q` to catch drift between the two files.
 
 ## Android and F-Droid Changes
 
