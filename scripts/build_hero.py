@@ -11,8 +11,8 @@ from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets" / "readme" / "forestmate-hero.png"
-SHOTS = ["home", "ai", "sos"]          # 현재도 정확한 대표 화면 3종
-SCREEN_H = 980
+SHOTS = ["home", "trail", "sos", "ai"]  # 홈 · 산행 · 안전 · AI동무
+SCREEN_H = 920                          # 4대 모두 동일 높이
 BG = (244, 238, 251)                   # 연보라 (Now in Android 톤)
 BEZEL = 16
 
@@ -39,21 +39,20 @@ def phone(shot_path: Path, screen_h: int) -> Image.Image:
 
 def main() -> None:
     phones = [phone(ROOT / "app" / "screens" / f"{s}.png", SCREEN_H) for s in SHOTS]
-    pw, ph = phones[0].size
-    gap, mx, my = 56, 80, 96
-    y_off = [28, 0, 28]                 # 가운데 폰을 살짝 위로 — 아치형 배치
-    W = mx * 2 + pw * 3 + gap * 2
-    H = my * 2 + ph + max(y_off)
+    n = len(phones)
+    pw, ph = phones[0].size            # 모든 폰 동일 크기(동일 높이)
+    gap, mx, my = 48, 72, 88
+    W = mx * 2 + pw * n + gap * (n - 1)  # 좌우 대칭 여백 — 잘림 없음
+    H = my * 2 + ph
 
     canvas = Image.new("RGBA", (W, H), BG + (255,))
     x = mx
-    for img, yo in zip(phones, y_off):
-        y = my + yo
+    for img in phones:                 # 모두 같은 y(my) — 높이/정렬 통일
         shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         ImageDraw.Draw(shadow).rounded_rectangle(
-            [x + 4, y + 22, x + pw + 4, y + ph + 22], radius=66, fill=(60, 38, 96, 70))
-        canvas = Image.alpha_composite(canvas, shadow.filter(ImageFilter.GaussianBlur(26)))
-        canvas.alpha_composite(img, (x, y))
+            [x + 4, my + 22, x + pw + 4, my + ph + 22], radius=64, fill=(60, 38, 96, 66))
+        canvas = Image.alpha_composite(canvas, shadow.filter(ImageFilter.GaussianBlur(24)))
+        canvas.alpha_composite(img, (x, my))
         x += pw + gap
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

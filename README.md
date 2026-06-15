@@ -9,20 +9,15 @@
 </p>
 
 <p align="center">
-  <a href="https://forestmate.onrender.com/home.html">
-    <img alt="Service live" src="https://img.shields.io/badge/service-live-1B4332?style=for-the-badge">
-  </a>
-  <a href="https://forestmate.onrender.com/index.html">
-    <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-2D6A4F?style=for-the-badge">
-  </a>
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest">
-    <img alt="Android APK" src="https://img.shields.io/badge/Android-APK-3DDC84?style=for-the-badge&logo=android&logoColor=white">
-  </a>
-  <a href="packaging/fdroid/README.md">
-    <img alt="F-Droid candidate" src="https://img.shields.io/badge/F--Droid-candidate-1976D2?style=for-the-badge&logo=fdroid&logoColor=white">
-  </a>
-  <img alt="No tracking SDK" src="https://img.shields.io/badge/no_tracking_SDK-verified-0B7A75?style=for-the-badge">
-  <img alt="License Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge">
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/spcx0701/forest-mate?sort=date&display_name=tag&color=2D6A4F&logo=github"></a>
+  <a href="https://github.com/spcx0701/forest-mate/actions/workflows/ci.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/spcx0701/forest-mate/ci.yml?branch=main&logo=github"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/spcx0701/forest-mate?color=blue"></a>
+  <br>
+  <a href="https://forestmate.onrender.com/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Android APK" src="https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white"></a>
+  <a href="packaging/fdroid/README.md"><img alt="F-Droid candidate" src="https://img.shields.io/badge/F--Droid-candidate-1976D2?logo=fdroid&logoColor=white"></a>
+  <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-5A0FC8?logo=pwa&logoColor=white">
+  <img alt="No tracking SDK" src="https://img.shields.io/badge/no_tracking_SDK-verified-0B7A75">
 </p>
 
 <p align="center">
@@ -40,7 +35,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/readme/forestmate-hero.png" alt="ForestMate 앱 화면 — 산행지수, AI 숲이, 원터치 SOS" width="100%">
+  <img src="assets/readme/forestmate-hero.png" alt="ForestMate 앱 화면 — 홈(산행지수) · 산행(실시간 지도) · 안전(원터치 SOS) · AI동무" width="100%">
 </p>
 
 ForestMate(숲길동무)는 산림 공공데이터와 AI 기반 안전 판단 로직을 활용해 **산행 전 코스 선택 → 산행 중 위험 감지·SOS → B2G 관제**까지 잇는 산행 안전 서비스입니다. 통신 음영지역에서는 자동으로 로컬 엔진으로 폴백해 핵심 기능이 끊기지 않습니다.
