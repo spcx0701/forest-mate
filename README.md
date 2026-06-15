@@ -5,6 +5,10 @@
 # ForestMate
 
 <p align="center">
+  <strong>한국어</strong> · <a href="README.en.md">English</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/spcx0701/forest-mate?sort=date&display_name=tag&color=2D6A4F&logo=github"></a>
   <a href="https://github.com/spcx0701/forest-mate/actions/workflows/ci.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/spcx0701/forest-mate/ci.yml?branch=main&logo=github"></a>
   <a href="https://www.codefactor.io/repository/github/spcx0701/forest-mate"><img alt="CodeFactor" src="https://img.shields.io/codefactor/grade/github/spcx0701/forest-mate?label=code%20quality&logo=codefactor"></a>
