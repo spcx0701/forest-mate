@@ -11,6 +11,7 @@
 <p align="center">
   <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/spcx0701/forest-mate?sort=date&display_name=tag&color=2D6A4F&logo=github"></a>
   <a href="https://github.com/spcx0701/forest-mate/actions/workflows/ci.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/spcx0701/forest-mate/ci.yml?branch=main&logo=github"></a>
+  <a href="https://www.codefactor.io/repository/github/spcx0701/forest-mate"><img alt="CodeFactor" src="https://img.shields.io/codefactor/grade/github/spcx0701/forest-mate?label=code%20quality&logo=codefactor"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/spcx0701/forest-mate?color=blue"></a>
   <br>
   <a href="https://forestmate.onrender.com/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
