@@ -15,6 +15,7 @@
   <a href="https://codecov.io/gh/spcx0701/forest-mate"><img alt="Coverage" src="https://img.shields.io/codecov/c/github/spcx0701/forest-mate?label=coverage&logo=codecov"></a>
   <img alt="Top language" src="https://img.shields.io/github/languages/top/spcx0701/forest-mate">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/spcx0701/forest-mate?color=blue"></a>
+  <a href="https://api.reuse.software/info/github.com/spcx0701/forest-mate"><img alt="REUSE status" src="https://api.reuse.software/badge/github.com/spcx0701/forest-mate"></a>
   <br>
   <a href="https://forestmate.onrender.com/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
   <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Android APK" src="https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white"></a>
