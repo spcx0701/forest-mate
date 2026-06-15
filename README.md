@@ -1,8 +1,8 @@
-# ForestMate · 숲길동무
-
 <p align="center">
   <img src="assets/brand/forestmate-logo.png" alt="ForestMate · 숲길동무" width="720">
 </p>
+
+# ForestMate · 숲길동무
 
 <p align="center">
   <strong>산림 공공데이터와 AI로 산행 전 위험을 예측하고, 산행 중 위험 상황을 빠르게 감지하는 산행 안전 동반자.</strong>
@@ -36,6 +36,12 @@
   <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>GitHub Release</strong></a>
   ·
   <a href="packaging/fdroid/README.md"><strong>F-Droid Candidate</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="56"></a>
+  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="56"></a>
+  <a href="https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://img.shields.io/badge/Get%20it%20on-Obtainium-5C6BC0?style=for-the-badge&logo=github&logoColor=white" height="56"></a>
 </p>
 
 <p align="center">
