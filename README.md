@@ -28,7 +28,9 @@
   <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="56"></a>
   <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" height="56"></a>
 </p>
-
+<p align="center">
+  <strong>한국어</strong> · <a href="README.en.md">English</a>
+</p>
 <p align="center">
   <a href="https://forestmate.onrender.com/index.html"><strong>Web App</strong></a>
   ·
