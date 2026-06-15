@@ -45,13 +45,23 @@
 
 ## 개요
 
-ForestMate(숲길동무)는 산림 공공데이터와 AI 기반 안전 판단 로직을 활용해 산행 전 코스 선택, 위험 확인, 산행 중 SOS 흐름, 관제 대시보드를 지원하는 산행 안전 서비스다.
+ForestMate(숲길동무)는 산림 공공데이터와 AI 기반 안전 판단 로직을 활용해 **산행 전 코스 선택 → 산행 중 위험 감지·SOS → B2G 관제**까지 잇는 산행 안전 서비스다. 데모 목업이 아니라 **실제 백엔드(FastAPI) + 클라이언트(PWA·관제 웹)** 로 동작하며, 백엔드가 없으면 통신 음영지역을 대비해 자동으로 로컬 엔진으로 폴백한다.
 
-웹 앱, 관제 대시보드, Android APK를 함께 제공한다. 백엔드 연결 환경에서는 `/api/v1`을 통해 실시간 데이터와 산행 기록을 사용하고, 정적 호스팅 환경에서는 로컬 데이터와 규칙 기반 폴백으로 주요 화면을 확인할 수 있다.
-
-Android 사용자는 GitHub Release에서 APK를 내려받아 설치할 수 있다. F-Droid 제출을 위한 소스 빌드 메타데이터도 포함되어 있으며, 현재 Android TWA는 `forestmate.onrender.com` hosted service를 열기 때문에 F-Droid 메타데이터에 `NonFreeNet` Anti-Feature를 명시한다.
+웹 앱, 관제 대시보드, Android APK를 함께 제공한다. 백엔드 연결 시 `/api/v1`로 실시간 공공데이터와 산행 기록을 사용하고, 정적 호스팅 환경에서는 로컬 데이터·규칙 기반 폴백으로 주요 화면을 확인할 수 있다.
 
 > 「2026년 산림 공공데이터·AI 활용 창업경진대회」 제품 및 서비스 개발 부문 출품 패키지.
+
+## 주요 기능
+
+- **전국 산 카탈로그** — 산림청 산정보 4,600여 개 산을 VWorld 지오코딩으로 좌표화해 검색·즐겨찾기. 현재 위치(GPS)·17개 시도별 탐색.
+- **실시간 산행지수** — 기상청 단기예보 + 국립산림과학원 산불위험예보(V2) + 산사태·일몰을 결합. 선택한 산의 위치 격자로 정밀 산출.
+- **실제 등산로 지도** — 산림청 등산로 공간정보(2,200여 산, 5만여 구간)를 난이도색 경로로 Leaflet 지도에 표시. 들머리까지 카카오맵/구글맵 길찾기.
+- **GPS 산행 추적** — 실제 위치(`watchPosition`)대로 경로·거리 기록(자동 진행 아님), 이동 멈춤+심박 이상 시 **자동 조난 감지** → 보호자·119 전파.
+- **AI 숲이** — 규칙 엔진/LLM(RAG) 의도 응답, 식물·버섯 식별 데모.
+- **개인화** — 실집계 배지·산행 캘린더·산행 일정 계획(날짜별 적합도)·위치/즐겨찾기 맞춤 알림(Web Push).
+- **B2G 관제 대시보드** — 실시간 KPI + WebSocket 피드 + k-익명화 위험 히트맵.
+
+Android 사용자는 GitHub Release에서 APK를 내려받아 설치할 수 있다. F-Droid 제출용 소스 빌드 메타데이터도 포함되며, 현재 Android TWA는 `forestmate.onrender.com` hosted service를 열기 때문에 F-Droid 메타데이터에 `NonFreeNet` Anti-Feature를 명시한다.
 
 ## 아키텍처
 
@@ -60,12 +70,14 @@ forest-mate/
 ├── server/               # FastAPI 백엔드
 │   ├── main.py           #   앱 조립 + 정적 프런트(app/) 동일 오리진 서빙
 │   ├── config.py         #   설정(.env) — 키 없으면 스냅샷/규칙 폴백
-│   ├── db.py, models.py  #   SQLAlchemy (dev SQLite / prod PostgreSQL+PostGIS)
+│   ├── db.py, models.py  #   SQLAlchemy (dev SQLite / prod PostgreSQL·연결 실패 시 자동 폴백)
 │   ├── adapters/         #   공공데이터 어댑터 (기상청·산불·산악기상 + TTL 캐시 + 폴백)
+│   ├── geo.py            #   KMA 격자 변환 + 시도 좌표 (정밀 산행지수·GPS)
+│   ├── data/             #   영속 카탈로그(catalog.json) + 등산로 선(trails/{code}.json)
 │   ├── services/         #   scoring(산행지수·추천·위험융합) · safety(조난감지·k익명화)
 │   │                     #   chat(의도엔진) · llm(Claude RAG) · bus(관제 WS pub/sub)
 │   ├── routers/          #   public · hikes(토큰인증) · dashboard(WS)
-│   └── tests/            #   pytest 20개 (스코어링·안전·API E2E·WebSocket)
+│   └── tests/            #   pytest 23개 (스코어링·안전·API E2E·WebSocket)
 ├── app/                  # 클라이언트 (정적 호스팅 가능, 백엔드와 동일 오리진 권장)
 │   ├── home.html         #   서비스 소개 랜딩
 │   ├── index.html        #   모바일 PWA — cloud 모드 시 LIVE 배지
