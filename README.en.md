@@ -130,7 +130,7 @@ forest-mate/
 
 ```bash
 cd forest-mate
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements.lock
 .venv/bin/uvicorn server.main:app --port 5181
 ```
 

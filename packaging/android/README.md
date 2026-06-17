@@ -70,6 +70,12 @@ npm run fingerprint
 
 APK는 Play Store가 아니라 직접 링크, GitHub Release, 또는 행사 제출 패키지로 배포한다. 사용자는 Android 설정에서 "알 수 없는 앱 설치"를 허용해야 설치할 수 있다.
 
+GitHub Release를 `published` 상태로 만들면 `.github/workflows/android-release.yml`이 signed APK와 `.sha256` 파일을 Release asset으로 업로드하고 GitHub artifact provenance를 생성한다. 이 workflow를 쓰려면 repository secrets에 다음 값을 먼저 넣는다.
+
+- `ANDROID_KEYSTORE_BASE64`: `android-signing.keystore`를 base64로 인코딩한 값
+- `BUBBLEWRAP_KEYSTORE_PASSWORD`: keystore 비밀번호
+- `BUBBLEWRAP_KEY_PASSWORD`: signing key 비밀번호
+
 ## 5. F-Droid 소스 빌드
 
 F-Droid 제출은 GitHub Release APK 업로드가 아니라 소스에서 unsigned release APK를 빌드하는 방식이다. 루트의 `.fdroid.yml`와 `fastlane/metadata/android/`가 제출 메타데이터의 기준이며, 자세한 절차는 `packaging/fdroid/README.md`를 따른다.

@@ -1995,6 +1995,9 @@ $("mntResults").addEventListener("click", (e) => {
 /* ---------------- 산 상세 (사진·시설·산행지수) ---------------- */
 const FAC_ICON = { 정상: "🏔", 대피소: "🏠", 조망점: "🔭", 위험지역: "⚠️", 헬기장: "🚁", 화장실: "🚻", 음수대: "💧", 약수터: "💧" };
 function themedHero(name, height = 0) {
+  if (globalThis.ForestMateHeroImages?.themedHero) {
+    return globalThis.ForestMateHeroImages.themedHero(name, height);
+  }
   // 사진 폴백 — 높이/이름 기반 테마 SVG(외부 의존 없음)
   const h = height;
   const title = esc(name);
@@ -2010,12 +2013,26 @@ function themedHero(name, height = 0) {
     <text x='24' y='280' font-family='sans-serif' font-size='22' font-weight='800' fill='#1B4332'>${title}${h ? " · " + esc(h) + "m" : ""}</text></svg>`;
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
+function heroProxyUrl(name, height = 0) {
+  const pageName = String(name || "").trim().split(/\s+/)[0] || "산";
+  const h = Math.max(0, Math.round(Number(height) || 0));
+  return `/api/v1/mountain-hero?name=${encodeURIComponent(pageName)}&height=${encodeURIComponent(h)}`;
+}
 async function loadHero(img, name, height) {
-  img.src = themedHero(name, height);                 // 즉시 폴백
-  try {                                               // 공개 사진 시도(위키 공개자료)
-    const r = await fetch(`https://ko.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name.split(" ")[0])}`);
-    if (r.ok) { const j = await r.json(); if (j.thumbnail?.source) img.src = j.thumbnail.source; }
-  } catch { /* 폴백 유지 */ }
+  if (globalThis.ForestMateHeroImages?.loadHeroImage) {
+    return globalThis.ForestMateHeroImages.loadHeroImage(img, name, height);
+  }
+  const fallback = themedHero(name, height);
+  const restoreFallback = () => {
+    img.onerror = null;
+    img.src = fallback;
+  };
+  img.onerror = restoreFallback;
+  img.src = fallback;                                // 즉시 폴백
+  const proxied = heroProxyUrl(name, height);
+  img.onerror = restoreFallback;
+  img.src = proxied;
+  return img.src;
 }
 async function openMountainDetail(listNo, name) {
   $("extModal").classList.add("show");
