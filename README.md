@@ -19,8 +19,6 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <a href="https://api.reuse.software/info/github.com/spcx0701/forest-mate"><img alt="REUSE status" src="https://api.reuse.software/badge/github.com/spcx0701/forest-mate"></a>
   <a href="https://forestmate.onrender.com/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Android APK" src="https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white"></a>
-  <a href="packaging/fdroid/README.md"><img alt="F-Droid candidate" src="https://img.shields.io/badge/F--Droid-candidate-1976D2?logo=fdroid&logoColor=white"></a>
   <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-5A0FC8?logo=pwa&logoColor=white">
   <img alt="No tracking SDK" src="https://img.shields.io/badge/no_tracking_SDK-verified-0B7A75">
 </p>
@@ -33,6 +31,12 @@
   <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="56"></a>
   <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="56"></a>
   <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" height="56"></a>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp" height="56">
+      <img alt="Get it on GitHub" src="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp" height="56">
+    </picture>
+  </a>
 </p>
 <p align="center">
   <strong>한국어</strong> · <a href="README.en.md">English</a>
@@ -44,11 +48,7 @@
   ·
   <a href="https://forestmate.onrender.com/dashboard.html"><strong>Dashboard</strong></a>
   ·
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>Android APK</strong></a>
-  ·
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>GitHub Release</strong></a>
-  ·
-  <a href="packaging/fdroid/README.md"><strong>F-Droid Candidate</strong></a>
+  <a href="https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408"><strong>공공데이터 활용사례</strong></a>
 </p>
 
 <p align="center">
@@ -59,7 +59,7 @@ ForestMate(숲길동무)는 산림 공공데이터와 AI 기반 안전 판단 �
 
 웹 앱, 관제 대시보드, Android APK를 함께 제공합니다. 백엔드 연결 시 `/api/v1`로 실시간 공공데이터와 산행 기록을 사용하고, 정적 호스팅 환경에서는 로컬 데이터·규칙 기반 폴백으로 주요 화면을 확인할 수 있습니다.
 
-> [「2026년 산림 공공데이터·AI 활용 창업경진대회」](https://www.kofpi.or.kr/notice/notice_01view.do?bb_seq=12456) 제품 및 서비스 개발 부문 출품 패키지.
+> [「2026년 산림 공공데이터·AI 활용 창업경진대회」](https://www.kofpi.or.kr/notice/notice_01view.do?bb_seq=12456) 제품 및 서비스 개발 부문 출품 패키지. [공공데이터포털 활용사례](https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408)에 등재되어 있습니다.
 
 ## 주요 기능
 

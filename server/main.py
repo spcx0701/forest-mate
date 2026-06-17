@@ -145,6 +145,7 @@ def _content_security_policy() -> str:
     img_src = (
         "'self'", "data:", "blob:", "https://api.vworld.kr", *MAP_TILE_ORIGINS,
         "https://play.google.com", "https://fdroid.gitlab.io", "https://github.com",
+        "https://raw.githubusercontent.com",
         "https://objects.githubusercontent.com", "https://forestmate.onrender.com",
     )
     connect_src = ("'self'", "https://api.vworld.kr", *MAP_TILE_ORIGINS, "https://ko.wikipedia.org")
