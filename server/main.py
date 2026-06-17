@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 
@@ -27,6 +27,35 @@ STATIC_LONG_CACHE_EXTENSIONS = (
     ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2"
 )
 API_PREFIX = "/api/v1"
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "base-uri 'self'; "
+    "object-src 'none'; "
+    "frame-ancestors 'none'; "
+    "frame-src 'none'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+    "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+    "img-src 'self' data: blob: https:; "
+    "font-src 'self' data: https:; "
+    "connect-src 'self' https://api.vworld.kr https://*.tile.openstreetmap.org "
+    "https://tile.openstreetmap.org https://ko.wikipedia.org; "
+    "manifest-src 'self'; "
+    "worker-src 'self' blob:; "
+    "form-action 'self'; "
+    "upgrade-insecure-requests"
+)
+SECURITY_HEADERS = {
+    "Content-Security-Policy": CONTENT_SECURITY_POLICY,
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": (
+        "accelerometer=(), camera=(), geolocation=(self), gyroscope=(), "
+        "microphone=(), payment=(), usb=()"
+    ),
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+}
 
 
 def _load_baked_catalog() -> bool:
@@ -41,6 +70,41 @@ def _load_baked_catalog() -> bool:
     except Exception as exc:  # noqa: BLE001
         log.warning("baked catalog 적재 실패: %s", exc)
     return True
+
+
+def _apply_security_headers(response) -> None:
+    for header, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+
+
+def _api_docs_page() -> str:
+    return """<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>숲길동무 ForestMate API Docs</title>
+<style>
+body{margin:0;background:#f6f9f4;color:#12301f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.55}
+main{max-width:780px;margin:0 auto;padding:48px 20px}
+h1{font-size:32px;margin:0 0 12px}
+p{color:#465b4f}
+a{color:#1f6b42;font-weight:800}
+.panel{background:#fff;border:1px solid #dbe7de;border-radius:10px;padding:20px;margin-top:22px}
+code{background:#eef5ef;border-radius:6px;padding:3px 6px}
+</style>
+</head>
+<body>
+<main>
+<h1>숲길동무 ForestMate API</h1>
+<p>ForestMate backend exposes its machine-readable OpenAPI schema without loading external documentation scripts.</p>
+<div class="panel">
+<p><a href="/openapi.json">OpenAPI JSON 열기</a></p>
+<p>Local health check: <code>GET /api/v1/healthz</code></p>
+</div>
+</main>
+</body>
+</html>"""
 
 
 async def _autoload_mountains() -> None:
@@ -75,11 +139,18 @@ async def lifespan(_: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="숲길동무 ForestMate API", version="1.1.0", lifespan=lifespan)
+    app = FastAPI(
+        title="숲길동무 ForestMate API",
+        version="1.1.0",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+    )
 
     @app.middleware("http")
     async def add_static_cache_headers(request, call_next):
         response = await call_next(request)
+        _apply_security_headers(response)
         path = request.url.path.lower()
         if response.status_code != 200:
             return response
@@ -99,6 +170,10 @@ def create_app() -> FastAPI:
     app.include_router(watch.router, prefix=API_PREFIX, tags=["watch"])
     app.include_router(dashboard.router, prefix=API_PREFIX, tags=["dashboard"])
     app.include_router(push.router, prefix=API_PREFIX, tags=["push"])
+
+    @app.api_route("/docs", methods=["GET", "HEAD"], include_in_schema=False)
+    async def api_docs():
+        return HTMLResponse(_api_docs_page())
 
     # TWA(Android) Digital Asset Links — 정적 마운트가 .well-known 점(.) 경로를
     # 막는 프록시도 있어 명시 라우트로 보장. Play 앱 서명키 지문을 채워 배포한다.

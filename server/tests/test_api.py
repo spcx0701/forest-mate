@@ -13,6 +13,25 @@ def test_healthz_snapshot_mode(client):
     assert body["live_data"] is False  # 테스트는 스냅샷 모드
 
 
+@pytest.mark.parametrize("path", ["/index.html", "/docs", "/api/v1/healthz"])
+def test_security_headers_present(client, path):
+    res = client.get(path)
+    assert res.status_code == 200
+    assert res.headers["x-frame-options"] == "DENY"
+    assert res.headers["x-content-type-options"] == "nosniff"
+    assert res.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert "frame-ancestors 'none'" in res.headers["content-security-policy"]
+
+
+def test_api_docs_avoid_external_swagger_assets(client):
+    res = client.get("/docs")
+    assert res.status_code == 200
+    assert 'href="/openapi.json"' in res.text
+    assert "swagger-ui-dist" not in res.text
+    assert "cdn.jsdelivr.net" not in res.text
+    assert client.head("/docs").status_code == 200
+
+
 @pytest.mark.parametrize(("region", "status", "score"), [
     ("eunpyeong", 200, 82),
     ("nowhere", 404, None),
