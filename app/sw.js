@@ -1,7 +1,7 @@
 /* 숲길동무 오프라인 서비스워커 — 음영지역 대비 전체 자산 캐시 (네트워크 우선) */
-const CACHE = "forestmate-v29";
+const CACHE = "forestmate-v30";
 const ASSETS = [
-  "./index.html", "./app.css?v=20260617-ftue-social-center-leaflet-map", "./app.js?v=20260617-server-connection-leaflet-map", "./condition-details.js?v=20260617-leaflet-map", "./data.js",
+  "./index.html", "./app.css?v=20260617-ftue-social-center-leaflet-map", "./app.js?v=20260618-hero-fallback", "./condition-details.js?v=20260617-leaflet-map", "./hero-images.js?v=20260618-hero-fallback", "./data.js",
   "./dashboard.html", "./home.html", "./home.i18n.js?v=20260618-civic-badges",
   "./manifest.json", "./icon-192.png", "./icon-512.png",
 ];

@@ -26,6 +26,16 @@ def test_security_headers_present(client, path):
     assert "*" not in csp
 
 
+def test_csp_allows_wikipedia_thumbnail_images(client):
+    res = client.get("/index.html")
+    csp = res.headers["content-security-policy"]
+
+    assert "connect-src" in csp
+    assert "https://ko.wikipedia.org" in csp
+    assert "img-src" in csp
+    assert "https://upload.wikimedia.org" in csp
+
+
 def test_api_docs_avoid_external_swagger_assets(client):
     res = client.get("/docs")
     assert res.status_code == 200

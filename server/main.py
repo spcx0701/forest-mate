@@ -148,6 +148,7 @@ def _content_security_policy() -> str:
         "https://raw.githubusercontent.com",
         "https://tachibanagenerallaboratories.github.io",
         "https://objects.githubusercontent.com", "https://forestmate.onrender.com",
+        "https://upload.wikimedia.org",
     )
     connect_src = ("'self'", "https://api.vworld.kr", *MAP_TILE_ORIGINS, "https://ko.wikipedia.org")
     directives = (

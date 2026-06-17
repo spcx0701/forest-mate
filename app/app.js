@@ -1995,6 +1995,9 @@ $("mntResults").addEventListener("click", (e) => {
 /* ---------------- 산 상세 (사진·시설·산행지수) ---------------- */
 const FAC_ICON = { 정상: "🏔", 대피소: "🏠", 조망점: "🔭", 위험지역: "⚠️", 헬기장: "🚁", 화장실: "🚻", 음수대: "💧", 약수터: "💧" };
 function themedHero(name, height = 0) {
+  if (globalThis.ForestMateHeroImages?.themedHero) {
+    return globalThis.ForestMateHeroImages.themedHero(name, height);
+  }
   // 사진 폴백 — 높이/이름 기반 테마 SVG(외부 의존 없음)
   const h = height;
   const title = esc(name);
@@ -2011,11 +2014,27 @@ function themedHero(name, height = 0) {
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
 async function loadHero(img, name, height) {
-  img.src = themedHero(name, height);                 // 즉시 폴백
+  if (globalThis.ForestMateHeroImages?.loadHeroImage) {
+    return globalThis.ForestMateHeroImages.loadHeroImage(img, name, height);
+  }
+  const fallback = themedHero(name, height);
+  const restoreFallback = () => {
+    img.onerror = null;
+    img.src = fallback;
+  };
+  img.onerror = restoreFallback;
+  img.src = fallback;                                // 즉시 폴백
   try {                                               // 공개 사진 시도(위키 공개자료)
     const r = await fetch(`https://ko.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name.split(" ")[0])}`);
-    if (r.ok) { const j = await r.json(); if (j.thumbnail?.source) img.src = j.thumbnail.source; }
-  } catch { /* 폴백 유지 */ }
+    if (r.ok) {
+      const j = await r.json();
+      if (j.thumbnail?.source) {
+        img.onerror = restoreFallback;
+        img.src = j.thumbnail.source;
+      }
+    }
+  } catch { restoreFallback(); }
+  return img.src;
 }
 async function openMountainDetail(listNo, name) {
   $("extModal").classList.add("show");
