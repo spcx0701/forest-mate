@@ -129,6 +129,7 @@ def test_oauth_start_and_callback_create_account_session(client, register_device
     from server.routers import auth as auth_router
 
     async def fake_fetch_oauth_profile(provider, code, redirect_uri):
+        await asyncio.sleep(0)
         assert provider == "google"
         assert code == "provider-code"
         assert redirect_uri.endswith("/api/v1/auth/oauth/google/callback")
@@ -330,11 +331,13 @@ def test_oauth_profile_fetch_maps_all_supported_providers(monkeypatch):
             return False
 
         async def post(self, url, data, headers):
+            await asyncio.sleep(0)
             self.provider = next(p for p, cfg in auth_router.OAUTH_PROVIDERS.items()
                                  if cfg["token_url"] == url)
             return FakeResponse({"access_token": f"{self.provider}-token"})
 
         async def get(self, url, headers):
+            await asyncio.sleep(0)
             provider = self.provider
             payloads = {
                 "google": {"sub": "g-1", "email": "GOOGLE@EXAMPLE.COM",
@@ -399,6 +402,7 @@ def test_oauth_profile_fetch_rejects_missing_access_token(monkeypatch):
             return False
 
         async def post(self, url, data, headers):
+            await asyncio.sleep(0)
             return FakeResponse()
 
     monkeypatch.setattr(auth_router.httpx, "AsyncClient", lambda *args, **kwargs: FakeClient())

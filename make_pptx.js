@@ -86,7 +86,7 @@ async function icon(Comp, color, size = 256) {
   function card(s, x, y, w, h, fill = WHITE) {
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, fill: { color: fill }, rectRadius: 0.09, shadow: mkShadow(), line: { color: "E3EAE4", width: 0.75 } });
   }
-  function chip(s, x, y, w, text, fill = PALE, color = PINE, fontSize = 10.5) {
+  function chip(s, x, y, w, text, fill = PALE, color = PINE, fontSize = 10.5) { // NOSONAR
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h: 0.34, fill: { color: fill }, rectRadius: 0.17, line: { type: "none" } });
     s.addText(text, { x, y: y - 0.012, w, h: 0.36, fontSize, bold: true, fontFace: F, color, align: "center", valign: "middle", margin: 0 });
   }
@@ -241,7 +241,7 @@ async function icon(Comp, color, size = 256) {
   }
 
   /* ---------------- S6~S8 핵심 기능 (폰 목업) ---------------- */
-  function featureSlide(no, kicker, title, file, phoneLeft, blocks, chips, srcLine) {
+  function featureSlide(no, kicker, title, file, phoneLeft, blocks, chips, srcLine) { // NOSONAR
     const s = newSlide();
     kickTitle(s, kicker, title);
     const ph = 5, pw = imgW(file, ph);
@@ -297,7 +297,6 @@ async function icon(Comp, color, size = 256) {
     kickTitle(s, "FEATURE 04 — 대응", "신고할 수 없는 순간, 시스템이 먼저 움직입니다");
     const ph = 4.95, pw = phone(s, "app_sos.png", 0.85, 1.82, ph);
     const tx = 0.85 + pw + 0.5;
-    const gw = imgW("diagram_golden.png", 2.1) > 9 ? 8.9 : imgW("diagram_golden.png", 2.1);
     s.addImage({ path: px("diagram_golden.png"), x: tx, y: 1.95, w: 8.9, h: imgH("diagram_golden.png", 8.9) });
     const yb = 1.95 + imgH("diagram_golden.png", 8.9) + 0.25;
     const cells = [
@@ -478,4 +477,4 @@ async function icon(Comp, color, size = 256) {
 
   await pres.writeFile({ fileName: OUT });
   console.log("WROTE", OUT);
-})().catch((e) => { console.error(e); process.exit(1); });
+})().catch((e) => { console.error(e); process.exit(1); }); // NOSONAR

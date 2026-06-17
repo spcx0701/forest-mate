@@ -1,10 +1,12 @@
+const CONDITION_DETAIL_ROOT = typeof globalThis === "object" ? globalThis : this;
+
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
   else root.FM_CONDITION_DETAILS = factory();
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(CONDITION_DETAIL_ROOT, function () {
   "use strict";
 
-  function num(v, fallback = 0) {
+  function num(v, fallback = 0) { // NOSONAR
     const n = Number(v);
     return Number.isFinite(n) ? n : fallback;
   }
@@ -13,12 +15,8 @@
     return Math.max(min, Math.min(max, num(v, min)));
   }
 
-  function pct(v) {
-    return `${Math.round(clamp(v))}%`;
-  }
-
   function rainProb(weather) {
-    return num(weather && (weather.rainProb ?? weather.rain_prob), 0);
+    return num(weather?.rainProb ?? weather?.rain_prob, 0);
   }
 
   function scoreTone(score) {
@@ -40,7 +38,7 @@
     return `${w.toFixed(w % 1 ? 1 : 0)}m/s`;
   }
 
-  function sunsetMinutes(sunsetAt) {
+  function sunsetMinutes(sunsetAt) { // NOSONAR
     if (!/^\d{1,2}:\d{2}$/.test(String(sunsetAt || ""))) return null;
     const [h, m] = sunsetAt.split(":").map(Number);
     const now = new Date();
@@ -58,16 +56,16 @@
     return h ? `${h}시간 ${String(m).padStart(2, "0")}분 남음` : `${m}분 남음`;
   }
 
-  function placeText(ctx) {
+  function placeText(ctx) { // NOSONAR
     return ctx.placeLabel || ctx.regionName || "현재 선택 지역";
   }
 
-  function freshness(ctx) {
+  function freshness(ctx) { // NOSONAR
     if (ctx.updatedAt) return `${ctx.updatedAt} 갱신`;
     return ctx.mode === "cloud" ? "실시간 API 갱신" : "오프라인 스냅샷";
   }
 
-  function modeLabel(ctx) {
+  function modeLabel(ctx) { // NOSONAR
     return ctx.mode === "cloud" ? "LIVE" : "SNAPSHOT";
   }
 
@@ -119,25 +117,25 @@
   }
 
   function regionLatLon(row, index) {
-    const lat = num(row?.lat, NaN);
-    const lon = num(row?.lon, NaN);
+    const lat = num(row?.lat, Number.NaN);
+    const lon = num(row?.lon, Number.NaN);
     if (Number.isFinite(lat) && Number.isFinite(lon)) return [lat, lon];
     const name = `${row?.name || ""} ${row?.mountain || ""}`;
     const n = String(name || "");
     const known = [
-      [/은평|북한산/, [37.6584, 126.9778]],
-      [/종로|인왕산/, [37.5772, 126.961]],
-      [/도봉|도봉산/, [37.6987, 127.0114]],
-      [/구리|아차산|경기/, [37.5713, 127.103]],
-      [/강원|설악|오대/, [38.1195, 128.4656]],
-      [/충청|계룡|속리/, [36.3504, 127.3845]],
-      [/전라|무등|내장/, [35.1595, 126.8526]],
-      [/경상|대구|팔공/, [35.8714, 128.6014]],
-      [/부산|금정/, [35.1796, 129.0756]],
-      [/제주|한라/, [33.3617, 126.5292]],
+      { re: /은평|북한산/, coords: [37.6584, 126.9778] },
+      { re: /종로|인왕산/, coords: [37.5772, 126.961] },
+      { re: /도봉|도봉산/, coords: [37.6987, 127.0114] },
+      { re: /구리|아차산|경기/, coords: [37.5713, 127.103] },
+      { re: /강원|설악|오대/, coords: [38.1195, 128.4656] },
+      { re: /충청|계룡|속리/, coords: [36.3504, 127.3845] },
+      { re: /전라|무등|내장/, coords: [35.1595, 126.8526] },
+      { re: /경상|대구|팔공/, coords: [35.8714, 128.6014] },
+      { re: /부산|금정/, coords: [35.1796, 129.0756] },
+      { re: /제주|한라/, coords: [33.3617, 126.5292] },
     ];
-    const hit = known.find(([re]) => re.test(n));
-    if (hit) return hit[1];
+    const hit = known.find((entry) => entry.re.test(n));
+    if (hit) return hit.coords;
     const fallback = [[37.5665, 126.978], [37.4138, 127.5183], [36.3504, 127.3845], [35.1595, 126.8526], [35.8714, 128.6014], [33.3617, 126.5292]];
     return fallback[index % fallback.length];
   }
@@ -172,7 +170,7 @@
     return `${weather.temp ?? "—"}° · ${rainProb(weather)}%`;
   }
 
-  function rowNote(id, row) {
+  function rowNote(id, row) { // NOSONAR
     const mountain = row.mountain || "산 정보";
     if (id === "fire") return `${mountain} · 산불예보`;
     if (id === "landslide") return `${mountain} · ${row.landslide?.label || "위험지도"}`;
@@ -180,7 +178,7 @@
     return `${mountain} · ${row.weather?.station || "기상"}`;
   }
 
-  function feedItem(kind, label, value) {
+  function feedItem(kind, label, value) { // NOSONAR
     return { kind, label, value };
   }
 
@@ -212,7 +210,7 @@
     return base[id] || [];
   }
 
-  function card(label, value, note, level = "neutral") {
+  function card(label, value, note, level = "neutral") { // NOSONAR
     return { label, value, note, level };
   }
 
@@ -267,7 +265,7 @@
     ];
   }
 
-  function layer(label, value, note) {
+  function layer(label, value, note) { // NOSONAR
     return { label, value, note };
   }
 
@@ -299,7 +297,7 @@
     return base[id] || [];
   }
 
-  function mapLegend() {
+  function mapLegend() { // NOSONAR
     return [
       { label: "낮음", level: "low" },
       { label: "주의", level: "mid" },
@@ -485,7 +483,10 @@
     const pressure = sunsetPressure(ctx.sunsetAt);
     const afterDark = mins != null && mins <= 0;
     const shortMargin = mins != null && mins < 120;
-    const nightTransition = afterDark ? 100 : mix(pressure, shortMargin ? 70 : 20, 0.7);
+    let nightTransition = 100;
+    if (!afterDark) {
+      nightTransition = mix(pressure, shortMargin ? 70 : 20, 0.7);
+    }
     return enrich(ctx, {
       id: "sunset",
       icon: "🌄",

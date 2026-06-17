@@ -177,7 +177,7 @@ async def index_gps(lat: float, lon: float, db: Annotated[Session, Depends(get_d
     rows = db.execute(select(Mountain).where(Mountain.lat.is_not(None))).scalars().all()
     sgg, nearest_name = "", ""
     if rows:
-        d, nm = min(((_haversine(lat, lon, m.lat, m.lon), m) for m in rows), key=lambda x: x[0])
+        _, nm = min(((_haversine(lat, lon, m.lat, m.lon), m) for m in rows), key=lambda x: x[0])
         sgg, nearest_name = nm.sgg, nm.name
     cond = await conditions_for_region(region_for_coords(lat, lon, sgg))
     idx = hike_index(cond)
