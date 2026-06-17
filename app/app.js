@@ -298,15 +298,25 @@ function toast(title, body, ico = "🔔", alert = false, ms = 3400) {
 
 /* ---------------- 탭 라우팅 ---------------- */
 const tabs = qsa("nav a");
-const SCREEN_IDS = new Set(["home", "trail", "sos", "ai", "my"]);
 function safeScreenId(id) {
-  return SCREEN_IDS.has(String(id || "")) ? String(id) : "home";
+  switch (String(id || "")) {
+    case "trail":
+    case "sos":
+    case "ai":
+    case "my":
+      return String(id);
+    default:
+      return "home";
+  }
 }
 function show(id) {
   const activeId = safeScreenId(id);
-  qsa(".screen").forEach((s) => s.classList.toggle("active", s.id === activeId));
+  qsa(".screen").forEach((s) => {
+    const active = s.id === activeId;
+    s.classList.toggle("active", active);
+    if (active) s.scrollTop = 0;
+  });
   tabs.forEach((a) => a.classList.toggle("on", a.dataset.t === activeId));
-  const sc = $(activeId); if (sc) sc.scrollTop = 0;
 }
 tabs.forEach((a) => a.addEventListener("click", (e) => {
   e.preventDefault();
