@@ -24,13 +24,10 @@ module.exports = { themedHero, loadHero };`,
   return module.exports;
 }
 
-test("loadHero restores the generated fallback when the remote thumbnail image fails", async () => {
-  const { loadHero } = loadHeroFunctions(async () => ({
-    ok: true,
-    json: async () => ({
-      thumbnail: { source: "https://upload.wikimedia.org/example/bukhansan.jpg" },
-    }),
-  }));
+test("loadHero uses the same-origin proxy and restores the generated fallback when it fails", async () => {
+  const { loadHero } = loadHeroFunctions(async () => {
+    throw new Error("loadHero should not fetch external image metadata from the browser");
+  });
   const assigned = [];
   const img = {
     _src: "",
@@ -47,7 +44,7 @@ test("loadHero restores the generated fallback when the remote thumbnail image f
   await loadHero(img, "북한산", 836);
 
   assert.match(assigned[0], /^data:image\/svg\+xml;charset=utf-8,/);
-  assert.equal(img.src, "https://upload.wikimedia.org/example/bukhansan.jpg");
+  assert.equal(img.src, "/api/v1/mountain-hero?name=%EB%B6%81%ED%95%9C%EC%82%B0&height=836");
   assert.equal(typeof img.onerror, "function");
 
   img.onerror();

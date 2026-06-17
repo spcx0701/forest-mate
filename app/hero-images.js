@@ -22,7 +22,13 @@
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
   }
 
-  async function loadHeroImage(img, name, height, options = {}) {
+  function heroProxyUrl(name, height = 0) {
+    const pageName = String(name || "").trim().split(/\s+/)[0] || "산";
+    const h = Math.max(0, Math.round(Number(height) || 0));
+    return `/api/v1/mountain-hero?name=${encodeURIComponent(pageName)}&height=${encodeURIComponent(h)}`;
+  }
+
+  async function loadHeroImage(img, name, height) {
     const fallback = themedHero(name, height);
     if (!img) return fallback;
 
@@ -33,24 +39,11 @@
     img.onerror = restoreFallback;
     img.src = fallback;
 
-    const fetchImpl = options.fetchImpl || root?.fetch?.bind(root);
-    if (!fetchImpl) return fallback;
-
-    try {
-      const pageName = String(name || "").split(" ")[0] || "산";
-      const response = await fetchImpl(`https://ko.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageName)}`);
-      if (!response.ok) return fallback;
-      const data = await response.json();
-      if (data.thumbnail?.source) {
-        img.onerror = restoreFallback;
-        img.src = data.thumbnail.source;
-        return data.thumbnail.source;
-      }
-    } catch {
-      restoreFallback();
-    }
-    return fallback;
+    const proxied = heroProxyUrl(name, height);
+    img.onerror = restoreFallback;
+    img.src = proxied;
+    return proxied;
   }
 
-  return { themedHero, loadHeroImage };
+  return { themedHero, heroProxyUrl, loadHeroImage };
 });

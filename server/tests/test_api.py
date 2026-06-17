@@ -35,12 +35,71 @@ def test_security_headers_present(client, path):
     assert "*" not in csp
 
 
-def test_csp_allows_wikipedia_thumbnail_images(client):
+def test_csp_keeps_wikipedia_thumbnail_hosts_out_of_browser(client):
     res = client.get("/index.html")
     directives = _csp_directives(res.headers["content-security-policy"])
 
-    assert "https://ko.wikipedia.org" in directives["connect-src"]
-    assert "https://upload.wikimedia.org" in directives["img-src"]
+    assert "'self'" in directives["connect-src"]
+    assert directives["connect-src"].isdisjoint({"https://ko.wikipedia.org"})
+    assert "'self'" in directives["img-src"]
+    assert directives["img-src"].isdisjoint({"https://upload.wikimedia.org"})
+
+
+def test_mountain_hero_proxy_serves_validated_same_origin_image(client, monkeypatch):
+    from server.routers import public
+
+    public._HERO_CACHE.clear()
+
+    async def fake_thumbnail_url(name):
+        assert name == "북한산"
+        return "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
+
+    async def fake_image(url):
+        assert url == "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
+        return b"jpeg-bytes", "image/jpeg"
+
+    monkeypatch.setattr(public, "_fetch_wikipedia_thumbnail_url", fake_thumbnail_url)
+    monkeypatch.setattr(public, "_fetch_allowed_hero_image", fake_image)
+
+    res = client.get("/api/v1/mountain-hero", params={"name": "북한산", "height": 836})
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("image/jpeg")
+    assert res.headers["cache-control"] == "public, max-age=86400"
+    assert res.content == b"jpeg-bytes"
+
+
+def test_mountain_hero_proxy_uses_svg_fallback_when_remote_fails(client, monkeypatch):
+    from server.routers import public
+
+    public._HERO_CACHE.clear()
+
+    async def missing_thumbnail_url(name):
+        return None
+
+    async def unexpected_image(url):
+        raise AssertionError("image fetch should not run without a validated thumbnail URL")
+
+    monkeypatch.setattr(public, "_fetch_wikipedia_thumbnail_url", missing_thumbnail_url)
+    monkeypatch.setattr(public, "_fetch_allowed_hero_image", unexpected_image)
+
+    res = client.get("/api/v1/mountain-hero", params={"name": "북한산", "height": 836})
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("image/svg+xml")
+    assert res.headers["cache-control"] == "public, max-age=3600"
+    assert b"<svg" in res.content
+    assert "upload.wikimedia.org" not in res.text
+
+
+def test_mountain_hero_url_allowlist_rejects_non_wikimedia_hosts():
+    from server.routers import public
+
+    assert public._is_allowed_hero_image_url(
+        "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
+    )
+    assert not public._is_allowed_hero_image_url("https://evil.example/example.jpg")
+    assert not public._is_allowed_hero_image_url("http://upload.wikimedia.org/example.jpg")
 
 
 def test_api_docs_avoid_external_swagger_assets(client):

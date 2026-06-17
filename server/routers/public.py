@@ -2,10 +2,13 @@
 import asyncio
 import json
 import math
+from html import escape as html_escape
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote, urlparse
 
-from fastapi import APIRouter, Depends, HTTPException
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -20,6 +23,141 @@ from ..services import chat as chat_service
 from ..services.scoring import fused_risk, hike_index, recommend
 
 router = APIRouter()
+
+_HERO_ALLOWED_HOST = "upload.wikimedia.org"
+_HERO_ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+_HERO_CACHE: dict[str, tuple[bytes, str]] = {}
+_HERO_CACHE_MAX_ENTRIES = 128
+_HERO_MAX_BYTES = 2_000_000
+_HERO_TIMEOUT = httpx.Timeout(4.0, connect=2.0)
+_HERO_REMOTE_CACHE_CONTROL = "public, max-age=86400"
+_HERO_FALLBACK_CACHE_CONTROL = "public, max-age=3600"
+_HERO_USER_AGENT = "ForestMate/1.0 (https://github.com/pinehill99/forest-mate)"
+
+
+def _normalize_hero_name(name: str) -> str:
+    normalized = " ".join(str(name or "").split()).split(" ")[0]
+    return normalized[:80] or "산"
+
+
+def _is_allowed_hero_image_url(url: str) -> bool:
+    parsed = urlparse(url or "")
+    return (
+        parsed.scheme == "https"
+        and parsed.netloc == _HERO_ALLOWED_HOST
+        and parsed.path.startswith("/wikipedia/")
+    )
+
+
+def _fallback_hero_svg(name: str, height: int = 0) -> bytes:
+    h = max(0, min(int(height or 0), 9999))
+    title = html_escape(name or "산")
+    top = "#52B788"
+    if h >= 1200:
+        top = "#2D6A4F"
+    elif h >= 600:
+        top = "#40916C"
+    sky = "#A8C7B5" if h >= 1200 else "#CDE7D4"
+    label = f"{title} · {h}m" if h else title
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{sky}"/><stop offset="1" stop-color="#EAF4EC"/></linearGradient></defs>
+<rect width="600" height="300" fill="url(#g)"/>
+<polygon points="0,300 150,150 260,220 380,90 500,210 600,150 600,300" fill="{top}" opacity="0.9"/>
+<polygon points="320,300 460,120 600,260 600,300" fill="{top}"/>
+<text x="24" y="280" font-family="sans-serif" font-size="22" font-weight="800" fill="#1B4332">{label}</text>
+</svg>"""
+    return svg.encode("utf-8")
+
+
+async def _fetch_wikipedia_thumbnail_url(name: str) -> str | None:
+    page_name = quote(_normalize_hero_name(name), safe="")
+    url = f"https://ko.wikipedia.org/api/rest_v1/page/summary/{page_name}"
+    try:
+        async with httpx.AsyncClient(timeout=_HERO_TIMEOUT, follow_redirects=False) as client:
+            response = await client.get(
+                url,
+                headers={"accept": "application/json", "user-agent": _HERO_USER_AGENT},
+            )
+        if response.status_code != 200:
+            return None
+        data = response.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+
+    source = data.get("thumbnail", {}).get("source")
+    if isinstance(source, str) and _is_allowed_hero_image_url(source):
+        return source
+    return None
+
+
+async def _fetch_allowed_hero_image(url: str) -> tuple[bytes, str] | None:
+    if not _is_allowed_hero_image_url(url):
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=_HERO_TIMEOUT, follow_redirects=True) as client:
+            headers = {
+                "accept": "image/webp,image/png,image/jpeg",
+                "user-agent": _HERO_USER_AGENT,
+            }
+            async with client.stream("GET", url, headers=headers) as response:
+                if response.status_code != 200:
+                    return None
+                if not _is_allowed_hero_image_url(str(response.url)):
+                    return None
+                content_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+                if content_type not in _HERO_ALLOWED_CONTENT_TYPES:
+                    return None
+                content_length = response.headers.get("content-length")
+                if content_length and int(content_length) > _HERO_MAX_BYTES:
+                    return None
+                chunks: list[bytes] = []
+                total = 0
+                async for chunk in response.aiter_bytes():
+                    total += len(chunk)
+                    if total > _HERO_MAX_BYTES:
+                        return None
+                    chunks.append(chunk)
+    except (httpx.HTTPError, ValueError):
+        return None
+    return b"".join(chunks), content_type
+
+
+def _cache_hero_image(key: str, payload: bytes, media_type: str) -> None:
+    if len(_HERO_CACHE) >= _HERO_CACHE_MAX_ENTRIES:
+        _HERO_CACHE.pop(next(iter(_HERO_CACHE)))
+    _HERO_CACHE[key] = (payload, media_type)
+
+
+@router.get("/mountain-hero")
+async def mountain_hero(name: str = "산", height: int = 0):
+    normalized_name = _normalize_hero_name(name)
+    normalized_height = max(0, min(int(height or 0), 9999))
+    cache_key = f"{normalized_name}:{normalized_height}"
+    if cached := _HERO_CACHE.get(cache_key):
+        payload, media_type = cached
+        return Response(
+            content=payload,
+            media_type=media_type,
+            headers={"Cache-Control": _HERO_REMOTE_CACHE_CONTROL},
+        )
+
+    thumbnail_url = await _fetch_wikipedia_thumbnail_url(normalized_name)
+    if thumbnail_url:
+        image = await _fetch_allowed_hero_image(thumbnail_url)
+        if image:
+            payload, media_type = image
+            _cache_hero_image(cache_key, payload, media_type)
+            return Response(
+                content=payload,
+                media_type=media_type,
+                headers={"Cache-Control": _HERO_REMOTE_CACHE_CONTROL},
+            )
+
+    return Response(
+        content=_fallback_hero_svg(normalized_name, normalized_height),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": _HERO_FALLBACK_CACHE_CONTROL},
+    )
 
 
 @router.get("/healthz")

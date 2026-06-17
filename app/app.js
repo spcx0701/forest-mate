@@ -2013,6 +2013,11 @@ function themedHero(name, height = 0) {
     <text x='24' y='280' font-family='sans-serif' font-size='22' font-weight='800' fill='#1B4332'>${title}${h ? " · " + esc(h) + "m" : ""}</text></svg>`;
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
+function heroProxyUrl(name, height = 0) {
+  const pageName = String(name || "").trim().split(/\s+/)[0] || "산";
+  const h = Math.max(0, Math.round(Number(height) || 0));
+  return `/api/v1/mountain-hero?name=${encodeURIComponent(pageName)}&height=${encodeURIComponent(h)}`;
+}
 async function loadHero(img, name, height) {
   if (globalThis.ForestMateHeroImages?.loadHeroImage) {
     return globalThis.ForestMateHeroImages.loadHeroImage(img, name, height);
@@ -2024,16 +2029,9 @@ async function loadHero(img, name, height) {
   };
   img.onerror = restoreFallback;
   img.src = fallback;                                // 즉시 폴백
-  try {                                               // 공개 사진 시도(위키 공개자료)
-    const r = await fetch(`https://ko.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name.split(" ")[0])}`);
-    if (r.ok) {
-      const j = await r.json();
-      if (j.thumbnail?.source) {
-        img.onerror = restoreFallback;
-        img.src = j.thumbnail.source;
-      }
-    }
-  } catch { restoreFallback(); }
+  const proxied = heroProxyUrl(name, height);
+  img.onerror = restoreFallback;
+  img.src = proxied;
   return img.src;
 }
 async function openMountainDetail(listNo, name) {

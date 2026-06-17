@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-test("hero image loader restores the generated fallback when a remote thumbnail fails", async () => {
+test("hero image loader uses the same-origin proxy and restores the generated fallback when it fails", async () => {
   const { loadHeroImage } = require("./hero-images.js");
   const assigned = [];
   const img = {
@@ -15,17 +15,11 @@ test("hero image loader restores the generated fallback when a remote thumbnail 
       return this._src;
     },
   };
-  const fetchImpl = async () => ({
-    ok: true,
-    json: async () => ({
-      thumbnail: { source: "https://upload.wikimedia.org/example/bukhansan.jpg" },
-    }),
-  });
 
-  await loadHeroImage(img, "북한산", 836, { fetchImpl });
+  await loadHeroImage(img, "북한산", 836);
 
   assert.match(assigned[0], /^data:image\/svg\+xml;charset=utf-8,/);
-  assert.equal(img.src, "https://upload.wikimedia.org/example/bukhansan.jpg");
+  assert.equal(img.src, "/api/v1/mountain-hero?name=%EB%B6%81%ED%95%9C%EC%82%B0&height=836");
   assert.equal(typeof img.onerror, "function");
 
   img.onerror();
