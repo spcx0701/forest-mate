@@ -28,30 +28,10 @@
 </p>
 
 <p align="center">
-  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-google-play.webp" height="60">
-      <img alt="Get it on Google Play" src="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-google-play.webp" height="60">
-    </picture>
-  </a>
-  <a href="https://f-droid.org/packages/kr.forestmate.app/">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="60">
-      <img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="60">
-    </picture>
-  </a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-obtainium.webp" height="60">
-      <img alt="Get it on Obtainium" src="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-obtainium.webp" height="60">
-    </picture>
-  </a>
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp" height="60">
-      <img alt="Get it on GitHub" src="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp" height="60">
-    </picture>
-  </a>
+  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="80"></a>
+  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="80"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="80"></a>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Get it on GitHub" src="https://tachibanagenerallaboratories.github.io/images/badges/GitHub/get-it-on-github.png" height="80"></a>
 </p>
 <p align="center">
   <a href="README.md">Korean</a> &middot; <strong>English</strong>
