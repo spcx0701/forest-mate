@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     public_base_url: str = ""  # 비우면 요청 Host 기준으로 redirect_uri 생성
     auth_session_days: int = 90
     auth_state_ttl_minutes: int = 10
+    watch_pair_claim_window_s: int = 60
+    watch_pair_claim_max_attempts: int = 10
     google_client_id: str = ""
     google_client_secret: str = ""
     kakao_client_id: str = ""      # Kakao REST API key

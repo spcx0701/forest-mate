@@ -12,9 +12,19 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..auth import (AuthContext, create_session, get_auth_context, hash_password,
-                    link_device_token_to_user, normalize_email, token_hash,
-                    validate_email, verify_password)
+from ..auth import (
+    DUMMY_PASSWORD_HASH,
+    AuthContext,
+    _aware,
+    create_session,
+    get_auth_context,
+    hash_password,
+    link_device_token_to_user,
+    normalize_email,
+    token_hash,
+    validate_email,
+    verify_password,
+)
 from ..config import get_settings
 from ..db import get_db
 from ..models import AuthIdentity, OAuthState, User, UserDevice, utcnow
@@ -163,7 +173,8 @@ async def login(body: AuthLoginIn, request: Request, db: Session = Depends(get_d
     identity = db.scalar(select(AuthIdentity).where(
         AuthIdentity.provider == "password", AuthIdentity.provider_user_id == email
     ))
-    if not identity or not verify_password(body.password, identity.credential_hash):
+    credential_hash = identity.credential_hash if identity else DUMMY_PASSWORD_HASH
+    if not identity or not verify_password(body.password, credential_hash):
         raise HTTPException(401, "invalid email or password")
     user = db.get(User, identity.user_id)
     if not user:
@@ -261,6 +272,7 @@ async def fetch_oauth_profile(provider: str, code: str, redirect_uri: str) -> di
         return {
             "provider_user_id": str(raw["sub"]),
             "email": normalize_email(raw.get("email", "")) or None,
+            "email_verified": raw.get("email_verified") is True,
             "name": raw.get("name") or raw.get("given_name") or "산친구",
             "avatar_url": raw.get("picture") or "",
         }
@@ -270,6 +282,7 @@ async def fetch_oauth_profile(provider: str, code: str, redirect_uri: str) -> di
         return {
             "provider_user_id": str(raw["id"]),
             "email": normalize_email(account.get("email", "")) or None,
+            "email_verified": account.get("is_email_verified") is True,
             "name": profile.get("nickname") or "카카오 산친구",
             "avatar_url": profile.get("profile_image_url") or profile.get("thumbnail_image_url") or "",
         }
@@ -277,6 +290,7 @@ async def fetch_oauth_profile(provider: str, code: str, redirect_uri: str) -> di
     return {
         "provider_user_id": str(response["id"]),
         "email": normalize_email(response.get("email", "")) or None,
+        "email_verified": False,
         "name": response.get("nickname") or response.get("name") or "네이버 산친구",
         "avatar_url": response.get("profile_image") or "",
     }
@@ -286,7 +300,7 @@ def _consume_oauth_state(db: Session, provider: str, state: str) -> OAuthState:
     saved = db.get(OAuthState, token_hash(state))
     if not saved or saved.provider != provider:
         raise HTTPException(401, "invalid oauth state")
-    if saved.expires_at.replace(tzinfo=saved.expires_at.tzinfo or utcnow().tzinfo) < utcnow():
+    if _aware(saved.expires_at) < utcnow():
         db.delete(saved)
         db.commit()
         raise HTTPException(401, "expired oauth state")
@@ -307,12 +321,13 @@ def _social_user(db: Session, provider: str, profile: dict, requested_profile: d
         return user
 
     email = normalize_email(profile.get("email") or "") or None
-    user = db.scalar(select(User).where(User.email == email)) if email else None
+    verified_email = email if profile.get("email_verified") else None
+    user = db.scalar(select(User).where(User.email == verified_email)) if verified_email else None
     if not user:
         chosen = requested_profile if requested_profile.get("name") else {
             "name": profile.get("name") or "산친구", "fit": 2, "knee": False, "heart": False,
         }
-        user = _create_user(db, email=email, profile=chosen, avatar_url=profile.get("avatar_url", ""))
+        user = _create_user(db, email=verified_email, profile=chosen, avatar_url=profile.get("avatar_url", ""))
     elif requested_profile.get("name"):
         _sync_profile(user, requested_profile)
     if profile.get("avatar_url"):

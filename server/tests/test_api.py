@@ -296,6 +296,21 @@ def test_watch_pairing_rejects_invalid_or_foreign_sessions(client, register_devi
                        headers={"Authorization": "Bearer nope"}).status_code == 401
 
 
+def test_watch_pair_claim_rate_limits_repeated_guesses(client):
+    from server.routers import watch as watch_router
+
+    watch_router._pair_claim_attempts.clear()
+    try:
+        headers = {"X-Forwarded-For": "203.0.113.17"}
+        for _ in range(10):
+            assert client.post("/api/v1/watch/pair/claim", json={"code": "999999"},
+                               headers=headers).status_code == 404
+        assert client.post("/api/v1/watch/pair/claim", json={"code": "999999"},
+                           headers=headers).status_code == 429
+    finally:
+        watch_router._pair_claim_attempts.clear()
+
+
 def test_watch_pairing_rejects_inactive_hikes(client, register_device):
     auth, _ = register_device(name="종료산행")
     hike_id = client.post("/api/v1/hikes", json={"course_id": "bukhansan"}, headers=auth).json()["hike_id"]

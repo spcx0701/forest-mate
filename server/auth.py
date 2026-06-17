@@ -15,6 +15,11 @@ from .config import get_settings
 from .db import get_db
 from .models import AuthSession, Device, User, UserDevice, utcnow
 
+DUMMY_PASSWORD_HASH = (
+    "pbkdf2_sha256$390000$00000000000000000000000000000000$"
+    "0000000000000000000000000000000000000000000000000000000000000000"
+)
+
 
 @dataclass(frozen=True)
 class AuthContext:
@@ -30,7 +35,18 @@ def normalize_email(email: str) -> str:
 
 def validate_email(email: str) -> str:
     value = normalize_email(email)
-    if "@" not in value or value.startswith("@") or value.endswith("@"):
+    parts = value.split("@")
+    if len(parts) != 2:
+        raise HTTPException(422, "invalid email")
+    local, domain = parts
+    if (
+        not local
+        or not domain
+        or "." not in domain
+        or domain.startswith(".")
+        or domain.endswith(".")
+        or any(ch.isspace() for ch in value)
+    ):
         raise HTTPException(422, "invalid email")
     return value
 

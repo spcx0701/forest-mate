@@ -2,10 +2,11 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..db import get_db
 from ..models import (
     AlertEvent,
@@ -26,6 +27,7 @@ router = APIRouter()
 
 PAIR_EXPIRES_SECONDS = 600
 WATCH_CONNECTED_SECONDS = 60
+_pair_claim_attempts: dict[str, list[datetime]] = {}
 
 
 def _utcnow() -> datetime:
@@ -42,6 +44,28 @@ def _new_code(db: Session) -> str:
         if not db.get(WatchPair, code):
             return code
     raise HTTPException(503, "pair code unavailable")
+
+
+def _claim_client_key(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
+    if forwarded:
+        return forwarded
+    return request.client.host if request.client else "unknown"
+
+
+def _check_pair_claim_rate_limit(request: Request) -> None:
+    settings = get_settings()
+    now = _utcnow()
+    window = max(1, settings.watch_pair_claim_window_s)
+    max_attempts = max(1, settings.watch_pair_claim_max_attempts)
+    cutoff = now - timedelta(seconds=window)
+    key = _claim_client_key(request)
+    attempts = [ts for ts in _pair_claim_attempts.get(key, []) if ts > cutoff]
+    if len(attempts) >= max_attempts:
+        _pair_claim_attempts[key] = attempts
+        raise HTTPException(429, "too many pair attempts")
+    attempts.append(now)
+    _pair_claim_attempts[key] = attempts
 
 
 def get_watch_session(authorization: str = Header(default=""),
@@ -76,7 +100,8 @@ async def start_watch_pairing(body: WatchPairStartIn,
 
 
 @router.post("/watch/pair/claim", response_model=WatchPairClaimOut)
-async def claim_watch_pairing(body: WatchPairClaimIn, db: Session = Depends(get_db)):
+async def claim_watch_pairing(body: WatchPairClaimIn, request: Request, db: Session = Depends(get_db)):
+    _check_pair_claim_rate_limit(request)
     pair = db.get(WatchPair, body.code)
     if not pair or _aware(pair.expires_at) < _utcnow():
         raise HTTPException(404, "pair code not found")

@@ -129,6 +129,7 @@ def test_oauth_start_and_callback_create_account_session(client, register_device
         return {
             "provider_user_id": "google-123",
             "email": "social@example.com",
+            "email_verified": True,
             "name": "구글산친구",
             "avatar_url": "https://example.com/avatar.png",
         }
@@ -165,6 +166,12 @@ def test_auth_helpers_cover_invalid_and_guest_edges(register_device):
         with pytest.raises(HTTPException) as bad_email:
             auth.validate_email("@missing-local")
         assert bad_email.value.status_code == 422
+        with pytest.raises(HTTPException) as loose_email:
+            auth.validate_email("a@b")
+        assert loose_email.value.status_code == 422
+        with pytest.raises(HTTPException) as missing_at:
+            auth.validate_email("missing-at.example.com")
+        assert missing_at.value.status_code == 422
         assert auth.verify_password("pw", "legacy$1$salt$digest") is False
         assert auth.verify_password("pw", "not-a-password-hash") is False
         with pytest.raises(HTTPException) as blank_bearer:
@@ -325,9 +332,11 @@ def test_oauth_profile_fetch_maps_all_supported_providers(monkeypatch):
             provider = self.provider
             payloads = {
                 "google": {"sub": "g-1", "email": "GOOGLE@EXAMPLE.COM",
+                           "email_verified": True,
                            "name": "Google Hiker", "picture": "https://example.com/g.png"},
                 "kakao": {"id": 2, "kakao_account": {
                     "email": "KAKAO@EXAMPLE.COM",
+                    "is_email_verified": True,
                     "profile": {"nickname": "카카오러", "thumbnail_image_url": "https://example.com/k.png"},
                 }},
                 "naver": {"response": {"id": "n-3", "email": "NAVER@EXAMPLE.COM",
@@ -344,14 +353,17 @@ def test_oauth_profile_fetch_maps_all_supported_providers(monkeypatch):
     assert google == {
         "provider_user_id": "g-1",
         "email": "google@example.com",
+        "email_verified": True,
         "name": "Google Hiker",
         "avatar_url": "https://example.com/g.png",
     }
     assert kakao["provider_user_id"] == "2"
     assert kakao["email"] == "kakao@example.com"
+    assert kakao["email_verified"] is True
     assert kakao["name"] == "카카오러"
     assert naver["provider_user_id"] == "n-3"
     assert naver["email"] == "naver@example.com"
+    assert naver["email_verified"] is False
     assert naver["name"] == "네이버러"
 
 
@@ -429,7 +441,7 @@ def test_oauth_state_and_social_account_edge_cases(client, monkeypatch):
         user = auth_router._social_user(
             db, "google",
             {"provider_user_id": "new-google-id", "email": "SOCIAL-MERGE@EXAMPLE.COM",
-             "avatar_url": "https://example.com/avatar.png"},
+             "email_verified": True, "avatar_url": "https://example.com/avatar.png"},
             {"name": "요청프로필", "fit": 3, "knee": True, "heart": False},
         )
         assert user.id == existing.id
@@ -443,6 +455,24 @@ def test_oauth_state_and_social_account_edge_cases(client, monkeypatch):
         db.flush()
         token = auth_router._sync_linked_device(db, user)
         assert token
+    finally:
+        db.rollback()
+        db.close()
+
+    db = SessionLocal()
+    try:
+        existing = User(email="unverified@example.com", name="기존")
+        db.add(existing)
+        db.flush()
+        user = auth_router._social_user(
+            db, "kakao",
+            {"provider_user_id": "kakao-unverified", "email": "UNVERIFIED@EXAMPLE.COM",
+             "email_verified": False, "name": "검증안됨"},
+            {},
+        )
+        assert user.id != existing.id
+        assert user.email is None
+        assert user.name == "검증안됨"
     finally:
         db.rollback()
         db.close()
