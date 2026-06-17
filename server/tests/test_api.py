@@ -46,6 +46,14 @@ def test_csp_keeps_wikipedia_thumbnail_hosts_out_of_browser(client):
     assert directives["img-src"].isdisjoint({"https://upload.wikimedia.org"})
 
 
+def test_csp_does_not_allow_external_leaflet_cdn_when_map_assets_are_local(client):
+    res = client.get("/index.html")
+    directives = _csp_directives(res.headers["content-security-policy"])
+
+    assert "https://unpkg.com" not in directives["script-src"]
+    assert "https://unpkg.com" not in directives["style-src"]
+
+
 def test_mountain_hero_proxy_serves_validated_same_origin_image(client, monkeypatch):
     from server.routers import public
 
