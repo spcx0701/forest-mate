@@ -4,13 +4,17 @@
 정적 프런트(app/)도 같은 오리진에서 서빙한다(CORS 불필요·배포 단순화).
 """
 import asyncio
+import base64
+import hashlib
 import logging
 from contextlib import asynccontextmanager
+from functools import lru_cache
+from html.parser import HTMLParser
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 
@@ -27,6 +31,23 @@ STATIC_LONG_CACHE_EXTENSIONS = (
     ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2"
 )
 API_PREFIX = "/api/v1"
+MAP_TILE_ORIGINS = (
+    "https://a.tile.openstreetmap.org",
+    "https://b.tile.openstreetmap.org",
+    "https://c.tile.openstreetmap.org",
+    "https://tile.openstreetmap.org",
+)
+SECURITY_HEADERS = {
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": (
+        "accelerometer=(), camera=(), geolocation=(self), gyroscope=(), "
+        "microphone=(), payment=(), usb=()"
+    ),
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+}
 
 
 def _load_baked_catalog() -> bool:
@@ -41,6 +62,138 @@ def _load_baked_catalog() -> bool:
     except Exception as exc:  # noqa: BLE001
         log.warning("baked catalog 적재 실패: %s", exc)
     return True
+
+
+def _csp_hash(value: str) -> str:
+    digest = hashlib.sha256(value.encode("utf-8")).digest()
+    return f"'sha256-{base64.b64encode(digest).decode('ascii')}'"
+
+
+class _InlineCspHashCollector(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.script_hashes: set[str] = set()
+        self.style_hashes: set[str] = set()
+        self.style_attr_hashes: set[str] = set()
+        self._collecting: str | None = None
+        self._chunks: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr_map = {name.lower(): value for name, value in attrs if value is not None}
+        if style := attr_map.get("style"):
+            self.style_attr_hashes.add(_csp_hash(style))
+        normalized = tag.lower()
+        if normalized == "script" and "src" not in attr_map:
+            self._start_collecting("script")
+        elif normalized == "style":
+            self._start_collecting("style")
+
+    def handle_data(self, data: str) -> None:
+        if self._collecting:
+            self._chunks.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        if self._collecting:
+            self._chunks.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        if self._collecting:
+            self._chunks.append(f"&#{name};")
+
+    def handle_endtag(self, tag: str) -> None:
+        normalized = tag.lower()
+        if normalized == self._collecting:
+            value = "".join(self._chunks)
+            if value.strip():
+                if normalized == "script":
+                    self.script_hashes.add(_csp_hash(value))
+                else:
+                    self.style_hashes.add(_csp_hash(value))
+            self._collecting = None
+            self._chunks = []
+
+    def _start_collecting(self, tag: str) -> None:
+        self._collecting = tag
+        self._chunks = []
+
+
+@lru_cache(maxsize=1)
+def _inline_csp_hashes() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    script_hashes: set[str] = set()
+    style_hashes: set[str] = set()
+    style_attr_hashes: set[str] = set()
+    if not APP_DIR.exists():
+        return (), (), ()
+    for html_file in APP_DIR.glob("*.html"):
+        try:
+            text = html_file.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        collector = _InlineCspHashCollector()
+        collector.feed(text)
+        script_hashes.update(collector.script_hashes)
+        style_hashes.update(collector.style_hashes)
+        style_attr_hashes.update(collector.style_attr_hashes)
+    return tuple(sorted(script_hashes)), tuple(sorted(style_hashes)), tuple(sorted(style_attr_hashes))
+
+
+def _content_security_policy() -> str:
+    script_hashes, style_hashes, style_attr_hashes = _inline_csp_hashes()
+    script_src = ("'self'", "https://cdn.jsdelivr.net", "https://unpkg.com", *script_hashes)
+    style_src = ("'self'", "https://unpkg.com", *style_hashes)
+    style_src_attr = ("'unsafe-hashes'", *style_attr_hashes) if style_attr_hashes else ("'none'",)
+    img_src = (
+        "'self'", "data:", "blob:", "https://api.vworld.kr", *MAP_TILE_ORIGINS,
+        "https://play.google.com", "https://fdroid.gitlab.io", "https://github.com",
+        "https://objects.githubusercontent.com", "https://forestmate.onrender.com",
+    )
+    connect_src = ("'self'", "https://api.vworld.kr", *MAP_TILE_ORIGINS, "https://ko.wikipedia.org")
+    directives = (
+        ("default-src", ("'self'",)),
+        ("base-uri", ("'self'",)),
+        ("object-src", ("'none'",)),
+        ("frame-ancestors", ("'none'",)),
+        ("frame-src", ("'none'",)),
+        ("script-src", script_src),
+        ("script-src-attr", ("'none'",)),
+        ("style-src", style_src),
+        ("style-src-attr", style_src_attr),
+        ("img-src", img_src),
+        ("font-src", ("'self'", "data:")),
+        ("connect-src", connect_src),
+        ("manifest-src", ("'self'",)),
+        ("worker-src", ("'self'", "blob:")),
+        ("form-action", ("'self'",)),
+        ("upgrade-insecure-requests", ()),
+    )
+    return "; ".join(" ".join((directive, *values)) for directive, values in directives)
+
+
+def _apply_security_headers(response) -> None:
+    response.headers.setdefault("Content-Security-Policy", _content_security_policy())
+    for header, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+
+
+def _api_docs_page() -> str:
+    return """<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>숲길동무 ForestMate API Docs</title>
+</head>
+<body>
+<main>
+<h1>숲길동무 ForestMate API</h1>
+<p>ForestMate backend exposes its machine-readable OpenAPI schema without loading external documentation scripts.</p>
+<div class="panel">
+<p><a href="/openapi.json">OpenAPI JSON 열기</a></p>
+<p>Local health check: <code>GET /api/v1/healthz</code></p>
+</div>
+</main>
+</body>
+</html>"""
 
 
 async def _autoload_mountains() -> None:
@@ -75,11 +228,18 @@ async def lifespan(_: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="숲길동무 ForestMate API", version="1.1.0", lifespan=lifespan)
+    app = FastAPI(
+        title="숲길동무 ForestMate API",
+        version="1.1.0",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+    )
 
     @app.middleware("http")
     async def add_static_cache_headers(request, call_next):
         response = await call_next(request)
+        _apply_security_headers(response)
         path = request.url.path.lower()
         if response.status_code != 200:
             return response
@@ -99,6 +259,10 @@ def create_app() -> FastAPI:
     app.include_router(watch.router, prefix=API_PREFIX, tags=["watch"])
     app.include_router(dashboard.router, prefix=API_PREFIX, tags=["dashboard"])
     app.include_router(push.router, prefix=API_PREFIX, tags=["push"])
+
+    @app.api_route("/docs", methods=["GET", "HEAD"], include_in_schema=False)
+    async def api_docs():
+        return HTMLResponse(_api_docs_page())
 
     # TWA(Android) Digital Asset Links — 정적 마운트가 .well-known 점(.) 경로를
     # 막는 프록시도 있어 명시 라우트로 보장. Play 앱 서명키 지문을 채워 배포한다.

@@ -13,6 +13,86 @@ def test_healthz_snapshot_mode(client):
     assert body["live_data"] is False  # 테스트는 스냅샷 모드
 
 
+@pytest.mark.parametrize("path", ["/index.html", "/docs", "/api/v1/healthz"])
+def test_security_headers_present(client, path):
+    res = client.get(path)
+    assert res.status_code == 200
+    assert res.headers["x-frame-options"] == "DENY"
+    assert res.headers["x-content-type-options"] == "nosniff"
+    assert res.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    csp = res.headers["content-security-policy"]
+    assert "frame-ancestors 'none'" in csp
+    assert "'unsafe-inline'" not in csp
+    assert "*" not in csp
+
+
+def test_api_docs_avoid_external_swagger_assets(client):
+    res = client.get("/docs")
+    assert res.status_code == 200
+    assert 'href="/openapi.json"' in res.text
+    assert "swagger-ui-dist" not in res.text
+    assert "cdn.jsdelivr.net" not in res.text
+    assert "<script" not in res.text
+    assert "<style" not in res.text
+    assert client.head("/docs").status_code == 200
+
+
+def test_inline_csp_hash_collector_handles_inline_html():
+    from server import main
+
+    collector = main._InlineCspHashCollector()
+    collector.feed(
+        '<style>.flag::before{content:"&amp;";}</style>'
+        '<script>const marker = "&amp;&#35;";</script>'
+        '<script src="/app.js"></script>'
+        '<p style="color:red"></p>'
+    )
+
+    assert main._csp_hash('.flag::before{content:"&amp;";}') in collector.style_hashes
+    assert main._csp_hash('const marker = "&amp;&#35;";') in collector.script_hashes
+    assert main._csp_hash("color:red") in collector.style_attr_hashes
+    assert len(collector.script_hashes) == 1
+
+    entity_collector = main._InlineCspHashCollector()
+    entity_collector._start_collecting("script")
+    entity_collector.handle_entityref("amp")
+    entity_collector.handle_charref("35")
+    entity_collector.handle_endtag("script")
+    assert main._csp_hash("&amp;&#35;") in entity_collector.script_hashes
+
+
+def test_inline_csp_hashes_tolerate_missing_and_unreadable_app_dir(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    from server import main
+
+    main._inline_csp_hashes.cache_clear()
+    monkeypatch.setattr(main, "APP_DIR", tmp_path / "missing")
+    assert main._inline_csp_hashes() == ((), (), ())
+    assert "style-src-attr 'none'" in main._content_security_policy()
+
+    app_dir = tmp_path / "app"
+    app_dir.mkdir()
+    (app_dir / "ok.html").write_text('<style>.ok{color:green}</style>', encoding="utf-8")
+    (app_dir / "broken.html").write_text("<script>ignored()</script>", encoding="utf-8")
+    original_read_text = Path.read_text
+
+    def fake_read_text(self, *args, **kwargs):
+        if self.name == "broken.html":
+            raise OSError("cannot read test file")
+        return original_read_text(self, *args, **kwargs)
+
+    main._inline_csp_hashes.cache_clear()
+    monkeypatch.setattr(main, "APP_DIR", app_dir)
+    monkeypatch.setattr(Path, "read_text", fake_read_text)
+    script_hashes, style_hashes, style_attr_hashes = main._inline_csp_hashes()
+
+    assert script_hashes == ()
+    assert style_hashes == (main._csp_hash(".ok{color:green}"),)
+    assert style_attr_hashes == ()
+    main._inline_csp_hashes.cache_clear()
+
+
 @pytest.mark.parametrize(("region", "status", "score"), [
     ("eunpyeong", 200, 82),
     ("nowhere", 404, None),
