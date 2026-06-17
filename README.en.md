@@ -9,6 +9,7 @@
   <a href="https://github.com/spcx0701/forest-mate/actions/workflows/ci.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/spcx0701/forest-mate/ci.yml?branch=main&logo=github"></a>
   <a href="https://www.codefactor.io/repository/github/spcx0701/forest-mate"><img alt="CodeFactor" src="https://img.shields.io/codefactor/grade/github/spcx0701/forest-mate?label=code%20quality&logo=codefactor"></a>
   <a href="https://codecov.io/gh/spcx0701/forest-mate"><img alt="Coverage" src="https://img.shields.io/codecov/c/github/spcx0701/forest-mate?label=coverage&logo=codecov"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/spcx0701/forest-mate"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/spcx0701/forest-mate/badge"></a>
   <img alt="Top language" src="https://img.shields.io/github/languages/top/spcx0701/forest-mate">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <a href="https://api.reuse.software/info/github.com/spcx0701/forest-mate"><img alt="REUSE status" src="https://api.reuse.software/badge/github.com/spcx0701/forest-mate"></a>
