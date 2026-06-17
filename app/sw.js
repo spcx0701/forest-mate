@@ -2,7 +2,7 @@
 const CACHE = "forestmate-v22";
 const ASSETS = [
   "./index.html", "./app.css?v=20260617-ftue-social-center-leaflet-map", "./app.js?v=20260617-server-connection-leaflet-map", "./condition-details.js?v=20260617-leaflet-map", "./data.js",
-  "./dashboard.html", "./home.html", "./home.i18n.js?v=20260618-i18next", "./badges/get-it-on-github.svg",
+  "./dashboard.html", "./home.html", "./home.i18n.js?v=20260618-i18next",
   "./manifest.json", "./icon-192.png", "./icon-512.png",
 ];
 

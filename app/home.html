@@ -86,6 +86,7 @@ h1 em{font-style:normal;color:var(--leaf)}
 .app-links{display:flex;align-items:center;gap:12px;margin-top:18px;max-width:720px;flex-wrap:wrap}
 .store-badge{display:inline-flex;align-items:center;justify-content:center;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none}
 .store-badge:hover{transform:translateY(-2px)}
+.store-badge picture{display:block}
 .store-badge img{height:46px;max-width:180px;object-fit:contain;display:block}
 /* phone demo */
 .demo{position:relative;display:flex;justify-content:center}
@@ -185,7 +186,10 @@ footer .wrap{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
           <img src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" alt="Get it on Obtainium">
         </a>
         <a class="store-badge" href="https://github.com/spcx0701/forest-mate/releases/latest" target="_blank" rel="noopener" aria-label="최신 GitHub 릴리스에서 Android APK 내려받기">
-          <img src="badges/get-it-on-github.svg" alt="Get it on GitHub">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp">
+            <img src="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp" alt="Get it on GitHub">
+          </picture>
         </a>
       </div>
     </div>
