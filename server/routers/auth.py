@@ -65,7 +65,7 @@ def _provider_credentials(provider: str) -> tuple[str, str]:
         "naver": (settings.naver_client_id, settings.naver_client_secret),
     }
     if provider not in pairs:
-        raise HTTPException(404, "unknown oauth provider")
+        raise ValueError("unknown oauth provider")
     return pairs[provider]
 
 
@@ -360,7 +360,9 @@ async def oauth_callback(provider: str, request: Request, db: Annotated[Session,
                          code: str = "", state: str = "", error: str = ""):
     if error:
         return _oauth_error(error)
-    if provider not in OAUTH_PROVIDERS or not code or not state:
+    if provider not in OAUTH_PROVIDERS:
+        raise HTTPException(404, "unknown oauth provider")
+    if not code or not state:
         return _oauth_error("invalid_oauth_callback")
     try:
         saved = _consume_oauth_state(db, provider, state)

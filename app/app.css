@@ -295,7 +295,7 @@ nav a.sosnav{color:var(--danger)}
 .provider-logo svg{width:18px; height:18px; display:block}
 .google-logo{background:#fff; border:1px solid #E4E9F0}
 .kakao-logo{background:#191600; color:#FEE500}
-.naver-logo{background:#fff; color:#03C75A}
+.naver-logo{background:#fff; color:#006C31}
 .kakao-logo::before{content:"K"}
 .naver-logo::before{content:"N"}
 .auth-msg{display:block; min-height:15px; margin-top:8px; font-size:11px; color:var(--sub); font-weight:700}

@@ -192,7 +192,7 @@ const CONDITION_DETAIL_ROOT = typeof globalThis === "object" ? globalThis : this
         feedItem("위치", "격자/시군구", placeText(ctx)),
       ],
       landslide: [
-        feedItem("지도", "산사태위험지도", `${(ctx.landslide || {}).grade ?? "—"}등급`),
+        feedItem("지도", "산사태위험지도", `${ctx.landslide?.grade ?? "—"}등급`),
         feedItem("예보", "강수 신호", `${rainProb(weather)}%`),
         feedItem("위치", "사면/등산로", placeText(ctx)),
       ],

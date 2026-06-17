@@ -55,6 +55,7 @@ def test_llm_adapter_builds_cached_client(monkeypatch):
 
     class FakeMessages:
         async def create(self, **kwargs):
+            await asyncio.sleep(0)
             created.append(kwargs)
             return SimpleNamespace(content=[
                 SimpleNamespace(type="tool_use", text="ignored"),

@@ -274,8 +274,6 @@ def test_auth_provider_configuration_and_oauth_error_routes(client, monkeypatch)
     monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
     monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
 
-    from fastapi import HTTPException
-
     from server.config import get_settings
     from server.routers import auth as auth_router
 
@@ -284,9 +282,9 @@ def test_auth_provider_configuration_and_oauth_error_routes(client, monkeypatch)
     assert providers["oauth"]["kakao"] is True
     assert providers["oauth"]["google"] is False
 
-    with pytest.raises(HTTPException) as unknown:
+    with pytest.raises(ValueError) as unknown:
         auth_router._provider_credentials("unknown")
-    assert unknown.value.status_code == 404
+    assert "unknown oauth provider" in str(unknown.value)
     assert client.get("/api/v1/auth/oauth/unknown/start").status_code == 404
     assert client.get("/api/v1/auth/oauth/google/start").status_code == 503
 
