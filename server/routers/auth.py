@@ -35,6 +35,7 @@ from ..schemas import (AuthLoginIn, AuthMeOut, AuthOut, AuthRegisterIn,
 router = APIRouter()
 ACCOUNT_LOGIN_REQUIRED = "account login required"
 UNKNOWN_OAUTH_PROVIDER = "unknown oauth provider"
+OAUTH_REDIRECT_PATHS = frozenset({"/index.html", "/home.html"})
 
 OAUTH_PROVIDERS = {
     "google": {
@@ -68,6 +69,16 @@ def _provider_credentials(provider: str) -> tuple[str, str]:
     if provider not in pairs:
         raise ValueError(UNKNOWN_OAUTH_PROVIDER)
     return pairs[provider]
+
+
+def _provider_config(provider: str) -> dict[str, str]:
+    if provider == "google":
+        return OAUTH_PROVIDERS["google"]
+    if provider == "kakao":
+        return OAUTH_PROVIDERS["kakao"]
+    if provider == "naver":
+        return OAUTH_PROVIDERS["naver"]
+    raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
 
 
 def _provider_configured(provider: str) -> bool:
@@ -141,8 +152,40 @@ def _create_user(db: Session, *, email: str | None, profile: ProfileIn | dict,
     return user
 
 
+def _safe_oauth_redirect_path(path: str | None) -> str:
+    return path if path in OAUTH_REDIRECT_PATHS else "/index.html"
+
+
 def _oauth_error(error: str) -> RedirectResponse:
-    return RedirectResponse(f"/index.html#auth_error={error}", status_code=302)
+    if error == "access_denied":
+        return RedirectResponse("/index.html#auth_error=access_denied", status_code=302)
+    if error == "invalid_oauth_callback":
+        return RedirectResponse("/index.html#auth_error=invalid_oauth_callback", status_code=302)
+    return RedirectResponse("/index.html#auth_error=oauth_failed", status_code=302)
+
+
+def _oauth_authorization_redirect(provider: str, params: dict[str, str]) -> RedirectResponse:
+    query = urlencode(params)
+    if provider == "google":
+        # Provider hosts are fixed server-side; only encoded OAuth parameters vary.
+        # codeql[py/url-redirection]
+        return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{query}", status_code=302)
+    if provider == "kakao":
+        # Provider hosts are fixed server-side; only encoded OAuth parameters vary.
+        # codeql[py/url-redirection]
+        return RedirectResponse(f"https://kauth.kakao.com/oauth/authorize?{query}", status_code=302)
+    if provider == "naver":
+        # Provider hosts are fixed server-side; only encoded OAuth parameters vary.
+        # codeql[py/url-redirection]
+        return RedirectResponse(f"https://nid.naver.com/oauth2.0/authorize?{query}", status_code=302)
+    raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
+
+
+def _oauth_success_redirect(path: str | None, token: str) -> RedirectResponse:
+    fragment = urlencode({"auth_token": token})
+    if path == "/home.html":
+        return RedirectResponse(f"/home.html#{fragment}", status_code=302)
+    return RedirectResponse(f"/index.html#{fragment}", status_code=302)
 
 
 @router.get("/auth/providers")
@@ -239,16 +282,16 @@ async def oauth_start(provider: str, request: Request, db: Annotated[Session, De
     if not _provider_configured(provider):
         raise HTTPException(503, f"{provider} login is not configured")
     client_id, _ = _provider_credentials(provider)
+    cfg = _provider_config(provider)
     state = secrets.token_urlsafe(32)
     profile = {"name": name[:16] or "산친구", "fit": fit, "knee": knee, "heart": heart}
     db.add(OAuthState(
         state_hash=token_hash(state), provider=provider, device_token=device_token[:128],
         profile_json=json.dumps(profile, ensure_ascii=False),
-        redirect_path=redirect_path if redirect_path.startswith("/") else "/index.html",
+        redirect_path=_safe_oauth_redirect_path(redirect_path),
         expires_at=utcnow() + timedelta(minutes=get_settings().auth_state_ttl_minutes),
     ))
     db.commit()
-    cfg = OAUTH_PROVIDERS[provider]
     params = {
         "response_type": "code",
         "client_id": client_id,
@@ -257,12 +300,12 @@ async def oauth_start(provider: str, request: Request, db: Annotated[Session, De
     }
     if cfg["scope"]:
         params["scope"] = cfg["scope"]
-    return RedirectResponse(f"{cfg['authorize_url']}?{urlencode(params)}", status_code=302)
+    return _oauth_authorization_redirect(provider, params)
 
 
 async def fetch_oauth_profile(provider: str, code: str, redirect_uri: str) -> dict:
     client_id, client_secret = _provider_credentials(provider)
-    cfg = OAUTH_PROVIDERS[provider]
+    cfg = _provider_config(provider)
     data = {
         "grant_type": "authorization_code",
         "client_id": client_id,
@@ -375,8 +418,7 @@ async def oauth_callback(provider: str, request: Request, db: Annotated[Session,
                                   request.client.host if request.client else "")
         _sync_linked_device(db, user)
         db.commit()
-        fragment = urlencode({"auth_token": token, "provider": provider})
-        return RedirectResponse(f"{saved.redirect_path}#{fragment}", status_code=302)
+        return _oauth_success_redirect(saved.redirect_path, token)
     except HTTPException:
         raise
     except Exception:  # noqa: BLE001
