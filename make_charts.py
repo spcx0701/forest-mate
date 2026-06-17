@@ -35,8 +35,8 @@ ax.text(0.5, 0.22, "3년 누계 31,330건", ha="center", fontsize=9.5, color=SUB
 ax = axes[1]
 w = [54.1, 45.9]
 ax.pie(w, labels=["주말 54.1%", "평일 45.9%"], colors=[AMBER, PALE],
-       startangle=90, counterclock=False, wedgeprops=dict(width=0.42, edgecolor="w"),
-       textprops=dict(fontsize=10, color=INK))
+       startangle=90, counterclock=False, wedgeprops={"width": 0.42, "edgecolor": "w"},
+       textprops={"fontsize": 10, "color": INK})
 ax.set_title("인명피해의 주말 집중도", fontsize=10.5, color=INK, pad=8)
 ax.text(0, 0, "11~15시\n최다 발생", ha="center", va="center", fontsize=9, color=SUB)
 
@@ -68,7 +68,7 @@ ax.axhline(78, ls="--", lw=1.2, color=SUB)
 ax.text(4.45, 79.5, "성인 평균 78% (3,229만 명)", fontsize=9, color=SUB, ha="right")
 ax.annotate("산행 인구 최다 = 안전 취약층", xy=(4, 91), xytext=(2.0, 99),
             fontsize=10.5, fontweight="bold", color="#B35309",
-            arrowprops=dict(arrowstyle="->", color="#B35309"))
+            arrowprops={"arrowstyle": "->", "color": "#B35309"})
 ax.set_ylim(0, 106)
 ax.set_ylabel("월 1회 이상 등산·숲길 체험 비율(%)", fontsize=9.5, color=SUB)
 ax.set_title("연령대별 등산·숲길 체험 인구 — 고령층일수록 산에 많이 간다", fontsize=12.5, fontweight="bold", color=INK, pad=10)

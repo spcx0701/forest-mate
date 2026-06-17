@@ -1,6 +1,6 @@
 /* 숲길동무 — 2026 산림 공공데이터·AI 활용 창업경진대회 기획서(제품 및 서비스 개발 부문) */
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun,
   Header, Footer, AlignmentType, LevelFormat, HeadingLevel, BorderStyle,

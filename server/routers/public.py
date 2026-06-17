@@ -3,6 +3,7 @@ import asyncio
 import json
 import math
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
@@ -34,8 +35,8 @@ async def regions():
 
 
 @router.get("/mountains")
-async def mountains(q: str = "", sido: str = "", page: int = 1, size: int = 30,
-                    db: Session = Depends(get_db)):
+async def mountains(db: Annotated[Session, Depends(get_db)],
+                    q: str = "", sido: str = "", page: int = 1, size: int = 30):
     """전국 산 검색 — 산림청 산정보 ETL 적재분(Mountain). 이름·시도로 필터."""
     size = max(1, min(size, 100))
     stmt = select(Mountain)
@@ -66,8 +67,8 @@ def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 @router.get("/mountains/nearby")
-async def mountains_nearby(lat: float, lon: float, radius: float = 30, limit: int = 20,
-                           db: Session = Depends(get_db)):
+async def mountains_nearby(lat: float, lon: float, db: Annotated[Session, Depends(get_db)],
+                           radius: float = 30, limit: int = 20):
     """현재 위치(GPS) 주변 산 — 좌표 보유 산 중 거리순. radius km 이내."""
     rows = db.execute(
         select(Mountain).where(Mountain.lat.is_not(None))
@@ -89,7 +90,7 @@ async def mountains_nearby(lat: float, lon: float, radius: float = 30, limit: in
 
 
 @router.get("/mountains/sido")
-async def mountains_by_sido(db: Session = Depends(get_db)):
+async def mountains_by_sido(db: Annotated[Session, Depends(get_db)]):
     """시·도별 산 개수(전국 분포 표출용)."""
     rows = db.execute(
         select(Mountain.sido, func.count()).group_by(Mountain.sido).order_by(func.count().desc())
@@ -97,8 +98,9 @@ async def mountains_by_sido(db: Session = Depends(get_db)):
     return [{"sido": s or "(미상)", "count": n} for s, n in rows]
 
 
-@router.get("/mountains/{list_no}/index")
-async def mountain_index(list_no: str, db: Session = Depends(get_db)):
+@router.get("/mountains/{list_no}/index",
+            responses={404: {"description": "Mountain not found"}})
+async def mountain_index(list_no: str, db: Annotated[Session, Depends(get_db)]):
     """선택한 산의 산행지수 — 실측 좌표가 있으면 정밀 격자·시군구로 계산."""
     m = db.get(Mountain, list_no)
     if not m:
@@ -117,7 +119,7 @@ async def mountain_index(list_no: str, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/index")
+@router.get("/index", responses={404: {"description": "Unknown region"}})
 async def index(region: str = "eunpyeong"):
     try:
         cond = await get_region_conditions(region)
@@ -128,7 +130,7 @@ async def index(region: str = "eunpyeong"):
 
 
 @router.get("/forecast")
-async def forecast(lat: float, lon: float, db: Session = Depends(get_db)):
+async def forecast(lat: float, lon: float, db: Annotated[Session, Depends(get_db)]):
     """산행 일정용 일자별 예보 — 날씨·산불 적합도(현 위치 최근접 산의 시군구로 산불)."""
     from datetime import datetime, timedelta
 
@@ -145,7 +147,13 @@ async def forecast(lat: float, lon: float, db: Session = Depends(get_db)):
         dt = datetime.strptime(d["date"], "%Y%m%d")
         # 적합도 = 날씨점수·산불점수 결합
         score = int(d["score"] * 0.6 + fire["score"] * 0.4)
-        out.append({"date": d["date"], "label": "오늘" if i == 0 else "내일" if i == 1 else f"{dt.month}/{dt.day}",
+        if i == 0:
+            label = "오늘"
+        elif i == 1:
+            label = "내일"
+        else:
+            label = f"{dt.month}/{dt.day}"
+        out.append({"date": d["date"], "label": label,
                     "dow": dows[dt.weekday()], "temp": d["temp"], "rain_prob": d["rain_prob"],
                     "fire": fire["level"], "score": score})
     return {"days": out}
@@ -164,7 +172,7 @@ async def mountain_trails(list_no: str):
 
 
 @router.get("/index/gps")
-async def index_gps(lat: float, lon: float, db: Session = Depends(get_db)):
+async def index_gps(lat: float, lon: float, db: Annotated[Session, Depends(get_db)]):
     """현재 위치(GPS) 산행지수 — 정밀 날씨격자 + 최근접 산의 시군구로 산불."""
     rows = db.execute(select(Mountain).where(Mountain.lat.is_not(None))).scalars().all()
     sgg, nearest_name = "", ""
@@ -181,7 +189,8 @@ async def courses():
     return COURSES
 
 
-@router.get("/courses/{course_id}")
+@router.get("/courses/{course_id}",
+            responses={404: {"description": "Course not found"}})
 async def course_detail(course_id: str):
     course = next((c for c in COURSES if c["id"] == course_id), None)
     if not course:
@@ -204,11 +213,11 @@ async def recommend_courses(fit: int = 2, knee: bool = False, heart: bool = Fals
 @router.post("/chat")
 async def chat(body: ChatIn):
     cond = await get_region_conditions(body.region_id)
-    return await chat_service.answer(body.message, body.lang, body.region_id,
-                                     body.course_id, body.progress, cond)
+    return await chat_service.answer(body.message, body.lang, body.course_id, body.progress, cond)
 
 
-@router.post("/species/identify")
+@router.post("/species/identify",
+             responses={404: {"description": "Unknown sample"}})
 async def identify(body: SpeciesIn):
     """운영: multipart 이미지 → 온디바이스 1차 + 서버 비전 모델 2차 검증.
     데모 빌드는 샘플 ID로 도감 스냅샷을 반환한다(스키마 동일)."""

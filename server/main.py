@@ -26,6 +26,7 @@ STATIC_SHORT_CACHE_EXTENSIONS = (".css", ".js")
 STATIC_LONG_CACHE_EXTENSIONS = (
     ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2"
 )
+API_PREFIX = "/api/v1"
 
 
 def _load_baked_catalog() -> bool:
@@ -92,12 +93,12 @@ def create_app() -> FastAPI:
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"],
                        allow_headers=["*"])
 
-    app.include_router(public.router, prefix="/api/v1", tags=["public"])
-    app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
-    app.include_router(hikes.router, prefix="/api/v1", tags=["hikes"])
-    app.include_router(watch.router, prefix="/api/v1", tags=["watch"])
-    app.include_router(dashboard.router, prefix="/api/v1", tags=["dashboard"])
-    app.include_router(push.router, prefix="/api/v1", tags=["push"])
+    app.include_router(public.router, prefix=API_PREFIX, tags=["public"])
+    app.include_router(auth.router, prefix=API_PREFIX, tags=["auth"])
+    app.include_router(hikes.router, prefix=API_PREFIX, tags=["hikes"])
+    app.include_router(watch.router, prefix=API_PREFIX, tags=["watch"])
+    app.include_router(dashboard.router, prefix=API_PREFIX, tags=["dashboard"])
+    app.include_router(push.router, prefix=API_PREFIX, tags=["push"])
 
     # TWA(Android) Digital Asset Links — 정적 마운트가 .well-known 점(.) 경로를
     # 막는 프록시도 있어 명시 라우트로 보장. Play 앱 서명키 지문을 채워 배포한다.

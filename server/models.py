@@ -21,6 +21,11 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+USERS_ID_FK = "users.id"
+DEVICES_ID_FK = "devices.id"
+HIKES_ID_FK = "hikes.id"
+
+
 class Device(Base):
     """익명 기기 등록 — 회원가입 없이 토큰 기반 인증(개인정보 최소수집)."""
 
@@ -60,7 +65,7 @@ class AuthIdentity(Base):
     __table_args__ = (UniqueConstraint("provider", "provider_user_id", name="uq_auth_provider_user"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey(USERS_ID_FK), index=True)
     provider: Mapped[str] = mapped_column(String(24), index=True)
     provider_user_id: Mapped[str] = mapped_column(String(255))
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -74,7 +79,7 @@ class AuthSession(Base):
     __tablename__ = "auth_sessions"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey(USERS_ID_FK), index=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -89,8 +94,8 @@ class UserDevice(Base):
     __tablename__ = "user_devices"
     __table_args__ = (UniqueConstraint("device_id", name="uq_user_device_device"),)
 
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    device_id: Mapped[str] = mapped_column(ForeignKey("devices.id"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey(USERS_ID_FK), primary_key=True)
+    device_id: Mapped[str] = mapped_column(ForeignKey(DEVICES_ID_FK), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -112,7 +117,7 @@ class Hike(Base):
     __tablename__ = "hikes"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
-    device_id: Mapped[str] = mapped_column(ForeignKey("devices.id"), index=True)
+    device_id: Mapped[str] = mapped_column(ForeignKey(DEVICES_ID_FK), index=True)
     course_id: Mapped[str] = mapped_column(String(32), index=True)
     status: Mapped[str] = mapped_column(String(16), default="active")  # active|done|aborted
     progress: Mapped[float] = mapped_column(Float, default=0.0)
@@ -132,7 +137,7 @@ class TrackPoint(Base):
     __tablename__ = "track_points"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    hike_id: Mapped[str] = mapped_column(ForeignKey("hikes.id"), index=True)
+    hike_id: Mapped[str] = mapped_column(ForeignKey(HIKES_ID_FK), index=True)
     progress: Mapped[float] = mapped_column(Float)
     alt: Mapped[int] = mapped_column(Integer, default=0)
     hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -149,8 +154,8 @@ class WatchPair(Base):
     __tablename__ = "watch_pairs"
 
     code: Mapped[str] = mapped_column(String(6), primary_key=True)
-    hike_id: Mapped[str | None] = mapped_column(ForeignKey("hikes.id"), index=True, nullable=True)
-    device_id: Mapped[str] = mapped_column(ForeignKey("devices.id"), index=True)
+    hike_id: Mapped[str | None] = mapped_column(ForeignKey(HIKES_ID_FK), index=True, nullable=True)
+    device_id: Mapped[str] = mapped_column(ForeignKey(DEVICES_ID_FK), index=True)
     token_hash: Mapped[str] = mapped_column(String(64), default="", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -163,7 +168,7 @@ class WatchSample(Base):
     __tablename__ = "watch_samples"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    hike_id: Mapped[str] = mapped_column(ForeignKey("hikes.id"), index=True)
+    hike_id: Mapped[str] = mapped_column(ForeignKey(HIKES_ID_FK), index=True)
     hr: Mapped[int] = mapped_column(Integer)
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)

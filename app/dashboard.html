@@ -280,7 +280,7 @@ tr:last-child td{border:none}
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${proto}://${location.host}/api/v1/ws/dashboard`);
     const bump = (id, d) => { const el = document.getElementById(id);
-      el.textContent = ((parseInt(el.textContent.replace(/,/g, ""), 10) || 0) + d).toLocaleString(); };
+      el.textContent = ((Number.parseInt(el.textContent.replace(/,/g, ""), 10) || 0) + d).toLocaleString(); };
     ws.onmessage = (ev) => {
       const m = JSON.parse(ev.data);
       if (m.type === "ping") return;

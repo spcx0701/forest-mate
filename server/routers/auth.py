@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import secrets
 from datetime import timedelta
+from typing import Annotated
 from urllib.parse import urlencode
 
 import httpx
@@ -32,6 +33,7 @@ from ..schemas import (AuthLoginIn, AuthMeOut, AuthOut, AuthRegisterIn,
                        AuthUserOut, ProfileIn)
 
 router = APIRouter()
+ACCOUNT_LOGIN_REQUIRED = "account login required"
 
 OAUTH_PROVIDERS = {
     "google": {
@@ -63,7 +65,7 @@ def _provider_credentials(provider: str) -> tuple[str, str]:
         "naver": (settings.naver_client_id, settings.naver_client_secret),
     }
     if provider not in pairs:
-        raise HTTPException(404, "unknown oauth provider")
+        raise HTTPException(404, "unknown oauth provider")  # NOSONAR: endpoints document provider errors.
     return pairs[provider]
 
 
@@ -150,8 +152,9 @@ async def auth_providers():
     }
 
 
-@router.post("/auth/register", response_model=AuthOut, status_code=201)
-async def register(body: AuthRegisterIn, request: Request, db: Session = Depends(get_db)):
+@router.post("/auth/register", response_model=AuthOut, status_code=201,
+             responses={409: {"description": "Email already registered"}})
+async def register(body: AuthRegisterIn, request: Request, db: Annotated[Session, Depends(get_db)]):
     email = validate_email(body.email)
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "email already registered")
@@ -167,8 +170,9 @@ async def register(body: AuthRegisterIn, request: Request, db: Session = Depends
     return response
 
 
-@router.post("/auth/login", response_model=AuthOut)
-async def login(body: AuthLoginIn, request: Request, db: Session = Depends(get_db)):
+@router.post("/auth/login", response_model=AuthOut,
+             responses={401: {"description": "Invalid email, password, or account"}})
+async def login(body: AuthLoginIn, request: Request, db: Annotated[Session, Depends(get_db)]):
     email = validate_email(body.email)
     identity = db.scalar(select(AuthIdentity).where(
         AuthIdentity.provider == "password", AuthIdentity.provider_user_id == email
@@ -187,40 +191,48 @@ async def login(body: AuthLoginIn, request: Request, db: Session = Depends(get_d
     return response
 
 
-@router.get("/auth/me", response_model=AuthMeOut)
-async def me(ctx: AuthContext = Depends(get_auth_context), db: Session = Depends(get_db)):
+@router.get("/auth/me", response_model=AuthMeOut,
+            responses={401: {"description": "Account login required"}})
+async def me(ctx: Annotated[AuthContext, Depends(get_auth_context)],
+             db: Annotated[Session, Depends(get_db)]):
     if not ctx.user or not ctx.account_session:
-        raise HTTPException(401, "account login required")
+        raise HTTPException(401, ACCOUNT_LOGIN_REQUIRED)
     response = AuthMeOut(user=_user_out(db, ctx.user), device_token=_sync_linked_device(db, ctx.user))
     db.commit()
     return response
 
 
-@router.patch("/auth/me/profile", response_model=AuthMeOut)
-async def update_profile(body: ProfileIn, ctx: AuthContext = Depends(get_auth_context),
-                         db: Session = Depends(get_db)):
+@router.patch("/auth/me/profile", response_model=AuthMeOut,
+              responses={401: {"description": "Account login required"}})
+async def update_profile(body: ProfileIn, ctx: Annotated[AuthContext, Depends(get_auth_context)],
+                         db: Annotated[Session, Depends(get_db)]):
     if not ctx.user or not ctx.account_session:
-        raise HTTPException(401, "account login required")
+        raise HTTPException(401, ACCOUNT_LOGIN_REQUIRED)
     _sync_profile(ctx.user, body)
     response = AuthMeOut(user=_user_out(db, ctx.user), device_token=_sync_linked_device(db, ctx.user))
     db.commit()
     return response
 
 
-@router.post("/auth/logout")
-async def logout(ctx: AuthContext = Depends(get_auth_context), db: Session = Depends(get_db)):
+@router.post("/auth/logout", responses={401: {"description": "Account login required"}})
+async def logout(ctx: Annotated[AuthContext, Depends(get_auth_context)],
+                 db: Annotated[Session, Depends(get_db)]):
     if not ctx.account_session:
-        raise HTTPException(401, "account login required")
+        raise HTTPException(401, ACCOUNT_LOGIN_REQUIRED)
     ctx.account_session.revoked_at = utcnow()
     db.commit()
     return {"ok": True}
 
 
-@router.get("/auth/oauth/{provider}/start")
-async def oauth_start(provider: str, request: Request, db: Session = Depends(get_db),
+@router.get("/auth/oauth/{provider}/start",
+            responses={
+                404: {"description": "Unknown OAuth provider"},
+                503: {"description": "OAuth provider is not configured"},
+            })
+async def oauth_start(provider: str, request: Request, db: Annotated[Session, Depends(get_db)],
                       device_token: str = "", name: str = "산친구", fit: int = 2,
                       knee: bool = False, heart: bool = False,
-                      redirect_path: str = Query("/index.html")):
+                      redirect_path: Annotated[str, Query()] = "/index.html"):
     if provider not in OAUTH_PROVIDERS:
         raise HTTPException(404, "unknown oauth provider")
     if not _provider_configured(provider):
@@ -338,8 +350,12 @@ def _social_user(db: Session, provider: str, profile: dict, requested_profile: d
     return user
 
 
-@router.get("/auth/oauth/{provider}/callback")
-async def oauth_callback(provider: str, request: Request, db: Session = Depends(get_db),
+@router.get("/auth/oauth/{provider}/callback",
+            responses={
+                401: {"description": "Invalid or expired OAuth state"},
+                502: {"description": "OAuth token is missing"},
+            })
+async def oauth_callback(provider: str, request: Request, db: Annotated[Session, Depends(get_db)],
                          code: str = "", state: str = "", error: str = ""):
     if error:
         return _oauth_error(error)
