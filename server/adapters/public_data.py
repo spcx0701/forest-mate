@@ -136,7 +136,14 @@ async def get_fire_risk(region: dict) -> dict:
                 risk = int(float(v))
                 break
         score = max(0, 100 - risk)
-        level = "낮음" if risk < 51 else "보통" if risk < 66 else "높음" if risk < 86 else "매우 높음"
+        if risk < 51:
+            level = "낮음"
+        elif risk < 66:
+            level = "보통"
+        elif risk < 86:
+            level = "높음"
+        else:
+            level = "매우 높음"
         return {"level": level, "score": score,
                 "src": "국립산림과학원 산불위험예보", "source": "live"}
     except (AdapterError, KeyError, TypeError, ValueError):

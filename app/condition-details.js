@@ -23,12 +23,16 @@
 
   function scoreTone(score) {
     const s = num(score);
-    return s >= 80 ? "ok" : s >= 60 ? "mid" : "bad2";
+    if (s >= 80) return "ok";
+    if (s >= 60) return "mid";
+    return "bad2";
   }
 
   function statusWord(score) {
     const s = num(score);
-    return s >= 80 ? "안정" : s >= 60 ? "주의" : "위험";
+    if (s >= 80) return "안정";
+    if (s >= 60) return "주의";
+    return "위험";
   }
 
   function formatWind(wind) {
@@ -79,11 +83,11 @@
   }
 
   function windRisk(weather) {
-    return clamp(num(weather && weather.wind) * 12);
+    return clamp(num(weather?.wind) * 12);
   }
 
   function tempBurden(weather) {
-    const temp = num(weather && weather.temp, 18);
+    const temp = num(weather?.temp, 18);
     return clamp(Math.abs(temp - 18) * 6);
   }
 
@@ -104,7 +108,9 @@
 
   function riskLevel(value) {
     const v = clamp(value);
-    return v >= 70 ? "high" : v >= 40 ? "mid" : "low";
+    if (v >= 70) return "high";
+    if (v >= 40) return "mid";
+    return "low";
   }
 
   function zone(label, value, note, risk, lat, lon, size = "m") {
@@ -113,10 +119,10 @@
   }
 
   function regionLatLon(row, index) {
-    const lat = num(row && row.lat, NaN);
-    const lon = num(row && row.lon, NaN);
+    const lat = num(row?.lat, NaN);
+    const lon = num(row?.lon, NaN);
     if (Number.isFinite(lat) && Number.isFinite(lon)) return [lat, lon];
-    const name = `${(row && row.name) || ""} ${(row && row.mountain) || ""}`;
+    const name = `${row?.name || ""} ${row?.mountain || ""}`;
     const n = String(name || "");
     const known = [
       [/은평|북한산/, [37.6584, 126.9778]],
@@ -152,16 +158,16 @@
 
   function rowRisk(id, row) {
     const weather = row.weather || {};
-    if (id === "fire") return clamp(100 - num(row.fire && row.fire.score, 70));
-    if (id === "landslide") return clamp((6 - num(row.landslide && row.landslide.grade, 5)) * 20);
+    if (id === "fire") return clamp(100 - num(row.fire?.score, 70));
+    if (id === "landslide") return clamp((6 - num(row.landslide?.grade, 5)) * 20);
     if (id === "sunset") return sunsetPressure(row.sunsetAt);
     return mix(rainProb(weather), windRisk(weather), 0.55);
   }
 
   function rowValue(id, row) {
     const weather = row.weather || {};
-    if (id === "fire") return (row.fire && row.fire.level) || "확인";
-    if (id === "landslide") return `${(row.landslide && row.landslide.grade) ?? "—"}등급`;
+    if (id === "fire") return row.fire?.level || "확인";
+    if (id === "landslide") return `${row.landslide?.grade ?? "—"}등급`;
     if (id === "sunset") return row.sunsetAt || "--:--";
     return `${weather.temp ?? "—"}° · ${rainProb(weather)}%`;
   }
@@ -169,9 +175,9 @@
   function rowNote(id, row) {
     const mountain = row.mountain || "산 정보";
     if (id === "fire") return `${mountain} · 산불예보`;
-    if (id === "landslide") return `${mountain} · ${(row.landslide && row.landslide.label) || "위험지도"}`;
+    if (id === "landslide") return `${mountain} · ${row.landslide?.label || "위험지도"}`;
     if (id === "sunset") return `${mountain} · 일몰`;
-    return `${mountain} · ${(row.weather && row.weather.station) || "기상"}`;
+    return `${mountain} · ${row.weather?.station || "기상"}`;
   }
 
   function feedItem(kind, label, value) {
@@ -335,7 +341,7 @@
         scale: opts.radarScale || "높을수록 주의",
         axes: opts.axes,
       },
-      primaryAction: opts.primaryAction || (detail.guidance && detail.guidance[0]) || "",
+      primaryAction: opts.primaryAction || detail.guidance?.[0] || "",
       actionTitle: opts.actionTitle || "출발 전 확인",
       updatedAt: freshness(ctx),
       modeLabel: modeLabel(ctx),
@@ -479,6 +485,7 @@
     const pressure = sunsetPressure(ctx.sunsetAt);
     const afterDark = mins != null && mins <= 0;
     const shortMargin = mins != null && mins < 120;
+    const nightTransition = afterDark ? 100 : mix(pressure, shortMargin ? 70 : 20, 0.7);
     return enrich(ctx, {
       id: "sunset",
       icon: "🌄",
@@ -498,7 +505,7 @@
       axes: [
         radarAxis("시간압박", pressure, sunsetMarginText(ctx.sunsetAt)),
         radarAxis("하산여유부족", shortMargin ? 78 : pressure, "주차장·교통까지"),
-        radarAxis("야간전환", afterDark ? 100 : mix(pressure, shortMargin ? 70 : 20, 0.7), "시야 저하"),
+        radarAxis("야간전환", nightTransition, "시야 저하"),
         radarAxis("장비필요", shortMargin ? 85 : 35, "헤드랜턴·보온"),
         radarAxis("갈림길주의", mix(pressure, 60, 0.55), "하산로 판단"),
         radarAxis("교통마감", mix(pressure, shortMargin ? 72 : 34, 0.52), "귀가 시간"),

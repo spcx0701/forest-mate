@@ -6,39 +6,39 @@ const ASSETS = [
   "./manifest.json", "./icon-192.png", "./icon-512.png",
 ];
 
-self.addEventListener("install", (e) => {
+globalThis.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
-  self.skipWaiting();
+  globalThis.skipWaiting();
 });
 
-self.addEventListener("activate", (e) => {
+globalThis.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    ).then(() => globalThis.clients.claim())
   );
 });
 
 /* Web Push 수신 → 알림 표시 */
-self.addEventListener("push", (e) => {
+globalThis.addEventListener("push", (e) => {
   let d = {};
-  try { d = e.data.json(); } catch { d = { body: e.data && e.data.text() }; }
-  e.waitUntil(self.registration.showNotification(d.title || "숲길동무", {
+  try { d = e.data.json(); } catch { d = { body: e.data?.text() }; }
+  e.waitUntil(globalThis.registration.showNotification(d.title || "숲길동무", {
     body: d.body || "", icon: "./icon-192.png", badge: "./icon-192.png",
     data: { url: d.url || "/" }, vibrate: [80, 40, 80],
   }));
 });
-self.addEventListener("notificationclick", (e) => {
+globalThis.addEventListener("notificationclick", (e) => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || "/";
-  e.waitUntil(clients.matchAll({ type: "window" }).then((ws) => {
+  const url = e.notification.data?.url || "/";
+  e.waitUntil(globalThis.clients.matchAll({ type: "window" }).then((ws) => {
     for (const w of ws) { if ("focus" in w) return w.focus(); }
-    return clients.openWindow(url);
+    return globalThis.clients.openWindow(url);
   }));
 });
 
 /* 네트워크 연결 시 항상 최신 / 음영지역에서는 캐시 폴백 */
-self.addEventListener("fetch", (e) => {
+globalThis.addEventListener("fetch", (e) => {
   e.respondWith(
     fetch(e.request)
       .then((res) => {

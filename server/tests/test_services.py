@@ -43,7 +43,7 @@ def test_answer_uses_llm_when_enabled(monkeypatch):
     monkeypatch.setattr(chat, "get_settings", lambda: SimpleNamespace(llm_enabled=True))
     monkeypatch.setattr(llm, "ask_llm", fake_ask_llm)
 
-    res = _run(chat.answer("질문", "ko", "eunpyeong", "bukhansan", 0.5, _cond()))
+    res = _run(chat.answer("질문", "ko", "bukhansan", 0.5, _cond()))
     assert res["engine"] == "claude"
     assert res["intent"] == "llm"
     assert "위험구간:" in seen["context"]

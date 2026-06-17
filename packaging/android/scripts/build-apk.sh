@@ -9,7 +9,7 @@ fail() {
   exit 1
 }
 
-if [ -z "${JAVA_HOME:-}" ] && [ -x /opt/homebrew/opt/openjdk@17/bin/java ]; then
+if [[ -z "${JAVA_HOME:-}" && -x /opt/homebrew/opt/openjdk@17/bin/java ]]; then
   export JAVA_HOME="/opt/homebrew/opt/openjdk@17"
   export PATH="$JAVA_HOME/bin:$PATH"
 fi
@@ -17,16 +17,16 @@ fi
 java -version >/dev/null 2>&1 || fail "JDK 17+ is required. Install it first, then run npm run init:project."
 command -v npm >/dev/null 2>&1 || fail "npm is required."
 
-if [ -f .android-signing.env ]; then
+if [[ -f .android-signing.env ]]; then
   # shellcheck disable=SC1091
   source .android-signing.env
 fi
 
-if [ ! -f twa-manifest.json ]; then
+if [[ ! -f twa-manifest.json ]]; then
   fail "twa-manifest.json is missing."
 fi
 
-if [ ! -f gradlew ] || [ ! -d app ]; then
+if [[ ! -f gradlew || ! -d app ]]; then
   fail "Bubblewrap Android project is not initialized. Run: npm install && npm run init:project"
 fi
 
@@ -39,7 +39,7 @@ OUT_APK="$OUT_DIR/forestmate-android-v${VERSION_NAME}.apk"
 
 npx bubblewrap build --skipPwaValidation --manifest=./twa-manifest.json "$@"
 
-if [ ! -f app-release-signed.apk ]; then
+if [[ ! -f app-release-signed.apk ]]; then
   fail "Bubblewrap finished but app-release-signed.apk was not found."
 fi
 

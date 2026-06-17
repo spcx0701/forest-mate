@@ -1,6 +1,7 @@
 """Galaxy Watch / Wear OS 페어링과 산행 센서 업로드."""
 import secrets
 from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
@@ -68,20 +69,25 @@ def _check_pair_claim_rate_limit(request: Request) -> None:
     _pair_claim_attempts[key] = attempts
 
 
-def get_watch_session(authorization: str = Header(default=""),
-                      db: Session = Depends(get_db)) -> WatchSession:
+def get_watch_session(db: Annotated[Session, Depends(get_db)],
+                      authorization: Annotated[str, Header()] = "") -> WatchSession:
     if not authorization.startswith("Bearer "):
         raise HTTPException(401, "missing bearer token")
-    session = db.scalar(select(WatchSession).where(WatchSession.token == authorization[7:]))
+    session = db.scalar(select(WatchSession).where(WatchSession.token == authorization.removeprefix("Bearer ")))
     if not session:
         raise HTTPException(401, "invalid watch token")
     return session
 
 
-@router.post("/watch/pair/start", response_model=WatchPairOut, status_code=201)
+@router.post("/watch/pair/start", response_model=WatchPairOut, status_code=201,
+             responses={
+                 404: {"description": "Hike not found"},
+                 409: {"description": "Hike is not active"},
+                 503: {"description": "Pair code unavailable"},
+             })
 async def start_watch_pairing(body: WatchPairStartIn,
-                              device: Device = Depends(get_device),
-                              db: Session = Depends(get_db)):
+                              device: Annotated[Device, Depends(get_device)],
+                              db: Annotated[Session, Depends(get_db)]):
     hike_id = None
     if body.hike_id:
         hike = db.get(Hike, body.hike_id)
@@ -99,8 +105,14 @@ async def start_watch_pairing(body: WatchPairStartIn,
     return WatchPairOut(code=code, expires_in=PAIR_EXPIRES_SECONDS, hike_id=hike_id)
 
 
-@router.post("/watch/pair/claim", response_model=WatchPairClaimOut)
-async def claim_watch_pairing(body: WatchPairClaimIn, request: Request, db: Session = Depends(get_db)):
+@router.post("/watch/pair/claim", response_model=WatchPairClaimOut,
+             responses={
+                 404: {"description": "Pair code not found"},
+                 409: {"description": "Hike is not active"},
+                 429: {"description": "Too many pair attempts"},
+             })
+async def claim_watch_pairing(body: WatchPairClaimIn, request: Request,
+                              db: Annotated[Session, Depends(get_db)]):
     _check_pair_claim_rate_limit(request)
     pair = db.get(WatchPair, body.code)
     if not pair or _aware(pair.expires_at) < _utcnow():
@@ -142,8 +154,8 @@ def _active_hike_for_watch(watch: WatchSession, db: Session) -> Hike | None:
 
 @router.post("/watch/track", response_model=TrackOut)
 async def track_from_watch(body: WatchTrackIn,
-                           watch: WatchSession = Depends(get_watch_session),
-                           db: Session = Depends(get_db)):
+                           watch: Annotated[WatchSession, Depends(get_watch_session)],
+                           db: Annotated[Session, Depends(get_db)]):
     now = _utcnow()
     watch.last_seen_at = now
     watch.last_hr = body.hr
@@ -186,8 +198,9 @@ async def track_from_watch(body: WatchTrackIn,
 
 
 @router.get("/watch/latest")
-async def latest_watch_status(hike_id: str | None = None, device: Device = Depends(get_device),
-                              db: Session = Depends(get_db)):
+async def latest_watch_status(device: Annotated[Device, Depends(get_device)],
+                              db: Annotated[Session, Depends(get_db)],
+                              hike_id: str | None = None):
     query = select(WatchSession).where(WatchSession.device_id == device.id)
     if hike_id:
         query = query.where(WatchSession.hike_id == hike_id)

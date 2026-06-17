@@ -1,4 +1,6 @@
 """Web Push 구독·발송 — 인증(기기 토큰) 구간. 비우면 인앱 알림만."""
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,8 +22,8 @@ async def push_vapid():
 
 
 @router.post("/push/subscribe")
-async def push_subscribe(body: dict, device: Device = Depends(get_device),
-                         db: Session = Depends(get_db)):
+async def push_subscribe(body: dict, device: Annotated[Device, Depends(get_device)],
+                         db: Annotated[Session, Depends(get_db)]):
     """브라우저 PushSubscription 저장(멱등)."""
     if not body.get("endpoint"):
         return {"ok": False, "reason": "endpoint 없음"}
@@ -33,7 +35,8 @@ async def push_subscribe(body: dict, device: Device = Depends(get_device),
 
 
 @router.post("/push/test")
-async def push_test(device: Device = Depends(get_device), db: Session = Depends(get_db)):
+async def push_test(device: Annotated[Device, Depends(get_device)],
+                    db: Annotated[Session, Depends(get_db)]):
     """이 기기 구독으로 테스트 푸시 발송."""
     subs = db.execute(select(PushSub).where(PushSub.device_id == device.id)).scalars().all()
     sent = sum(1 for s in subs if send_to(

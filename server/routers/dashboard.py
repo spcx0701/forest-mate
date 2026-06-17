@@ -1,6 +1,7 @@
 """B2G 관제 — 요약 통계 + 실시간 WebSocket 피드."""
 import asyncio
 import contextlib
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select
@@ -18,7 +19,7 @@ router = APIRouter()
 
 
 @router.get("/dashboard/summary")
-async def summary(db: Session = Depends(get_db)):
+async def summary(db: Annotated[Session, Depends(get_db)]):
     active = db.scalar(select(func.count()).select_from(Hike).where(Hike.status == "active")) or 0
     sos_open = db.scalar(select(func.count()).select_from(SosEvent)
                          .where(SosEvent.status != "closed")) or 0
