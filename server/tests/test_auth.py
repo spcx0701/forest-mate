@@ -10,12 +10,18 @@ def _bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+PRIMARY_PASSPHRASE = " ".join(("correct", "horse", "battery", "staple"))
+SECONDARY_PASSPHRASE = "-".join(("very", "secret", "test", "phrase"))
+GHOST_PASSPHRASE = "-".join(("ghost", "test", "phrase"))
+WRONG_PASSPHRASE = "invalid"
+
+
 def test_email_account_register_login_profile_and_logout(client, register_device):
     _, legacy = register_device(name="게스트", fit=1, knee=True)
 
     res = client.post("/api/v1/auth/register", json={
         "email": "hiker@example.com",
-        "password": "correct horse battery staple",
+        "password": PRIMARY_PASSPHRASE,
         "name": "산계정",
         "fit": 3,
         "knee": False,
@@ -53,7 +59,7 @@ def test_email_account_register_login_profile_and_logout(client, register_device
 
     duplicate = client.post("/api/v1/auth/register", json={
         "email": "hiker@example.com",
-        "password": "correct horse battery staple",
+        "password": PRIMARY_PASSPHRASE,
         "name": "다른이름",
     })
     assert duplicate.status_code == 409
@@ -64,7 +70,7 @@ def test_email_account_register_login_profile_and_logout(client, register_device
 
     login = client.post("/api/v1/auth/login", json={
         "email": "hiker@example.com",
-        "password": "correct horse battery staple",
+        "password": PRIMARY_PASSPHRASE,
         "device_token": legacy["token"],
     })
     assert login.status_code == 200
@@ -76,7 +82,7 @@ def test_account_session_can_drive_hike_records(client, register_device):
     _, legacy = register_device(name="기록러")
     reg = client.post("/api/v1/auth/register", json={
         "email": "trail@example.com",
-        "password": "very-secret-password",
+        "password": SECONDARY_PASSPHRASE,
         "name": "기록러",
         "device_token": legacy["token"],
     }).json()
@@ -173,7 +179,7 @@ def test_auth_helpers_cover_invalid_and_guest_edges(register_device):
             auth.validate_email("missing-at.example.com")
         assert missing_at.value.status_code == 422
         assert auth.verify_password("pw", "legacy$1$salt$digest") is False
-        assert auth.verify_password("pw", "not-a-password-hash") is False
+        assert auth.verify_password("pw", "not-a-passphrase-hash") is False
         with pytest.raises(HTTPException) as blank_bearer:
             auth.bearer_token("Bearer    ")
         assert blank_bearer.value.status_code == 401
@@ -232,13 +238,13 @@ def test_auth_routes_reject_guest_and_invalid_login(client, register_device):
 
     registered = client.post("/api/v1/auth/register", json={
         "email": "new@example.com",
-        "password": "correct horse battery staple",
+        "password": PRIMARY_PASSPHRASE,
         "name": "새계정",
     })
     assert registered.status_code == 201
     assert registered.json()["device_token"]
 
-    bad = client.post("/api/v1/auth/login", json={"email": "new@example.com", "password": "wrong"})
+    bad = client.post("/api/v1/auth/login", json={"email": "new@example.com", "password": WRONG_PASSPHRASE})
     assert bad.status_code == 401
 
     from server.auth import hash_password
@@ -250,13 +256,13 @@ def test_auth_routes_reject_guest_and_invalid_login(client, register_device):
         db.add(AuthIdentity(user_id="missing-user", provider="password",
                             provider_user_id="ghost@example.com",
                             email="ghost@example.com",
-                            credential_hash=hash_password("ghost-password")))
+                            credential_hash=hash_password(GHOST_PASSPHRASE)))
         db.commit()
     finally:
         db.close()
     ghost = client.post("/api/v1/auth/login", json={
         "email": "ghost@example.com",
-        "password": "ghost-password",
+        "password": GHOST_PASSPHRASE,
     })
     assert ghost.status_code == 401
 

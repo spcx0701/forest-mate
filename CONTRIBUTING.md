@@ -7,6 +7,16 @@ privacy, accessibility, documentation, or maintainability.
 
 Please also read the [Code of Conduct](CODE_OF_CONDUCT.md).
 
+Project governance, support, roadmap, architecture, security-design, and
+testing details are tracked in:
+
+- [GOVERNANCE.md](GOVERNANCE.md)
+- [SUPPORT.md](SUPPORT.md)
+- [docs/ROADMAP.md](docs/ROADMAP.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/SECURITY_DESIGN.md](docs/SECURITY_DESIGN.md)
+- [docs/TESTING.md](docs/TESTING.md)
+
 ## Good First Contributions
 
 - Fix documentation that is stale, unclear, or hard to follow.

@@ -145,7 +145,7 @@ def test_gps_nearby_and_precise_index(client, seed_mountain):
     # 정밀 산행지수 — 좌표 있으면 place가 시도근사가 아닌 실주소
     pi = client.get("/api/v1/mountains/GPS1/index").json()
     assert "대표지점 추정" not in pi["place"]
-    assert pi["mountain"]["lat"] == 37.4449
+    assert pi["mountain"]["lat"] == pytest.approx(37.4449)
 
 
 def test_full_hike_flow(client, register_device):
@@ -235,13 +235,13 @@ def test_watch_pairing_and_sensor_ingest(client, register_device):
                           json={"hr": 151, "lat": 37.6584, "lon": 126.9778, "acc": 8, "battery": 74},
                           headers=watch_auth)
     assert tracked.status_code == 200
-    assert tracked.json()["progress"] == 0.0
+    assert tracked.json()["progress"] == pytest.approx(0.0)
 
     latest = client.get("/api/v1/watch/latest", params={"hike_id": hike_id}, headers=auth).json()
     assert latest["connected"] is True
     assert latest["hr"] == 151
-    assert latest["lat"] == 37.6584
-    assert latest["lon"] == 126.9778
+    assert latest["lat"] == pytest.approx(37.6584)
+    assert latest["lon"] == pytest.approx(126.9778)
     assert latest["battery"] == 74
     assert latest["age_sec"] >= 0
 
@@ -264,7 +264,7 @@ def test_watch_pairing_can_connect_before_hike_and_attach_later(client, register
                            json={"hr": 118, "lat": 37.5, "lon": 127.0, "acc": 7, "battery": 81},
                            headers=watch_auth)
     assert pre_hike.status_code == 200
-    assert pre_hike.json()["progress"] == 0.0
+    assert pre_hike.json()["progress"] == pytest.approx(0.0)
 
     latest = client.get("/api/v1/watch/latest", headers=auth).json()
     assert latest["connected"] is True
@@ -276,7 +276,7 @@ def test_watch_pairing_can_connect_before_hike_and_attach_later(client, register
                           json={"progress": 0.12, "hr": 126, "lat": 37.6584, "lon": 126.9778},
                           headers=watch_auth)
     assert tracked.status_code == 200
-    assert tracked.json()["progress"] == 0.12
+    assert tracked.json()["progress"] == pytest.approx(0.12)
 
     latest = client.get("/api/v1/watch/latest", params={"hike_id": hike_id}, headers=auth).json()
     assert latest["connected"] is True

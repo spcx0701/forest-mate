@@ -68,7 +68,7 @@ async def lifespan(_: FastAPI):
              settings.env, settings.live_data, settings.llm_enabled)
     has_catalog = _load_baked_catalog()                  # 영속 카탈로그 우선(동기·빠름)
     if not has_catalog and settings.live_data:           # 파일 없을 때만 API ETL 폴백
-        asyncio.create_task(_autoload_mountains())
+        app.state.mountain_autoload_task = asyncio.create_task(_autoload_mountains())
     yield
 
 

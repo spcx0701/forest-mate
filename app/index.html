@@ -14,8 +14,8 @@
 <meta name="apple-mobile-web-app-title" content="숲길동무">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="app.css?v=20260617-ftue-social-center-leaflet-map">
 <title>숲길동무 ForestMate — AI 산행 안전 동반자</title>
 </head>
@@ -25,7 +25,7 @@
   <header>
     <div class="logo"><div class="mark"><img src="icon-192.png" alt="숲길동무"></div>숲길동무<span id="cloudDot" title="실시간 서버 연결됨">LIVE</span></div>
     <button class="loc" id="locBtn" aria-label="지역 선택">📍 <span id="locLabel">서울 은평구</span> ▾</button>
-    <button class="bell" id="bellBtn">🔔<i></i></button>
+    <button class="bell" id="bellBtn" aria-label="알림 열기">🔔<i></i></button>
   </header>
 
   <!-- ============ HOME ============ -->
@@ -239,8 +239,8 @@
             <button data-provider="naver" aria-label="네이버로 시작"><span class="provider-logo naver-logo" aria-hidden="true"></span><span>Naver로 시작</span></button>
           </div>
           <div class="auth-divider"><span>이메일로 계속하기</span></div>
-          <input type="email" id="authEmail" placeholder="이메일">
-          <input type="password" id="authPassword" placeholder="비밀번호 (8자 이상)" autocomplete="current-password">
+          <input type="email" id="authEmail" placeholder="이메일" aria-label="이메일">
+          <input type="password" id="authPassword" placeholder="비밀번호 (8자 이상)" autocomplete="current-password" aria-label="비밀번호">
           <div class="auth-actions">
             <button id="authCreate">시작하기</button>
             <button id="authLogin">로그인</button>
@@ -284,7 +284,7 @@
       <h3>전국 산 검색 🏔</h3>
       <p class="sub">산림청 산정보 — 전국 3,400여 개 산을 이름으로 검색하세요.</p>
       <button class="btn ghost" id="mntGpsBtn" style="width:100%;margin-bottom:10px">📍 내 주변 산 찾기 (GPS)</button>
-      <input type="search" id="mntQ" placeholder="산 이름 입력 (예: 지리산, 북한산)" autocomplete="off">
+      <input type="search" id="mntQ" placeholder="산 이름 입력 (예: 지리산, 북한산)" autocomplete="off" aria-label="산 이름 검색">
       <div id="mntResults" class="mnt-results"></div>
       <div class="btnrow"><button class="btn ghost" data-close="mntModal">닫기</button></div>
     </div>

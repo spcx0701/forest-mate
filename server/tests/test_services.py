@@ -74,6 +74,7 @@ def test_llm_adapter_builds_cached_client(monkeypatch):
     assert llm._get_client().api_key == "secret"
     assert llm._get_client() is llm._client
     assert _run(llm.ask_llm("질문", "ko", "context")) == "숲길 답변"
+    assert created
     assert created[0]["model"] == "model-x"
     assert created[0]["max_tokens"] == 77
 
