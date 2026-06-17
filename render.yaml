@@ -41,6 +41,22 @@ services:
         value: claude-opus-4-8
       - key: LLM_MAX_TOKENS
         value: "1024"
+      - key: PUBLIC_BASE_URL
+        value: https://forestmate.onrender.com
+      - key: AUTH_SESSION_DAYS
+        value: "90"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: KAKAO_CLIENT_ID
+        sync: false
+      - key: KAKAO_CLIENT_SECRET
+        sync: false
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false
 
 # 무료 PostgreSQL — Blueprint 배포 시 자동 프로비저닝되어 DATABASE_URL 주입.
 databases:

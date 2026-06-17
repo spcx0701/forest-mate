@@ -5,11 +5,23 @@
 ## 산출물
 
 - 패키지 ID: `kr.forestmate.app`
+- Wear OS 패키지 ID: `kr.forestmate.watch`
 - 빌드 도구: Bubblewrap TWA
 - 최종 파일: `dist/forestmate-android-v1.0.0.apk`
 - 체크섬: `dist/forestmate-android-v1.0.0.apk.sha256`
 
 Bubblewrap는 내부적으로 AAB도 만들지만, `npm run build:apk`는 빌드 후 AAB를 삭제하고 APK만 `dist/`에 남긴다.
+
+## Galaxy Watch / Wear OS 연동
+
+워치 앱은 별도 Wear OS 모듈(`:wear`)로 빌드한다. 제품 UX 기준은 폰앱과 워치앱이 companion 앱으로 자동 연결되는 흐름이며, 6자리 코드는 자동 연결이 실패했거나 워치 단독 네트워크로 복구해야 할 때 쓰는 백업 연결이다. 현재 구현된 런타임 경로는 백업 코드 연결이며, 기본 자동 연결을 완성하려면 Android 폰 래퍼와 Wear OS 앱 사이에 Wear OS Data Layer 토큰 전달을 추가해야 한다. 워치가 워치 전용 토큰을 받으면 전경 서비스가 심박·GPS·가속도·배터리 샘플을 서버 `/api/v1/watch/track`으로 전송한다.
+
+```bash
+cd "/Users/dong9733/Documents/GitHub/forest-mate/packaging/android"
+./gradlew --no-daemon :wear:assembleDebug
+```
+
+예상 산출물은 `wear/build/outputs/apk/debug/wear-debug.apk`다. 기본 API 주소는 `wear/src/main/res/values/strings.xml`의 `default_api_base`이며, 로컬 서버와 붙여 테스트할 때는 해당 값을 같은 서버의 `/api/v1` 주소로 바꾼다.
 
 ## 1. 최초 1회 준비
 

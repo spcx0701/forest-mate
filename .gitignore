@@ -6,6 +6,13 @@ __pycache__/
 .DS_Store
 node_modules/
 
+# Generated design exploration artifacts
+assets/**/concepts/
+
+# Android local SDK path
+packaging/android/local.properties
+packaging/android/wear/build/
+
 # 테스트 커버리지 산출물
 .coverage
 coverage.xml

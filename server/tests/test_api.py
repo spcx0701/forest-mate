@@ -1,5 +1,7 @@
 """API 통합 테스트 — 기기 등록 → 산행 → 위험경고 → SOS → 관제 반영 전체 흐름."""
 
+from datetime import timedelta
+
 import pytest
 
 
@@ -207,6 +209,184 @@ def test_full_hike_flow(client, register_device):
     log = client.get("/api/v1/hikes", headers=auth).json()
     assert len(log["items"]) == 1
     assert log["items"][0]["km"] > 0 and log["items"][0]["kcal"] > 0 and log["items"][0]["course"]
+
+
+def test_watch_pairing_and_sensor_ingest(client, register_device):
+    auth, _ = register_device(name="워치러")
+    hike = client.post("/api/v1/hikes", json={"course_id": "bukhansan"}, headers=auth).json()
+    hike_id = hike["hike_id"]
+
+    pair = client.post("/api/v1/watch/pair/start", json={"hike_id": hike_id}, headers=auth)
+    assert pair.status_code == 201
+    code = pair.json()["code"]
+    assert len(code) == 6 and code.isdigit()
+
+    claimed = client.post("/api/v1/watch/pair/claim", json={"code": code})
+    assert claimed.status_code == 200
+    watch_token = claimed.json()["watch_token"]
+    assert claimed.json()["hike_id"] == hike_id
+    assert claimed.json()["course_id"] == "bukhansan"
+
+    latest = client.get("/api/v1/watch/latest", params={"hike_id": hike_id}, headers=auth).json()
+    assert latest == {"connected": False, "hike_id": hike_id}
+
+    watch_auth = {"Authorization": f"Bearer {watch_token}"}
+    tracked = client.post("/api/v1/watch/track",
+                          json={"hr": 151, "lat": 37.6584, "lon": 126.9778, "acc": 8, "battery": 74},
+                          headers=watch_auth)
+    assert tracked.status_code == 200
+    assert tracked.json()["progress"] == 0.0
+
+    latest = client.get("/api/v1/watch/latest", params={"hike_id": hike_id}, headers=auth).json()
+    assert latest["connected"] is True
+    assert latest["hr"] == 151
+    assert latest["lat"] == 37.6584
+    assert latest["lon"] == 126.9778
+    assert latest["battery"] == 74
+    assert latest["age_sec"] >= 0
+
+
+def test_watch_pairing_can_connect_before_hike_and_attach_later(client, register_device):
+    auth, _ = register_device(name="상시워치")
+
+    pair = client.post("/api/v1/watch/pair/start", json={}, headers=auth)
+    assert pair.status_code == 201
+    code = pair.json()["code"]
+    assert pair.json()["hike_id"] is None
+
+    claimed = client.post("/api/v1/watch/pair/claim", json={"code": code})
+    assert claimed.status_code == 200
+    assert claimed.json()["hike_id"] is None
+    assert claimed.json()["course_id"] is None
+    watch_auth = {"Authorization": f"Bearer {claimed.json()['watch_token']}"}
+
+    pre_hike = client.post("/api/v1/watch/track",
+                           json={"hr": 118, "lat": 37.5, "lon": 127.0, "acc": 7, "battery": 81},
+                           headers=watch_auth)
+    assert pre_hike.status_code == 200
+    assert pre_hike.json()["progress"] == 0.0
+
+    latest = client.get("/api/v1/watch/latest", headers=auth).json()
+    assert latest["connected"] is True
+    assert latest["hike_id"] is None
+    assert latest["hr"] == 118
+
+    hike_id = client.post("/api/v1/hikes", json={"course_id": "bukhansan"}, headers=auth).json()["hike_id"]
+    tracked = client.post("/api/v1/watch/track",
+                          json={"progress": 0.12, "hr": 126, "lat": 37.6584, "lon": 126.9778},
+                          headers=watch_auth)
+    assert tracked.status_code == 200
+    assert tracked.json()["progress"] == 0.12
+
+    latest = client.get("/api/v1/watch/latest", params={"hike_id": hike_id}, headers=auth).json()
+    assert latest["connected"] is True
+    assert latest["hike_id"] == hike_id
+    assert latest["hr"] == 126
+
+
+def test_watch_pairing_rejects_invalid_or_foreign_sessions(client, register_device):
+    auth_a, _ = register_device(name="A")
+    hike_id = client.post("/api/v1/hikes", json={"course_id": "bukhansan"}, headers=auth_a).json()["hike_id"]
+    auth_b, _ = register_device(name="B")
+
+    assert client.post("/api/v1/watch/pair/start", json={"hike_id": hike_id}, headers=auth_b).status_code == 404
+    assert client.post("/api/v1/watch/pair/claim", json={"code": "000000"}).status_code == 404
+    assert client.post("/api/v1/watch/track", json={"hr": 90}).status_code == 401
+    assert client.post("/api/v1/watch/track", json={"hr": 90},
+                       headers={"Authorization": "Bearer nope"}).status_code == 401
+
+
+def test_watch_pair_claim_rate_limits_repeated_guesses(client):
+    from server.routers import watch as watch_router
+
+    watch_router._pair_claim_attempts.clear()
+    try:
+        headers = {"X-Forwarded-For": "203.0.113.17"}
+        for _ in range(10):
+            assert client.post("/api/v1/watch/pair/claim", json={"code": "999999"},
+                               headers=headers).status_code == 404
+        assert client.post("/api/v1/watch/pair/claim", json={"code": "999999"},
+                           headers=headers).status_code == 429
+    finally:
+        watch_router._pair_claim_attempts.clear()
+
+
+def test_watch_pairing_rejects_inactive_hikes(client, register_device):
+    auth, _ = register_device(name="종료산행")
+    hike_id = client.post("/api/v1/hikes", json={"course_id": "bukhansan"}, headers=auth).json()["hike_id"]
+    assert client.post(f"/api/v1/hikes/{hike_id}/end", headers=auth).status_code == 200
+    assert client.post("/api/v1/watch/pair/start", json={"hike_id": hike_id},
+                       headers=auth).status_code == 409
+
+    active_hike = client.post("/api/v1/hikes", json={"course_id": "bukhansan"}, headers=auth).json()["hike_id"]
+    pair = client.post("/api/v1/watch/pair/start", json={"hike_id": active_hike}, headers=auth).json()
+    assert client.post(f"/api/v1/hikes/{active_hike}/end", headers=auth).status_code == 200
+    assert client.post("/api/v1/watch/pair/claim", json={"code": pair["code"]}).status_code == 409
+
+
+def test_watch_pair_code_exhaustion_is_reported(register_device, monkeypatch):
+    from fastapi import HTTPException
+
+    from server.db import SessionLocal
+    from server.models import WatchPair, utcnow
+    from server.routers import watch as watch_router
+
+    _, legacy = register_device(name="코드충돌")
+    db = SessionLocal()
+    try:
+        monkeypatch.setattr(watch_router.secrets, "randbelow", lambda limit: 0)
+        db.add(WatchPair(code="000000", device_id=legacy["device_id"],
+                         expires_at=utcnow() + timedelta(minutes=10)))
+        db.flush()
+        with pytest.raises(HTTPException) as unavailable:
+            watch_router._new_code(db)
+        assert unavailable.value.status_code == 503
+    finally:
+        db.rollback()
+        db.close()
+
+
+def test_watch_latest_can_fallback_to_unattached_session(client, register_device):
+    auth, _ = register_device(name="사전페어링")
+    pair = client.post("/api/v1/watch/pair/start", json={}, headers=auth).json()
+    assert client.post("/api/v1/watch/pair/claim", json={"code": pair["code"]}).status_code == 200
+
+    hike_id = client.post("/api/v1/hikes", json={"course_id": "bukhansan"}, headers=auth).json()["hike_id"]
+    latest = client.get("/api/v1/watch/latest", params={"hike_id": hike_id}, headers=auth).json()
+    assert latest == {"connected": False, "hike_id": hike_id}
+
+
+def test_watch_track_publishes_distress_alert_for_stalled_hr_anomaly(client, register_device):
+    from server.db import SessionLocal
+    from server.models import AlertEvent, TrackPoint, utcnow
+
+    auth, _ = register_device(name="조난워치")
+    hike_id = client.post("/api/v1/hikes", json={"course_id": "bukhansan"}, headers=auth).json()["hike_id"]
+    code = client.post("/api/v1/watch/pair/start", json={"hike_id": hike_id}, headers=auth).json()["code"]
+    watch_token = client.post("/api/v1/watch/pair/claim", json={"code": code}).json()["watch_token"]
+
+    old = utcnow() - timedelta(minutes=31)
+    db = SessionLocal()
+    try:
+        db.add_all([
+            TrackPoint(hike_id=hike_id, progress=0.25, hr=142, created_at=old),
+            TrackPoint(hike_id=hike_id, progress=0.25, hr=143, created_at=old + timedelta(minutes=1)),
+        ])
+        db.commit()
+    finally:
+        db.close()
+
+    tracked = client.post("/api/v1/watch/track", json={"progress": 0.25, "hr": 151},
+                          headers={"Authorization": f"Bearer {watch_token}"})
+    assert tracked.status_code == 200
+    assert tracked.json()["distress"]["level"] == 2
+
+    db = SessionLocal()
+    try:
+        alert = db.query(AlertEvent).filter(AlertEvent.kind == "distress").one()
+        assert "워치 조난위험" in alert.title
+    finally:
+        db.close()
 
 
 def test_push_subscription_flow(client, register_device):

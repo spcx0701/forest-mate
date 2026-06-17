@@ -16,7 +16,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=20260617-ftue-social-center-leaflet-map">
 <title>숲길동무 ForestMate — AI 산행 안전 동반자</title>
 </head>
 <body>
@@ -92,6 +92,16 @@
       <button class="btn primary" id="btnHike">▶ 산행 시작</button>
       <button class="btn ghost" id="btnEnd" disabled>산행 종료</button>
     </div>
+    <div class="watch-card" id="watchCard">
+      <div class="watch-main">
+        <div class="watch-copy">
+          <b id="watchTitle">⌚ Galaxy Watch</b>
+          <span id="watchText">워치 착용 대기 · 시작하면 기록 연결</span>
+        </div>
+        <button class="watch-btn" id="btnWatchPair">연결</button>
+      </div>
+      <div class="watch-code" id="watchCode" style="display:none"></div>
+    </div>
     <button class="btn ghost" id="btnDemo" style="width:100%;margin-top:8px;font-size:12px">🧪 데모 이동 +90m (실제 걷지 않고 GPS 시뮬레이션)</button>
 
     <div class="toggles">
@@ -152,6 +162,11 @@
       <div class="lv" id="profLv">Lv.7 숲지기</div>
     </div>
 
+    <div class="card account-card">
+      <div><b id="acctTitle">계정 없이 사용 중</b><span id="acctSub">가입하면 워치·웹·산행 기록이 연동돼요</span></div>
+      <button id="btnAccount">가입/로그인</button>
+    </div>
+
     <div class="card">
       <b style="font-size:13.5px" id="repTitle">나의 산행 리포트</b>
       <div class="m4">
@@ -203,24 +218,37 @@
 
   <!-- ============ 온보딩 ============ -->
   <div class="overlay" id="onboard">
-    <div class="sheet">
-      <div class="grab"></div>
-      <h3>반가워요! 산행 프로필을 알려주세요 🌲</h3>
-      <p class="sub">체력과 주의사항에 맞춰 AI가 코스를 추천하고, 위험 경고 기준을 조정해요.</p>
-      <div class="fld"><label>닉네임</label><input type="text" id="obName" placeholder="닉네임 입력 (예: 산친구)" maxlength="8"></div>
-      <div class="fld"><label>체력 수준</label>
-        <div class="seg" id="obFit">
-          <button data-v="1">⛰ 초급</button><button data-v="2" class="on">⛰⛰ 중급</button><button data-v="3">⛰⛰⛰ 상급</button>
-        </div>
+    <div class="sheet ftue-screen">
+      <div class="ftue-atmosphere" aria-hidden="true">
+        <span class="ftue-glow"></span>
+        <span class="ftue-ridge ridge-a"></span>
+        <span class="ftue-ridge ridge-b"></span>
+        <span class="ftue-trail"></span>
       </div>
-      <div class="fld"><label>건강 주의사항 (해당 시 선택)</label>
-        <div class="checks" id="obChecks">
-          <button class="ckc on" data-v="knee">무릎 주의</button>
-          <button class="ckc" data-v="heart">심혈관 주의</button>
-          <button class="ckc" data-v="none">없음</button>
-        </div>
+      <div class="ftue-splash" aria-hidden="true">
+        <div class="ftue-brandmark"><img src="icon-192.png" alt=""></div>
+        <span>숲길동무</span>
       </div>
-      <div class="btnrow"><button class="btn primary" id="obSave">시작하기</button></div>
+      <div class="ftue-content">
+        <div class="ftue-start">
+          <h3>숲길동무 시작하기</h3>
+          <p class="sub">가입하면 워치와 웹에서도 산행 기록을 볼 수 있어요.</p>
+          <div class="social-row social-row-stack" aria-label="소셜 계정으로 계속하기">
+            <button data-provider="google" aria-label="Google로 시작"><span class="provider-logo google-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9c-.3 1.4-1 2.5-2.1 3.3v2.7h3.4c2-1.8 3.4-4.6 3.4-8z"/><path fill="#34A853" d="M12 23c3 0 5.6-1 7.4-2.8L16 17.5c-.9.6-2.2 1-4 1-3.1 0-5.7-2.1-6.7-4.9H1.8v2.8C3.6 20.3 7.5 23 12 23z"/><path fill="#FBBC05" d="M5.3 13.6c-.2-.6-.4-1.3-.4-2s.1-1.4.4-2V6.8H1.8C1.1 8.2.7 9.8.7 11.6s.4 3.4 1.1 4.8l3.5-2.8z"/><path fill="#EA4335" d="M12 4.7c1.6 0 3.1.6 4.2 1.7l3.1-3.1C17.6 1.6 15 0 12 0 7.5 0 3.6 2.7 1.8 6.8l3.5 2.8C6.3 6.8 8.9 4.7 12 4.7z"/></svg></span><span>Google로 시작</span></button>
+            <button data-provider="kakao" aria-label="카카오로 시작"><span class="provider-logo kakao-logo" aria-hidden="true"></span><span>Kakao로 시작</span></button>
+            <button data-provider="naver" aria-label="네이버로 시작"><span class="provider-logo naver-logo" aria-hidden="true"></span><span>Naver로 시작</span></button>
+          </div>
+          <div class="auth-divider"><span>이메일로 계속하기</span></div>
+          <input type="email" id="authEmail" placeholder="이메일">
+          <input type="password" id="authPassword" placeholder="비밀번호 (8자 이상)" autocomplete="current-password">
+          <div class="auth-actions">
+            <button id="authCreate">시작하기</button>
+            <button id="authLogin">로그인</button>
+          </div>
+          <span class="auth-msg" id="authMsg"></span>
+        </div>
+        <button class="ftue-skip" id="obSave">나중에 하기</button>
+      </div>
     </div>
   </div>
 
@@ -282,6 +310,7 @@
 </div>
 
 <script src="data.js"></script>
-<script src="app.js"></script>
+<script src="condition-details.js?v=20260617-leaflet-map"></script>
+<script src="app.js?v=20260617-server-connection-leaflet-map"></script>
 </body>
 </html>

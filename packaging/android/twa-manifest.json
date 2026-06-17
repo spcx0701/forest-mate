@@ -20,8 +20,8 @@
     "path": "android-signing.keystore",
     "alias": "forestmate"
   },
-  "appVersionName": "1.0.4",
-  "appVersionCode": 5,
+  "appVersionName": "1.1.0",
+  "appVersionCode": 6,
   "shortcuts": [
     {
       "name": "오늘의 산행지수",
@@ -64,5 +64,5 @@
     "standalone",
     "minimal-ui"
   ],
-  "appVersion": "1.0.4"
+  "appVersion": "1.1.0"
 }

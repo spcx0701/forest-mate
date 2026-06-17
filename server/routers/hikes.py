@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..auth import AuthContext, get_auth_context, linked_device_ids, context_from_authorization
 from ..db import get_db
 from ..models import AlertEvent, Device, Hike, SosEvent, TrackPoint
 from ..schemas import (DeviceCreate, DeviceOut, HikeCreate, HikeEndOut,
@@ -18,12 +19,7 @@ router = APIRouter()
 
 def get_device(authorization: str = Header(default=""),
                db: Session = Depends(get_db)) -> Device:
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(401, "missing bearer token")
-    device = db.scalar(select(Device).where(Device.token == authorization[7:]))
-    if not device:
-        raise HTTPException(401, "invalid token")
-    return device
+    return context_from_authorization(db, authorization).device
 
 
 def _course(course_id: str) -> dict:
@@ -136,15 +132,17 @@ def _compute_badges(total, total_km, total_kcal, active_days, regions, distinct,
 
 
 @router.get("/hikes/summary", response_model=HikeSummaryOut)
-async def hike_summary(device: Device = Depends(get_device), db: Session = Depends(get_db)):
-    """마이 리포트 — 이 기기의 완료된 산행을 DB에서 집계(하드코딩 아님)."""
+async def hike_summary(ctx: AuthContext = Depends(get_auth_context), db: Session = Depends(get_db)):
+    """마이 리포트 — 계정이면 연결 기기 전체, 게스트면 이 기기 기록을 집계."""
+    ids = linked_device_ids(db, ctx.user) if ctx.user and ctx.account_session else [ctx.device.id]
     hikes = db.execute(
-        select(Hike).where(Hike.device_id == device.id, Hike.status == "done")
+        select(Hike).where(Hike.device_id.in_(ids), Hike.status == "done")
     ).scalars().all()
     total = len(hikes)
     total_km = round(sum(h.distance_km for h in hikes), 1)
     total_kcal = sum(h.kcal for h in hikes)
-    created = device.created_at if device.created_at.tzinfo else device.created_at.replace(tzinfo=timezone.utc)
+    owner_created = ctx.user.created_at if ctx.user and ctx.account_session else ctx.device.created_at
+    created = owner_created if owner_created.tzinfo else owner_created.replace(tzinfo=timezone.utc)
     active_days = (datetime.now(timezone.utc) - created).days + 1
 
     # 지역 다양성·완등 코스 — course_id → 지역(시·도) 매핑
@@ -181,10 +179,11 @@ async def hike_summary(device: Device = Depends(get_device), db: Session = Depen
 
 
 @router.get("/hikes")
-async def hike_list(device: Device = Depends(get_device), db: Session = Depends(get_db)):
-    """이 기기의 산행 기록 — 어느 산을 얼마나(거리·칼로리) 다녔는지 최신순."""
+async def hike_list(ctx: AuthContext = Depends(get_auth_context), db: Session = Depends(get_db)):
+    """산행 기록 — 계정이면 연결 기기 전체, 게스트면 이 기기의 완료 산행."""
+    ids = linked_device_ids(db, ctx.user) if ctx.user and ctx.account_session else [ctx.device.id]
     hikes = db.execute(
-        select(Hike).where(Hike.device_id == device.id, Hike.status == "done")
+        select(Hike).where(Hike.device_id.in_(ids), Hike.status == "done")
     ).scalars().all()
     name = {c["id"]: c["name"] for c in COURSES}
     rows = sorted(hikes, key=lambda h: (h.ended_at or h.started_at), reverse=True)

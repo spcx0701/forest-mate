@@ -8,6 +8,7 @@ android/*.keystore
 android/.gradle/
 android/build/
 android/app/build/
+android/wear/build/
 ios/www/
 ios/ios/
 ios/node_modules/

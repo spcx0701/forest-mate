@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.ForestMateWatch" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/forest_deep</item>
+        <item name="android:colorAccent">@color/forest_mint</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:navigationBarColor">@color/forest_deep</item>
+        <item name="android:statusBarColor">@color/forest_deep</item>
+    </style>
+</resources>

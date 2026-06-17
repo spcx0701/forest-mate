@@ -17,6 +17,53 @@ class DeviceOut(BaseModel):
     name: str
 
 
+class ProfileIn(BaseModel):
+    name: str = Field(default="산친구", max_length=16)
+    fit: int = Field(default=2, ge=1, le=3)
+    knee: bool = False
+    heart: bool = False
+
+
+class AuthRegisterIn(ProfileIn):
+    email: str = Field(max_length=255)
+    password: str = Field(min_length=8, max_length=128)
+    device_token: str | None = None
+
+
+class AuthLoginIn(BaseModel):
+    email: str = Field(max_length=255)
+    password: str = Field(min_length=1, max_length=128)
+    device_token: str | None = None
+
+
+class AuthProfileOut(BaseModel):
+    name: str
+    fit: int
+    knee: bool
+    heart: bool
+
+
+class AuthUserOut(BaseModel):
+    id: str
+    email: str | None = None
+    providers: list[str]
+    avatar_url: str = ""
+    profile: AuthProfileOut
+
+
+class AuthOut(BaseModel):
+    access_token: str
+    token_type: str = "Bearer"
+    expires_in: int
+    user: AuthUserOut
+    device_token: str
+
+
+class AuthMeOut(BaseModel):
+    user: AuthUserOut
+    device_token: str
+
+
 class HikeCreate(BaseModel):
     course_id: str
 
@@ -33,6 +80,36 @@ class TrackOut(BaseModel):
     alerts: list[dict]
     distress: dict
     progress: float
+
+
+class WatchPairStartIn(BaseModel):
+    hike_id: str | None = None
+
+
+class WatchPairOut(BaseModel):
+    code: str
+    expires_in: int
+    hike_id: str | None = None
+
+
+class WatchPairClaimIn(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
+
+
+class WatchPairClaimOut(BaseModel):
+    watch_token: str
+    hike_id: str | None = None
+    course_id: str | None = None
+
+
+class WatchTrackIn(BaseModel):
+    progress: float | None = Field(default=None, ge=0.0, le=1.0)
+    alt: int = 0
+    hr: int | None = Field(default=None, ge=20, le=250)
+    lat: float | None = None
+    lon: float | None = None
+    acc: int | None = Field(default=None, ge=0, le=5000)
+    battery: int | None = Field(default=None, ge=0, le=100)
 
 
 class HikeEndOut(BaseModel):

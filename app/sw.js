@@ -1,7 +1,7 @@
 /* 숲길동무 오프라인 서비스워커 — 음영지역 대비 전체 자산 캐시 (네트워크 우선) */
-const CACHE = "forestmate-v7";
+const CACHE = "forestmate-v18";
 const ASSETS = [
-  "./index.html", "./app.css", "./app.js", "./data.js",
+  "./index.html", "./app.css?v=20260617-ftue-social-center-leaflet-map", "./app.js?v=20260617-server-connection-leaflet-map", "./condition-details.js?v=20260617-leaflet-map", "./data.js",
   "./dashboard.html", "./home.html",
   "./manifest.json", "./icon-192.png", "./icon-512.png",
 ];
@@ -37,7 +37,7 @@ self.addEventListener("notificationclick", (e) => {
   }));
 });
 
-/* 온라인: 항상 최신 / 오프라인(음영지역): 캐시 폴백 */
+/* 네트워크 연결 시 항상 최신 / 음영지역에서는 캐시 폴백 */
 self.addEventListener("fetch", (e) => {
   e.respondWith(
     fetch(e.request)
