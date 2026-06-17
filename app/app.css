@@ -226,6 +226,7 @@ nav a.sosnav{color:var(--danger)}
 .overlay.show{display:flex}
 #onboard{background:#06130d; backdrop-filter:none; align-items:stretch}
 .sheet{background:#fff; width:100%; border-radius:24px 24px 0 0; padding:22px 20px calc(22px + env(safe-area-inset-bottom)); max-height:86%; overflow-y:auto; animation:up .28s cubic-bezier(.2,.9,.3,1)}
+#extSheet:has(>.condition-panel){padding:0; background:transparent; overflow-y:auto; -webkit-overflow-scrolling:touch}
 @keyframes up{from{transform:translateY(40px); opacity:0}to{transform:none; opacity:1}}
 .sheet h3{font-size:17px; font-weight:900; margin-bottom:4px}
 .sheet .sub{font-size:12px; color:var(--sub); margin-bottom:14px; line-height:1.5}
@@ -405,7 +406,7 @@ nav a.sosnav{color:var(--danger)}
 .ext-row{font-size:12.5px; padding:9px 0; border-bottom:1px solid #EEF3EE; line-height:1.5}
 .ext-row b{display:inline-block; min-width:42px; color:var(--sub); font-weight:800; margin-right:6px}
 .sheet .btnrow a.btn{display:flex; align-items:center; justify-content:center; text-decoration:none}
-.condition-panel{margin:-22px -20px calc(-22px - env(safe-area-inset-bottom)); padding:20px 16px calc(20px + env(safe-area-inset-bottom)); color:#EAF4FF; background:linear-gradient(180deg,#11375f 0%,#12345a 46%,#162f4d 100%); border-radius:24px 24px 0 0; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.20)}
+.condition-panel{margin:0; padding:20px 16px calc(20px + env(safe-area-inset-bottom)); color:#EAF4FF; background:linear-gradient(180deg,#11375f 0%,#12345a 46%,#162f4d 100%); border-radius:24px 24px 0 0; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.20)}
 .condition-panel::before{content:""; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 36%,rgba(0,0,0,.12)); pointer-events:none}
 .condition-panel>*{position:relative}
 .condition-close{position:absolute; top:14px; right:14px; z-index:2; width:34px; height:34px; border-radius:50%; background:#0b223a; color:#fff; font-size:24px; line-height:1; border:1px solid rgba(255,255,255,.20)}
@@ -447,7 +448,7 @@ nav a.sosnav{color:var(--danger)}
 .map-legend-item{display:inline-flex; align-items:center; gap:4px; font-size:9.5px; font-weight:900; color:rgba(234,244,255,.72)}
 .map-legend-item i{width:9px; height:9px; border-radius:50%; display:block}
 .map-legend-item.low i{background:#58d68d}.map-legend-item.mid i{background:#ffd166}.map-legend-item.high i{background:#ff6b6b}
-.condition-leaflet-map{width:100%; height:214px; border-radius:18px; overflow:hidden; background:#DCEAF0; border:1px solid rgba(255,255,255,.28)}
+.condition-leaflet-map{width:100%; height:214px; border-radius:18px; overflow:hidden; background:#DCEAF0; border:1px solid rgba(255,255,255,.28); position:relative; isolation:isolate}
 .condition-leaflet-map .leaflet-control-container{display:none}
 .condition-map-label{background:rgba(255,255,255,.92); border:0; border-radius:999px; color:#18354f; font-size:10.5px; font-weight:950; padding:3px 7px; box-shadow:0 4px 12px rgba(24,50,70,.18)}
 .condition-map-label::before{display:none}

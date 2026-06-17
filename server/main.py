@@ -139,8 +139,8 @@ def _inline_csp_hashes() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, .
 
 def _content_security_policy() -> str:
     script_hashes, style_hashes, style_attr_hashes = _inline_csp_hashes()
-    script_src = ("'self'", "https://cdn.jsdelivr.net", "https://unpkg.com", *script_hashes)
-    style_src = ("'self'", "https://unpkg.com", *style_hashes)
+    script_src = ("'self'", "https://cdn.jsdelivr.net", *script_hashes)
+    style_src = ("'self'", *style_hashes)
     style_src_attr = ("'unsafe-hashes'", *style_attr_hashes) if style_attr_hashes else ("'none'",)
     img_src = (
         "'self'", "data:", "blob:", "https://api.vworld.kr", *MAP_TILE_ORIGINS,
