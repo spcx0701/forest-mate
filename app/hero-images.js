@@ -1,8 +1,14 @@
 (function initHeroImages(root, factory) {
-  const api = factory(root);
+  function heroProxyUrl(name, height = 0) {
+    const pageName = String(name || "").trim().split(/\s+/)[0] || "산";
+    const h = Math.max(0, Math.round(Number(height) || 0));
+    return `/api/v1/mountain-hero?name=${encodeURIComponent(pageName)}&height=${encodeURIComponent(h)}`;
+  }
+
+  const api = factory(root, heroProxyUrl);
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.ForestMateHeroImages = api;
-})(typeof globalThis === "object" ? globalThis : this, function heroImagesFactory(root) {
+})(typeof globalThis === "object" ? globalThis : this, function heroImagesFactory(root, heroProxyUrl) {
   const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => HTML_ENTITIES[c]);
 
@@ -20,12 +26,6 @@
       <polygon points='320,300 460,120 600,260 600,300' fill='${top}'/>
       <text x='24' y='280' font-family='sans-serif' font-size='22' font-weight='800' fill='#1B4332'>${title}${h ? " · " + esc(h) + "m" : ""}</text></svg>`;
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-  }
-
-  function heroProxyUrl(name, height = 0) {
-    const pageName = String(name || "").trim().split(/\s+/)[0] || "산";
-    const h = Math.max(0, Math.round(Number(height) || 0));
-    return `/api/v1/mountain-hero?name=${encodeURIComponent(pageName)}&height=${encodeURIComponent(h)}`;
   }
 
   async function loadHeroImage(img, name, height) {

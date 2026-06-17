@@ -1,5 +1,6 @@
 """API 통합 테스트 — 기기 등록 → 산행 → 위험경고 → SOS → 관제 반영 전체 흐름."""
 
+import asyncio
 from datetime import timedelta
 
 import pytest
@@ -51,10 +52,12 @@ def test_mountain_hero_proxy_serves_validated_same_origin_image(client, monkeypa
     public._HERO_CACHE.clear()
 
     async def fake_thumbnail_url(name):
+        await asyncio.sleep(0)
         assert name == "북한산"
         return "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
 
     async def fake_image(url):
+        await asyncio.sleep(0)
         assert url == "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
         return b"jpeg-bytes", "image/jpeg"
 
@@ -75,13 +78,10 @@ def test_mountain_hero_proxy_uses_svg_fallback_when_remote_fails(client, monkeyp
     public._HERO_CACHE.clear()
 
     async def missing_thumbnail_url(name):
+        await asyncio.sleep(0)
         return None
 
-    async def unexpected_image(url):
-        raise AssertionError("image fetch should not run without a validated thumbnail URL")
-
     monkeypatch.setattr(public, "_fetch_wikipedia_thumbnail_url", missing_thumbnail_url)
-    monkeypatch.setattr(public, "_fetch_allowed_hero_image", unexpected_image)
 
     res = client.get("/api/v1/mountain-hero", params={"name": "북한산", "height": 836})
 
@@ -92,14 +92,310 @@ def test_mountain_hero_proxy_uses_svg_fallback_when_remote_fails(client, monkeyp
     assert "upload.wikimedia.org" not in res.text
 
 
+def test_mountain_hero_proxy_reuses_cached_payload(client):
+    from server.routers import public
+
+    public._HERO_CACHE.clear()
+    public._HERO_CACHE["북한산:836"] = (b"cached-image", "image/webp")
+
+    res = client.get("/api/v1/mountain-hero", params={"name": "북한산", "height": 836})
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("image/webp")
+    assert res.headers["cache-control"] == "public, max-age=86400"
+    assert res.content == b"cached-image"
+
+
 def test_mountain_hero_url_allowlist_rejects_non_wikimedia_hosts():
     from server.routers import public
 
+    assert b"#2D6A4F" in public._fallback_hero_svg("한라산", 1950)
     assert public._is_allowed_hero_image_url(
         "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
     )
     assert not public._is_allowed_hero_image_url("https://evil.example/example.jpg")
     assert not public._is_allowed_hero_image_url("http://upload.wikimedia.org/example.jpg")
+
+
+def test_mountain_hero_cache_evicts_oldest_entry():
+    from server.routers import public
+
+    public._HERO_CACHE.clear()
+    for idx in range(public._HERO_CACHE_MAX_ENTRIES):
+        public._HERO_CACHE[f"old-{idx}"] = (b"old", "image/jpeg")
+
+    public._cache_hero_image("new", b"new", "image/png")
+
+    assert "old-0" not in public._HERO_CACHE
+    assert public._HERO_CACHE["new"] == (b"new", "image/png")
+    public._HERO_CACHE.clear()
+
+
+def test_mountain_hero_fetches_allowed_wikipedia_thumbnail(monkeypatch):
+    from server.routers import public
+
+    image_url = "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {"thumbnail": {"source": image_url}}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.request_url = None
+
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return self
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+        async def get(self, url, headers):
+            await asyncio.sleep(0)
+            self.request_url = url
+            assert headers["accept"] == "application/json"
+            assert headers["user-agent"].startswith("ForestMate/")
+            return FakeResponse()
+
+    monkeypatch.setattr(public.httpx, "AsyncClient", FakeClient)
+
+    assert asyncio.run(public._fetch_wikipedia_thumbnail_url("북한산 둘레길")) == image_url
+
+
+def test_mountain_hero_thumbnail_fetch_rejects_invalid_source(monkeypatch):
+    from server.routers import public
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {"thumbnail": {"source": "https://evil.example/image.jpg"}}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return self
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+        async def get(self, url, headers):
+            await asyncio.sleep(0)
+            return FakeResponse()
+
+    monkeypatch.setattr(public.httpx, "AsyncClient", FakeClient)
+
+    assert asyncio.run(public._fetch_wikipedia_thumbnail_url("북한산")) is None
+
+
+def test_mountain_hero_thumbnail_fetch_handles_non_success(monkeypatch):
+    from server.routers import public
+
+    class FakeResponse:
+        status_code = 404
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return self
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+        async def get(self, url, headers):
+            await asyncio.sleep(0)
+            return FakeResponse()
+
+    monkeypatch.setattr(public.httpx, "AsyncClient", FakeClient)
+
+    assert asyncio.run(public._fetch_wikipedia_thumbnail_url("북한산")) is None
+
+
+def test_mountain_hero_thumbnail_fetch_handles_http_errors(monkeypatch):
+    from server.routers import public
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return self
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+        async def get(self, url, headers):
+            await asyncio.sleep(0)
+            raise public.httpx.HTTPError("summary failed")
+
+    monkeypatch.setattr(public.httpx, "AsyncClient", FakeClient)
+
+    assert asyncio.run(public._fetch_wikipedia_thumbnail_url("북한산")) is None
+
+
+def test_mountain_hero_fetches_allowed_image_stream(monkeypatch):
+    from server.routers import public
+
+    image_url = "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
+
+    class FakeStreamResponse:
+        status_code = 200
+        url = image_url
+        headers = {"content-type": "image/jpeg; charset=binary", "content-length": "10"}
+
+        async def aiter_bytes(self):
+            yield b"jpeg-"
+            yield b"bytes"
+
+    class FakeStream:
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return FakeStreamResponse()
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return self
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+        def stream(self, method, url, headers):
+            assert method == "GET"
+            assert url == image_url
+            assert "image/webp" in headers["accept"]
+            return FakeStream()
+
+    monkeypatch.setattr(public.httpx, "AsyncClient", FakeClient)
+
+    assert asyncio.run(public._fetch_allowed_hero_image(image_url)) == (b"jpeg-bytes", "image/jpeg")
+
+
+@pytest.mark.parametrize(
+    ("status_code", "headers"),
+    [
+        (404, {"content-type": "image/jpeg"}),
+        (200, {"content-type": "text/html"}),
+        (200, {"content-type": "image/png", "content-length": str(2_000_001)}),
+    ],
+)
+def test_mountain_hero_image_fetch_rejects_bad_responses(monkeypatch, status_code, headers):
+    from server.routers import public
+
+    image_url = "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
+
+    class FakeStreamResponse:
+        url = image_url
+
+        def __init__(self):
+            self.status_code = status_code
+            self.headers = headers
+
+        async def aiter_bytes(self):
+            yield b"ignored"
+
+    class FakeStream:
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return FakeStreamResponse()
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return self
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+        def stream(self, method, url, headers):
+            return FakeStream()
+
+    monkeypatch.setattr(public.httpx, "AsyncClient", FakeClient)
+
+    assert asyncio.run(public._fetch_allowed_hero_image(image_url)) is None
+
+
+def test_mountain_hero_image_fetch_rejects_invalid_urls_before_client(monkeypatch):
+    from server.routers import public
+
+    def fail_async_client(*args, **kwargs):
+        raise AssertionError("invalid URLs must not open an HTTP client")
+
+    monkeypatch.setattr(public.httpx, "AsyncClient", fail_async_client)
+
+    assert asyncio.run(public._fetch_allowed_hero_image("https://evil.example/image.jpg")) is None
+
+
+def test_mountain_hero_image_fetch_rejects_oversized_stream(monkeypatch):
+    from server.routers import public
+
+    image_url = "https://upload.wikimedia.org/wikipedia/commons/example.jpg"
+
+    class FakeStreamResponse:
+        status_code = 200
+        url = image_url
+        headers = {"content-type": "image/png"}
+
+        async def aiter_bytes(self):
+            yield b"x" * (public._HERO_MAX_BYTES + 1)
+
+    class FakeStream:
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return FakeStreamResponse()
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            await asyncio.sleep(0)
+            return self
+
+        async def __aexit__(self, *exc_info):
+            await asyncio.sleep(0)
+            return None
+
+        def stream(self, method, url, headers):
+            return FakeStream()
+
+    monkeypatch.setattr(public.httpx, "AsyncClient", FakeClient)
+
+    assert asyncio.run(public._fetch_allowed_hero_image(image_url)) is None
 
 
 def test_api_docs_avoid_external_swagger_assets(client):
