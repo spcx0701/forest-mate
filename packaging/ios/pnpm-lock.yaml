@@ -15,8 +15,8 @@ importers:
         specifier: 6.0.1
         version: 6.0.1(@capacitor/core@6.1.2)
       '@capacitor/ios':
-        specifier: 6.1.2
-        version: 6.1.2(@capacitor/core@6.1.2)
+        specifier: 8.4.0
+        version: 8.4.0(@capacitor/core@6.1.2)
       '@capacitor/push-notifications':
         specifier: 6.0.2
         version: 6.0.2(@capacitor/core@6.1.2)
@@ -40,10 +40,10 @@ packages:
     peerDependencies:
       '@capacitor/core': ^6.0.0
 
-  '@capacitor/ios@6.1.2':
-    resolution: {integrity: sha512-HaeW68KisBd/7TmavzPDlL2bpoDK5AjR2ZYrqU4TlGwM88GtQfvduBCAlSCj20X0w/4+rWMkseD9dAAkacjiyQ==}
+  '@capacitor/ios@8.4.0':
+    resolution: {integrity: sha512-tnwstEdbTJ2nHAfoAwnurXgYRscWeLY+IIGdz69o24gN2Crfj9Xc0TWo8L5uFLF1LmpbUywH1IT0U1oHV8c+CA==}
     peerDependencies:
-      '@capacitor/core': ^6.1.0
+      '@capacitor/core': ^8.4.0
 
   '@capacitor/push-notifications@6.0.2':
     resolution: {integrity: sha512-VYo8h+Dfw7B/JtsQCCnSKi34jr3oN9LacwmgCqwi3KPIE/sKID75lTEACZBQQ6c4rPct0yRQ0ihHdK/OPXl3Tw==}
@@ -455,7 +455,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 6.1.2
 
-  '@capacitor/ios@6.1.2(@capacitor/core@6.1.2)':
+  '@capacitor/ios@8.4.0(@capacitor/core@6.1.2)':
     dependencies:
       '@capacitor/core': 6.1.2
 
