@@ -22,6 +22,14 @@ function normalizeApiBase(raw) {
   } catch {}
   return fallback;
 }
+function safeApiPath(path) {
+  const value = String(path || "");
+  const cleanPath = value.startsWith("/") ? value : `/${value}`;
+  if (cleanPath.startsWith("//") || !/^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(cleanPath)) {
+    throw new Error("Invalid API path");
+  }
+  return cleanPath;
+}
 function sanitizeProfile(profile) {
   const value = profile && typeof profile === "object" ? profile : {};
   return {
@@ -85,7 +93,12 @@ catch { S = { ...DEFAULTS }; }
 S.profile = Object.assign({}, DEFAULTS.profile, S.profile);
 S.settings = Object.assign({}, DEFAULTS.settings, S.settings);
 S.june = Object.assign({}, DEFAULTS.june, S.june);
-const save = () => { try { localStorage.setItem("fm_state", JSON.stringify(sanitizeState(S))); } catch {} };
+const save = () => {
+  try {
+    const serialized = JSON.stringify(sanitizeState(S));
+    localStorage.setItem("fm_state", serialized); // NOSONAR: sanitizeState normalizes persisted browser state.
+  } catch {}
+};
 if (!S.installAt) { S.installAt = Date.now(); save(); }   // 최초 사용일(로컬 경과일 계산용)
 
 /* URL 파라미터 (?t=tab&demo=57 — 화면 캡처/시연용) */
@@ -150,8 +163,7 @@ const API = {
     return reg;
   },
   url(path) {
-    const cleanPath = String(path || "").startsWith("/") ? String(path) : `/${path}`;
-    return this.base + cleanPath;
+    return this.base + safeApiPath(path);
   },
   async ensureToken() {
     if (!this.authToken && !this.token) await this.register();
@@ -164,7 +176,7 @@ const API = {
   },
   async get(path, auth = true, retry = true) {
     if (auth) await this.ensureToken();
-    const r = await fetch(this.url(path), { headers: this.headers(auth), signal: timeoutSignal(3000) });
+    const r = await fetch(this.url(path), { headers: this.headers(auth), signal: timeoutSignal(3000) }); // NOSONAR: safeApiPath allow-lists API paths.
     if (r.status === 401 && auth && retry) {   // 토큰 무효 → 게스트 기기 재등록 후 1회 재시도
       this.clearAccount();
       this.token = null;
@@ -176,7 +188,7 @@ const API = {
   },
   async post(path, body, auth = true, retry = true) {
     if (auth) await this.ensureToken();
-    const r = await fetch(this.url(path), {
+    const r = await fetch(this.url(path), { // NOSONAR: safeApiPath allow-lists API paths.
       method: "POST", headers: this.headers(auth), body: JSON.stringify(body || {}),
       signal: timeoutSignal(4000),
     });
@@ -193,7 +205,7 @@ const API = {
   },
   async patch(path, body, auth = true) {
     if (auth) await this.ensureToken();
-    const r = await fetch(this.url(path), {
+    const r = await fetch(this.url(path), { // NOSONAR: safeApiPath allow-lists API paths.
       method: "PATCH", headers: this.headers(auth), body: JSON.stringify(body || {}),
       signal: timeoutSignal(4000),
     });
@@ -356,9 +368,18 @@ function paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel, regio
   $("idxVal").textContent = v;
   $("idxArc").style.strokeDashoffset = (C * (1 - v / 100)).toFixed(1);
   $("idxArc").style.stroke = v >= 80 ? "#B7E4C7" : v >= 60 ? "#FFD8A8" : "#FFB3B8";
-  $("idxLabel").innerHTML = placeLabel
-    ? `${idxLabel(v)}<span class="idx-place">${esc(placeLabel)} <a id="mntReset">✕ 내 지역</a></span>`
-    : idxLabel(v);
+  const label = $("idxLabel");
+  label.textContent = idxLabel(v);
+  if (placeLabel) {
+    const place = document.createElement("span");
+    place.className = "idx-place";
+    place.append(document.createTextNode(`${placeLabel} `));
+    const resetLink = document.createElement("a");
+    resetLink.id = "mntReset";
+    resetLink.textContent = "✕ 내 지역";
+    place.appendChild(resetLink);
+    label.appendChild(place);
+  }
   const items = FM_CONDITION_DETAILS.buildConditionSummaryItems(currentConditionContext);
   $("idxGrid").innerHTML = items.map((item) => `
     <button type="button" class="idx-item condition-trigger" data-condition="${item.id}" aria-label="${esc(item.ariaLabel)}">
