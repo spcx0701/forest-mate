@@ -7,9 +7,9 @@ import asyncio
 import base64
 import hashlib
 import logging
-import re
 from contextlib import asynccontextmanager
 from functools import lru_cache
+from html.parser import HTMLParser
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -31,9 +31,6 @@ STATIC_LONG_CACHE_EXTENSIONS = (
     ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2"
 )
 API_PREFIX = "/api/v1"
-INLINE_SCRIPT_RE = re.compile(r"<script(?:\s[^>]*)?>(.*?)</script>", re.IGNORECASE | re.DOTALL)
-INLINE_STYLE_RE = re.compile(r"<style(?:\s[^>]*)?>(.*?)</style>", re.IGNORECASE | re.DOTALL)
-STYLE_ATTRIBUTE_RE = re.compile(r"\sstyle=(['\"])(.*?)\1", re.IGNORECASE | re.DOTALL)
 MAP_TILE_ORIGINS = (
     "https://a.tile.openstreetmap.org",
     "https://b.tile.openstreetmap.org",
@@ -72,6 +69,54 @@ def _csp_hash(value: str) -> str:
     return f"'sha256-{base64.b64encode(digest).decode('ascii')}'"
 
 
+class _InlineCspHashCollector(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.script_hashes: set[str] = set()
+        self.style_hashes: set[str] = set()
+        self.style_attr_hashes: set[str] = set()
+        self._collecting: str | None = None
+        self._chunks: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr_map = {name.lower(): value for name, value in attrs if value is not None}
+        if style := attr_map.get("style"):
+            self.style_attr_hashes.add(_csp_hash(style))
+        normalized = tag.lower()
+        if normalized == "script" and "src" not in attr_map:
+            self._start_collecting("script")
+        elif normalized == "style":
+            self._start_collecting("style")
+
+    def handle_data(self, data: str) -> None:
+        if self._collecting:
+            self._chunks.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        if self._collecting:
+            self._chunks.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        if self._collecting:
+            self._chunks.append(f"&#{name};")
+
+    def handle_endtag(self, tag: str) -> None:
+        normalized = tag.lower()
+        if normalized == self._collecting:
+            value = "".join(self._chunks)
+            if value.strip():
+                if normalized == "script":
+                    self.script_hashes.add(_csp_hash(value))
+                else:
+                    self.style_hashes.add(_csp_hash(value))
+            self._collecting = None
+            self._chunks = []
+
+    def _start_collecting(self, tag: str) -> None:
+        self._collecting = tag
+        self._chunks = []
+
+
 @lru_cache(maxsize=1)
 def _inline_csp_hashes() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
     script_hashes: set[str] = set()
@@ -84,12 +129,11 @@ def _inline_csp_hashes() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, .
             text = html_file.read_text(encoding="utf-8")
         except OSError:
             continue
-        script_hashes.update(_csp_hash(match.group(1)) for match in INLINE_SCRIPT_RE.finditer(text)
-                             if match.group(1).strip())
-        style_hashes.update(_csp_hash(match.group(1)) for match in INLINE_STYLE_RE.finditer(text)
-                            if match.group(1).strip())
-        style_attr_hashes.update(_csp_hash(match.group(2)) for match in STYLE_ATTRIBUTE_RE.finditer(text)
-                                 if match.group(2).strip())
+        collector = _InlineCspHashCollector()
+        collector.feed(text)
+        script_hashes.update(collector.script_hashes)
+        style_hashes.update(collector.style_hashes)
+        style_attr_hashes.update(collector.style_attr_hashes)
     return tuple(sorted(script_hashes)), tuple(sorted(style_hashes)), tuple(sorted(style_attr_hashes))
 
 
