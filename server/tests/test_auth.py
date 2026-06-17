@@ -1,4 +1,9 @@
+import asyncio
+import json
+from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
+
+import pytest
 
 
 def _bearer(token: str) -> dict[str, str]:
@@ -144,3 +149,341 @@ def test_oauth_start_and_callback_create_account_session(client, register_device
     assert body["user"]["email"] == "social@example.com"
     assert body["user"]["profile"]["name"] == "소셜러"
     assert body["user"]["profile"]["heart"] is True
+
+
+def test_auth_helpers_cover_invalid_and_guest_edges(register_device):
+    from fastapi import HTTPException
+    from sqlalchemy import select
+
+    from server import auth
+    from server.db import SessionLocal
+    from server.models import AuthSession, Device, User, UserDevice, utcnow
+
+    _, legacy = register_device(name="연결기기")
+    db = SessionLocal()
+    try:
+        with pytest.raises(HTTPException) as bad_email:
+            auth.validate_email("@missing-local")
+        assert bad_email.value.status_code == 422
+        assert auth.verify_password("pw", "legacy$1$salt$digest") is False
+        assert auth.verify_password("pw", "not-a-password-hash") is False
+        with pytest.raises(HTTPException) as blank_bearer:
+            auth.bearer_token("Bearer    ")
+        assert blank_bearer.value.status_code == 401
+
+        user = User(email="owner@example.com", name="소유자")
+        other = User(email="other@example.com", name="타인")
+        db.add_all([user, other])
+        db.flush()
+        linked = db.scalar(select(Device).where(Device.token == legacy["token"]))
+        db.add(UserDevice(user_id=user.id, device_id=linked.id))
+        db.flush()
+        assert auth.link_device_token_to_user(db, user, None) is None
+        assert auth.link_device_token_to_user(db, user, "missing-token") is None
+        with pytest.raises(HTTPException) as conflict:
+            auth.link_device_to_user(db, other, linked)
+        assert conflict.value.status_code == 409
+
+        fresh = User(email="fresh@example.com", name="새계정", fit=3, knee=True, heart=True)
+        db.add(fresh)
+        db.flush()
+        created = auth.ensure_user_device(db, fresh)
+        db.flush()
+        assert created.name == "새계정"
+        assert created.fit == 3
+        assert db.get(UserDevice, {"user_id": fresh.id, "device_id": created.id})
+
+        raw = "orphan-session-token"
+        db.add(AuthSession(user_id="missing-user", token_hash=auth.token_hash(raw),
+                           expires_at=utcnow() + timedelta(days=1)))
+        db.flush()
+        with pytest.raises(HTTPException) as orphan:
+            auth.context_from_authorization(db, f"Bearer {raw}")
+        assert orphan.value.status_code == 401
+
+        guest_ctx = auth.AuthContext(user=None, device=created, token="guest")
+        with pytest.raises(HTTPException) as guest:
+            auth.get_current_user(guest_ctx)
+        assert guest.value.status_code == 401
+        account_session = AuthSession(user_id=fresh.id, token_hash=auth.token_hash("account"),
+                                      expires_at=utcnow() + timedelta(days=1))
+        assert auth.get_current_user(auth.AuthContext(
+            user=fresh, device=created, token="account", account_session=account_session,
+        )) is fresh
+    finally:
+        db.rollback()
+        db.close()
+
+
+def test_auth_routes_reject_guest_and_invalid_login(client, register_device):
+    auth_header, _ = register_device(name="게스트")
+
+    assert client.get("/api/v1/auth/me", headers=auth_header).status_code == 401
+    assert client.patch("/api/v1/auth/me/profile", json={"name": "게스트", "fit": 2},
+                        headers=auth_header).status_code == 401
+    assert client.post("/api/v1/auth/logout", headers=auth_header).status_code == 401
+
+    registered = client.post("/api/v1/auth/register", json={
+        "email": "new@example.com",
+        "password": "correct horse battery staple",
+        "name": "새계정",
+    })
+    assert registered.status_code == 201
+    assert registered.json()["device_token"]
+
+    bad = client.post("/api/v1/auth/login", json={"email": "new@example.com", "password": "wrong"})
+    assert bad.status_code == 401
+
+    from server.auth import hash_password
+    from server.db import SessionLocal
+    from server.models import AuthIdentity
+
+    db = SessionLocal()
+    try:
+        db.add(AuthIdentity(user_id="missing-user", provider="password",
+                            provider_user_id="ghost@example.com",
+                            email="ghost@example.com",
+                            credential_hash=hash_password("ghost-password")))
+        db.commit()
+    finally:
+        db.close()
+    ghost = client.post("/api/v1/auth/login", json={
+        "email": "ghost@example.com",
+        "password": "ghost-password",
+    })
+    assert ghost.status_code == 401
+
+
+def test_auth_provider_configuration_and_oauth_error_routes(client, monkeypatch):
+    monkeypatch.setenv("KAKAO_CLIENT_ID", "kakao-rest-api-key")
+    monkeypatch.delenv("KAKAO_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+
+    from fastapi import HTTPException
+
+    from server.config import get_settings
+    from server.routers import auth as auth_router
+
+    get_settings.cache_clear()
+    providers = client.get("/api/v1/auth/providers").json()
+    assert providers["oauth"]["kakao"] is True
+    assert providers["oauth"]["google"] is False
+
+    with pytest.raises(HTTPException) as unknown:
+        auth_router._provider_credentials("unknown")
+    assert unknown.value.status_code == 404
+    assert client.get("/api/v1/auth/oauth/unknown/start").status_code == 404
+    assert client.get("/api/v1/auth/oauth/google/start").status_code == 503
+
+    err = client.get("/api/v1/auth/oauth/google/callback", params={"error": "access_denied"},
+                     follow_redirects=False)
+    assert err.status_code in (302, 307)
+    assert err.headers["location"] == "/index.html#auth_error=access_denied"
+    invalid = client.get("/api/v1/auth/oauth/google/callback", follow_redirects=False)
+    assert invalid.headers["location"] == "/index.html#auth_error=invalid_oauth_callback"
+
+
+def test_oauth_profile_fetch_maps_all_supported_providers(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "google-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "google-secret")
+    monkeypatch.setenv("KAKAO_CLIENT_ID", "kakao-id")
+    monkeypatch.setenv("NAVER_CLIENT_ID", "naver-id")
+    monkeypatch.setenv("NAVER_CLIENT_SECRET", "naver-secret")
+
+    from server.config import get_settings
+    from server.routers import auth as auth_router
+
+    get_settings.cache_clear()
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+        def raise_for_status(self):
+            return None
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.provider = None
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, data, headers):
+            self.provider = next(p for p, cfg in auth_router.OAUTH_PROVIDERS.items()
+                                 if cfg["token_url"] == url)
+            return FakeResponse({"access_token": f"{self.provider}-token"})
+
+        async def get(self, url, headers):
+            provider = self.provider
+            payloads = {
+                "google": {"sub": "g-1", "email": "GOOGLE@EXAMPLE.COM",
+                           "name": "Google Hiker", "picture": "https://example.com/g.png"},
+                "kakao": {"id": 2, "kakao_account": {
+                    "email": "KAKAO@EXAMPLE.COM",
+                    "profile": {"nickname": "카카오러", "thumbnail_image_url": "https://example.com/k.png"},
+                }},
+                "naver": {"response": {"id": "n-3", "email": "NAVER@EXAMPLE.COM",
+                                        "nickname": "네이버러", "profile_image": "https://example.com/n.png"}},
+            }
+            return FakeResponse(payloads[provider])
+
+    monkeypatch.setattr(auth_router.httpx, "AsyncClient", FakeClient)
+
+    google = asyncio.run(auth_router.fetch_oauth_profile("google", "code", "https://cb"))
+    kakao = asyncio.run(auth_router.fetch_oauth_profile("kakao", "code", "https://cb"))
+    naver = asyncio.run(auth_router.fetch_oauth_profile("naver", "code", "https://cb"))
+
+    assert google == {
+        "provider_user_id": "g-1",
+        "email": "google@example.com",
+        "name": "Google Hiker",
+        "avatar_url": "https://example.com/g.png",
+    }
+    assert kakao["provider_user_id"] == "2"
+    assert kakao["email"] == "kakao@example.com"
+    assert kakao["name"] == "카카오러"
+    assert naver["provider_user_id"] == "n-3"
+    assert naver["email"] == "naver@example.com"
+    assert naver["name"] == "네이버러"
+
+
+def test_oauth_profile_fetch_rejects_missing_access_token(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "google-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "google-secret")
+
+    from fastapi import HTTPException
+
+    from server.config import get_settings
+    from server.routers import auth as auth_router
+
+    get_settings.cache_clear()
+
+    class FakeResponse:
+        def json(self):
+            return {}
+
+        def raise_for_status(self):
+            return None
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, data, headers):
+            return FakeResponse()
+
+    monkeypatch.setattr(auth_router.httpx, "AsyncClient", lambda *args, **kwargs: FakeClient())
+    with pytest.raises(HTTPException) as missing:
+        asyncio.run(auth_router.fetch_oauth_profile("google", "code", "https://cb"))
+    assert missing.value.status_code == 502
+
+
+def test_oauth_state_and_social_account_edge_cases(client, monkeypatch):
+    from fastapi import HTTPException
+
+    from server.auth import token_hash
+    from server.db import SessionLocal
+    from server.models import AuthIdentity, OAuthState, User, UserDevice, utcnow
+    from server.routers import auth as auth_router
+
+    db = SessionLocal()
+    try:
+        with pytest.raises(HTTPException) as invalid_state:
+            auth_router._consume_oauth_state(db, "google", "missing-state")
+        assert invalid_state.value.status_code == 401
+
+        db.add(OAuthState(state_hash=token_hash("expired-state"), provider="google",
+                          expires_at=utcnow() - timedelta(minutes=1)))
+        db.flush()
+        with pytest.raises(HTTPException) as expired_state:
+            auth_router._consume_oauth_state(db, "google", "expired-state")
+        assert expired_state.value.status_code == 401
+
+        db.add(AuthIdentity(user_id="missing-user", provider="google",
+                            provider_user_id="ghost", email="ghost@example.com"))
+        db.flush()
+        with pytest.raises(HTTPException) as missing_user:
+            auth_router._social_user(db, "google", {"provider_user_id": "ghost"},
+                                     {"name": "", "fit": 2, "knee": False, "heart": False})
+        assert missing_user.value.status_code == 401
+    finally:
+        db.rollback()
+        db.close()
+
+    db = SessionLocal()
+    try:
+        existing = User(email="social-merge@example.com", name="기존")
+        db.add(existing)
+        db.flush()
+        user = auth_router._social_user(
+            db, "google",
+            {"provider_user_id": "new-google-id", "email": "SOCIAL-MERGE@EXAMPLE.COM",
+             "avatar_url": "https://example.com/avatar.png"},
+            {"name": "요청프로필", "fit": 3, "knee": True, "heart": False},
+        )
+        assert user.id == existing.id
+        assert user.name == "요청프로필"
+        assert user.fit == 3
+        assert user.avatar_url == "https://example.com/avatar.png"
+        same_user = auth_router._social_user(db, "google", {"provider_user_id": "new-google-id"}, {})
+        assert same_user.id == existing.id
+
+        db.add(UserDevice(user_id=user.id, device_id="missing-device"))
+        db.flush()
+        token = auth_router._sync_linked_device(db, user)
+        assert token
+    finally:
+        db.rollback()
+        db.close()
+
+    db = SessionLocal()
+    try:
+        db.add(OAuthState(state_hash=token_hash("runtime-error-state"), provider="google",
+                          profile_json=json.dumps({"name": "소셜", "fit": 2}),
+                          redirect_path="/index.html",
+                          expires_at=utcnow() + timedelta(minutes=5)))
+        db.commit()
+    finally:
+        db.close()
+
+    async def boom(provider, code, redirect_uri):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(auth_router, "fetch_oauth_profile", boom)
+    callback = client.get("/api/v1/auth/oauth/google/callback", params={
+        "code": "provider-code",
+        "state": "runtime-error-state",
+    }, follow_redirects=False)
+    assert callback.status_code in (302, 307)
+    assert callback.headers["location"] == "/index.html#auth_error=oauth_failed"
+
+    db = SessionLocal()
+    try:
+        db.add(OAuthState(state_hash=token_hash("http-error-state"), provider="google",
+                          profile_json=json.dumps({"name": "소셜", "fit": 2}),
+                          redirect_path="/index.html",
+                          expires_at=utcnow() + timedelta(minutes=5)))
+        db.commit()
+    finally:
+        db.close()
+
+    async def http_error(provider, code, redirect_uri):
+        raise HTTPException(502, "provider rejected")
+
+    monkeypatch.setattr(auth_router, "fetch_oauth_profile", http_error)
+    rejected = client.get("/api/v1/auth/oauth/google/callback", params={
+        "code": "provider-code",
+        "state": "http-error-state",
+    }, follow_redirects=False)
+    assert rejected.status_code == 502
