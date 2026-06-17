@@ -118,19 +118,25 @@ async def claim_watch_pairing(body: WatchPairClaimIn, request: Request,
     if not pair or _aware(pair.expires_at) < _utcnow():
         raise HTTPException(404, "pair code not found")
 
+    course = None
     course_id = None
     if pair.hike_id:
         hike = db.get(Hike, pair.hike_id)
         if not hike or hike.status != "active":
             raise HTTPException(409, "hike is not active")
-        course_id = _course(hike.course_id)["id"]
+        course = _course(hike.course_id)
+        course_id = course["id"]
 
     session = WatchSession(device_id=pair.device_id, hike_id=pair.hike_id)
     db.add(session)
     db.delete(pair)
     db.commit()
     return WatchPairClaimOut(watch_token=session.token, hike_id=session.hike_id,
-                             course_id=course_id)
+                             course_id=course_id,
+                             course_name=course["name"] if course else None,
+                             course_km=course["km"] if course else None,
+                             course_elev=_course_peak_elev(course),
+                             route=course["route"] if course else None)
 
 
 def _latest_active_hike(device_id: str, db: Session) -> Hike | None:
@@ -150,6 +156,17 @@ def _active_hike_for_watch(watch: WatchSession, db: Session) -> Hike | None:
     if hike:
         watch.hike_id = hike.id
     return hike
+
+
+def _course_peak_elev(course: dict | None) -> int | None:
+    if not course:
+        return None
+    elev = course.get("elev")
+    if isinstance(elev, list) and elev:
+        return max(elev)
+    if isinstance(elev, int):
+        return elev
+    return None
 
 
 @router.post("/watch/track", response_model=TrackOut)

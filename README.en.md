@@ -34,6 +34,10 @@
   <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Get it on GitHub" src="https://tachibanagenerallaboratories.github.io/images/badges/GitHub/get-it-on-github.png" align="center" height="80"></a>
 </p>
 <p align="center">
+  <strong>Galaxy Watch / Wear OS</strong><br>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Download Wear OS APK" src="https://img.shields.io/badge/Wear%20OS%20APK-forestmate--wear--vX.apk-2D6A4F?logo=wearos&logoColor=white" align="center"></a>
+</p>
+<p align="center">
   <a href="README.md">Korean</a> &middot; <strong>English</strong>
 </p>
 <p align="center">
@@ -54,7 +58,7 @@
 
 ForestMate is a hiking safety service that connects **pre-hike route choice -> on-trail risk detection and SOS -> B2G monitoring** with forest public data and AI-assisted safety logic. In low-connectivity areas, it falls back to a local engine so the core safety experience keeps working.
 
-The project ships a web app, an operations dashboard, and an Android APK. With the backend connected, `/api/v1` serves live public data and hiking records. In static hosting environments, the app falls back to local data and rule-based logic so the main screens remain usable.
+The project ships a web app, an operations dashboard, an Android APK, and a Wear OS APK. With the backend connected, `/api/v1` serves live public data and hiking records. In static hosting environments, the app falls back to local data and rule-based logic so the main screens remain usable.
 
 > Submission package for the 2026 Forest Public Data and AI Startup Competition, Product and Service Development track. Listed as a [public-data use case on data.go.kr](https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408) and on [Civic Tech Guide](https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK).
 
@@ -64,11 +68,12 @@ The project ships a web app, an operations dashboard, and an Android APK. With t
 - **Real-time hiking index** - Combines Korea Meteorological Administration short-term forecasts, the National Institute of Forest Science forest-fire danger forecast API, landslide risk, and sunset timing for mountain-specific risk scoring.
 - **Real trail maps** - Displays Korea Forest Service trail geometry for roughly 2,200 mountains and 50,000 trail segments with difficulty-colored Leaflet routes and navigation links to trailheads.
 - **GPS hike tracking** - Records real `watchPosition` movement, distance, and route instead of simulating progress. Prolonged immobility plus abnormal heart-rate signals can trigger automatic distress detection and notify guardians or emergency services.
+- **Galaxy Watch companion app** - Shows a native Wear OS hiking view with map-like route guidance, heart rate, GPS, compass, battery, and risk overlays while syncing sensor samples into the server record.
 - **AI companion** - Provides rule-engine and LLM/RAG intent responses, plus plant and mushroom identification demos.
 - **Personalization** - Includes earned badges, a hike calendar, date-based suitability planning, location/favorite alerts, and Web Push notifications.
 - **B2G monitoring dashboard** - Shows real-time KPIs, a WebSocket feed, and k-anonymized risk heatmaps for municipalities and emergency operators.
 
-Android users can download the APK from GitHub Releases. The repository also includes source-build metadata for F-Droid submission. The current Android TWA opens the hosted `forestmate.onrender.com` service, so the F-Droid metadata declares the `NonFreeNet` Anti-Feature.
+Android users can download `forestmate-android-vX.apk` from GitHub Releases. Galaxy Watch/Wear OS users install `forestmate-wear-vX.apk` from the same Release. The repository also includes source-build metadata for F-Droid submission. The current Android TWA opens the hosted `forestmate.onrender.com` service, so the F-Droid metadata declares the `NonFreeNet` Anti-Feature.
 
 ## B2G Monitoring Dashboard
 
@@ -118,7 +123,7 @@ forest-mate/
 |   |-- app.js            #   API client + fallback-aware app logic
 |   `-- data.js, sw.js    #   local fallback data and offline service worker
 |-- deploy                # Dockerfile, docker-compose.yml, render.yaml, .env.example
-|-- packaging/            # Android TWA/APK and iOS Capacitor packaging
+|-- packaging/            # Android TWA APK, Wear OS APK, and iOS Capacitor packaging
 |-- deliverables/         # proposal DOCX and presentation PPTX
 |-- legal/                # privacy policy and terms
 `-- store/                # store listing metadata and submission runbook

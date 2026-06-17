@@ -6,6 +6,7 @@
   "scripts": {
     "init:project": "./scripts/init-project.sh",
     "build:apk": "./scripts/build-apk.sh",
+    "build:wear": "./gradlew --no-daemon :wear:assembleDebug",
     "fingerprint": "./scripts/print-fingerprint.sh",
     "doctor": "bubblewrap doctor",
     "validate:pwa": "bubblewrap validate --url=https://forestmate.onrender.com/index.html"

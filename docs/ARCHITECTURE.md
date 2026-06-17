@@ -13,8 +13,8 @@ as a Trusted Web Activity; iOS packaging uses Capacitor.
   adapters, safety services, and ETL helpers.
 - `server/data/`: baked catalog and snapshot data used when live public APIs are
   unavailable.
-- `packaging/android/`: Bubblewrap/TWA Android project, Wear OS companion
-  module, signing scripts, and packaging notes.
+- `packaging/android/`: Bubblewrap/TWA Android project, native Wear OS
+  companion module, signing scripts, and packaging notes.
 - `packaging/ios/`: Capacitor wrapper metadata and lockfile for iOS builds.
 - `.github/workflows/`: CI, OpenSSF Scorecard, and CodeQL analysis.
 
@@ -22,8 +22,14 @@ as a Trusted Web Activity; iOS packaging uses Capacitor.
 
 The PWA loads from the same origin as the API. Anonymous device tokens allow
 local hike records before account registration. Account sessions can link an
-existing device token to a user. Watch pairing issues a short-lived code that
-connects a watch session to a hike or later attaches when a hike starts.
+existing device token to a user. Watch sessions are owned by the backend. The
+phone app owns hike start and route selection, while the Wear OS app is a sensor
+and glanceable navigation client. Pairing returns a watch-scoped token plus
+course summary data; the watch uses that token to upload heart-rate, GPS,
+altitude, compass, accelerometer, and battery samples. The repository keeps the
+six-digit code as a backup-facing connection path. A true paired-phone automatic
+handoff should be owned by the native Android wrapper with a Wear OS Data Layer
+bridge, because the TWA web layer owns the current anonymous device token.
 
 Dashboard endpoints expose aggregate operational views. They must not reveal
 individual precise location or health data. Safety logic favors explicit

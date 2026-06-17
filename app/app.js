@@ -891,8 +891,8 @@ function renderWatchStatus() {
     const battery = Hike.watch.battery == null ? "배터리 —" : `배터리 ${Hike.watch.battery}%`;
     text.textContent = `${Hike.watch.hr || "—"}bpm · ${battery} · ${Hike.watch.age_sec || 0}초 전`;
   } else if (Hike.watchPair) {
-    title.textContent = "⌚ 워치 페어링 코드";
-    text.textContent = "워치앱에서 코드를 입력하세요";
+    title.textContent = "⌚ 워치 연결 준비";
+    text.textContent = "워치 앱 대기 · 필요 시 백업 코드 사용";
   } else if (API.mode !== "cloud") {
     title.textContent = "⌚ Galaxy Watch";
     text.textContent = "서버 연결 필요";
@@ -928,7 +928,7 @@ async function startWatchPairing() {
     const r = await API.post("/watch/pair/start", payload);
     Hike.watchPair = { code: r.code, expiresAt: Date.now() + r.expires_in * 1000 };
     renderWatchStatus();
-    toast("워치 페어링 코드", `${r.code} 를 워치앱에 입력하세요`, "⌚", false, 5200);
+    toast("워치 연결 준비", `필요 시 백업 코드 ${r.code}`, "⌚", false, 5200);
     startWatchPolling();
   } catch {
     toast("워치 연결 실패", "잠시 후 다시 시도해주세요", "⌚", true);

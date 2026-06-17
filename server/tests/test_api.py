@@ -678,6 +678,10 @@ def test_watch_pairing_and_sensor_ingest(client, register_device):
     watch_token = claimed.json()["watch_token"]
     assert claimed.json()["hike_id"] == hike_id
     assert claimed.json()["course_id"] == "bukhansan"
+    assert claimed.json()["course_name"] == "북한산 백운대 코스"
+    assert claimed.json()["course_km"] > 0
+    assert claimed.json()["course_elev"] == 836
+    assert claimed.json()["route"]
 
     latest = client.get("/api/v1/watch/latest", params={"hike_id": hike_id}, headers=auth).json()
     assert latest == {"connected": False, "hike_id": hike_id}

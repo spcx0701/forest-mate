@@ -100,6 +100,10 @@ class WatchPairClaimOut(BaseModel):
     watch_token: str
     hike_id: str | None = None
     course_id: str | None = None
+    course_name: str | None = None
+    course_km: float | None = None
+    course_elev: int | None = None
+    route: str | None = None
 
 
 class WatchTrackIn(BaseModel):
