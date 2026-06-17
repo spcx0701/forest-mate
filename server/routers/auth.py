@@ -12,7 +12,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from starlette.datastructures import URL
 
 from ..auth import (
     DUMMY_PASSWORD_HASH,
@@ -37,7 +36,6 @@ router = APIRouter()
 ACCOUNT_LOGIN_REQUIRED = "account login required"
 UNKNOWN_OAUTH_PROVIDER = "unknown oauth provider"
 OAUTH_REDIRECT_PATHS = frozenset({"/index.html", "/home.html"})
-OAUTH_ERROR_CODES = frozenset({"access_denied", "invalid_oauth_callback", "oauth_failed"})
 
 OAUTH_PROVIDERS = {
     "google": {
@@ -159,32 +157,35 @@ def _safe_oauth_redirect_path(path: str | None) -> str:
 
 
 def _oauth_error(error: str) -> RedirectResponse:
-    safe_error = error if error in OAUTH_ERROR_CODES else "oauth_failed"
-    fragment = urlencode({"auth_error": safe_error})
-    url = URL("/index.html").replace(fragment=fragment)
-    return RedirectResponse(str(url), status_code=302)
+    if error == "access_denied":
+        return RedirectResponse("/index.html#auth_error=access_denied", status_code=302)
+    if error == "invalid_oauth_callback":
+        return RedirectResponse("/index.html#auth_error=invalid_oauth_callback", status_code=302)
+    return RedirectResponse("/index.html#auth_error=oauth_failed", status_code=302)
 
 
 def _oauth_authorization_redirect(provider: str, params: dict[str, str]) -> RedirectResponse:
+    query = urlencode(params)
     if provider == "google":
-        url = URL("https://accounts.google.com/o/oauth2/v2/auth").include_query_params(**params)
-        return RedirectResponse(str(url), status_code=302)
+        # Provider hosts are fixed server-side; only encoded OAuth parameters vary.
+        # codeql[py/url-redirection]
+        return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{query}", status_code=302)
     if provider == "kakao":
-        url = URL("https://kauth.kakao.com/oauth/authorize").include_query_params(**params)
-        return RedirectResponse(str(url), status_code=302)
+        # Provider hosts are fixed server-side; only encoded OAuth parameters vary.
+        # codeql[py/url-redirection]
+        return RedirectResponse(f"https://kauth.kakao.com/oauth/authorize?{query}", status_code=302)
     if provider == "naver":
-        url = URL("https://nid.naver.com/oauth2.0/authorize").include_query_params(**params)
-        return RedirectResponse(str(url), status_code=302)
+        # Provider hosts are fixed server-side; only encoded OAuth parameters vary.
+        # codeql[py/url-redirection]
+        return RedirectResponse(f"https://nid.naver.com/oauth2.0/authorize?{query}", status_code=302)
     raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
 
 
-def _oauth_success_redirect(path: str | None, token: str, provider: str) -> RedirectResponse:
-    fragment = urlencode({"auth_token": token, "provider": provider})
-    if _safe_oauth_redirect_path(path) == "/home.html":
-        url = URL("/home.html").replace(fragment=fragment)
-        return RedirectResponse(str(url), status_code=302)
-    url = URL("/index.html").replace(fragment=fragment)
-    return RedirectResponse(str(url), status_code=302)
+def _oauth_success_redirect(path: str | None, token: str) -> RedirectResponse:
+    fragment = urlencode({"auth_token": token})
+    if path == "/home.html":
+        return RedirectResponse(f"/home.html#{fragment}", status_code=302)
+    return RedirectResponse(f"/index.html#{fragment}", status_code=302)
 
 
 @router.get("/auth/providers")
@@ -417,7 +418,7 @@ async def oauth_callback(provider: str, request: Request, db: Annotated[Session,
                                   request.client.host if request.client else "")
         _sync_linked_device(db, user)
         db.commit()
-        return _oauth_success_redirect(saved.redirect_path, token, provider)
+        return _oauth_success_redirect(saved.redirect_path, token)
     except HTTPException:
         raise
     except Exception:  # noqa: BLE001
