@@ -70,7 +70,7 @@
   function mountainText(ctx) {
     if (ctx.mountainName) return ctx.mountainName;
     const place = placeText(ctx);
-    const head = place.split("·")[0].replace(/[📍🏔]/g, "").trim();
+    const head = place.split("·")[0].replace(/\u{1f4cd}|\u{1f3d4}\ufe0f?/gu, "").trim();
     return head || "선택 산";
   }
 
@@ -208,6 +208,57 @@
 
   function card(label, value, note, level = "neutral") {
     return { label, value, note, level };
+  }
+
+  function comparisonCard(ctx, note = "지역/산별 분포") {
+    return card("비교 산", `${mapRows(ctx).length}곳`, note, "neutral");
+  }
+
+  function landslideAxes(ls, weather, rain, gradeRisk, slopeRisk) {
+    return [
+      radarAxis("지도위험", gradeRisk, `${ls.grade ?? "—"}등급`),
+      radarAxis("강우압력", rain, "예상 강수"),
+      radarAxis("사면불안", slopeRisk, ls.label || "상태 확인"),
+      radarAxis("계곡주의", mix(gradeRisk, rain, 0.55), "물길 주변"),
+      radarAxis("낙석주의", mix(gradeRisk, windRisk(weather), 0.7), "절개지·암릉"),
+      radarAxis("우회필요", mix(slopeRisk, rain, 0.62), "대체 하산로"),
+    ];
+  }
+
+  function landslideCards(ctx, ls, rain) {
+    const highGrade = num(ls.grade, 5) <= 2;
+    return [
+      card("위험지도", `${ls.grade ?? "—"}등급`, "산사태정보시스템", highGrade ? "warn" : "safe"),
+      card("상태", ls.label || "—", statusWord(ls.score), ls.score >= 80 ? "safe" : "warn"),
+      card("강수 영향", `${rain}%`, "최근/예상 강수 신호", rain >= 30 ? "warn" : "neutral"),
+      card("지도 기준", regionText(ctx), "시군구/격자", "neutral"),
+      comparisonCard(ctx),
+      card("코스 판단", highGrade ? "대체 권장" : "진행 가능", "출발 전 선택", highGrade ? "warn" : "safe"),
+    ];
+  }
+
+  function weatherAxes(weather, rain, wind, temp, volatility) {
+    return [
+      radarAxis("강풍", wind, formatWind(weather.wind)),
+      radarAxis("비구름", rain, `${rain}% 강수`),
+      radarAxis("체감냉각", temp, `${weather.temp ?? "—"}°C`),
+      radarAxis("시야저하", mix(rain, volatility, 0.55), weather.label || "관측"),
+      radarAxis("변덕성", volatility, "예보 불확실성"),
+      radarAxis("노면미끄럼", mix(rain, temp, 0.72), "암릉·데크"),
+    ];
+  }
+
+  function weatherCards(ctx, weather, rain) {
+    const highWind = num(weather.wind) >= 7;
+    const weatherRisk = rain >= 30 || highWind;
+    return [
+      card("기온", `${weather.temp ?? "—"}°C`, weather.label || "관측", "neutral"),
+      card("풍속", formatWind(weather.wind), highWind ? "강풍 유의" : "보통", highWind ? "warn" : "safe"),
+      card("강수확률", `${rain}%`, rain >= 30 ? "우의 준비" : "낮음", rain >= 30 ? "warn" : "safe"),
+      card("관측소", weather.station || "관측망", "위치 기준", "neutral"),
+      comparisonCard(ctx),
+      card("코스 길이", weatherRisk ? "짧게" : "보통", "출발 전 선택", weatherRisk ? "warn" : "safe"),
+    ];
   }
 
   function layer(label, value, note) {
@@ -391,22 +442,8 @@
     }, {
       accent: "#74c69d",
       primaryAction: "비 예보가 있거나 전날 비가 왔다면 산사태 등급이 높은 지역의 산은 후보에서 제외하세요.",
-      axes: [
-        radarAxis("지도위험", gradeRisk, `${ls.grade ?? "—"}등급`),
-        radarAxis("강우압력", rain, "예상 강수"),
-        radarAxis("사면불안", slopeRisk, ls.label || "상태 확인"),
-        radarAxis("계곡주의", mix(gradeRisk, rain, 0.55), "물길 주변"),
-        radarAxis("낙석주의", mix(gradeRisk, windRisk(weather), 0.7), "절개지·암릉"),
-        radarAxis("우회필요", mix(slopeRisk, rain, 0.62), "대체 하산로"),
-      ],
-      cards: [
-        card("위험지도", `${ls.grade ?? "—"}등급`, "산사태정보시스템", num(ls.grade, 5) <= 2 ? "warn" : "safe"),
-        card("상태", ls.label || "—", statusWord(ls.score), ls.score >= 80 ? "safe" : "warn"),
-        card("강수 영향", `${rain}%`, "최근/예상 강수 신호", rain >= 30 ? "warn" : "neutral"),
-        card("지도 기준", regionText(ctx), "시군구/격자", "neutral"),
-        card("비교 산", `${mapRows(ctx).length}곳`, "지역/산별 분포", "neutral"),
-        card("코스 판단", num(ls.grade, 5) <= 2 ? "대체 권장" : "진행 가능", "출발 전 선택", num(ls.grade, 5) <= 2 ? "warn" : "safe"),
-      ],
+      axes: landslideAxes(ls, weather, rain, gradeRisk, slopeRisk),
+      cards: landslideCards(ctx, ls, rain),
     });
   }
 
@@ -432,22 +469,8 @@
     }, {
       accent: "#4cc9f0",
       primaryAction: "출발 전 방문할 산의 관측소 기준 풍속과 강수확률을 보고 복장과 코스 길이를 정하세요.",
-      axes: [
-        radarAxis("강풍", wind, formatWind(weather.wind)),
-        radarAxis("비구름", rain, `${rain}% 강수`),
-        radarAxis("체감냉각", temp, `${weather.temp ?? "—"}°C`),
-        radarAxis("시야저하", mix(rain, volatility, 0.55), weather.label || "관측"),
-        radarAxis("변덕성", volatility, "예보 불확실성"),
-        radarAxis("노면미끄럼", mix(rain, temp, 0.72), "암릉·데크"),
-      ],
-      cards: [
-        card("기온", `${weather.temp ?? "—"}°C`, weather.label || "관측", "neutral"),
-        card("풍속", formatWind(weather.wind), num(weather.wind) >= 7 ? "강풍 유의" : "보통", num(weather.wind) >= 7 ? "warn" : "safe"),
-        card("강수확률", `${rain}%`, rain >= 30 ? "우의 준비" : "낮음", rain >= 30 ? "warn" : "safe"),
-        card("관측소", weather.station || "관측망", "위치 기준", "neutral"),
-        card("비교 산", `${mapRows(ctx).length}곳`, "지역/산별 분포", "neutral"),
-        card("코스 길이", rain >= 30 || num(weather.wind) >= 7 ? "짧게" : "보통", "출발 전 선택", rain >= 30 || num(weather.wind) >= 7 ? "warn" : "safe"),
-      ],
+      axes: weatherAxes(weather, rain, wind, temp, volatility),
+      cards: weatherCards(ctx, weather, rain),
     });
   }
 
