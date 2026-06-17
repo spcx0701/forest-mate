@@ -1,0 +1,92 @@
+name: Android Release APK
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: GitHub Release tag to upload to when upload_to_release is enabled.
+        required: false
+      upload_to_release:
+        description: Upload the signed APK and checksum to the release_tag release.
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Build signed Android APK
+    runs-on: ubuntu-latest
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    defaults:
+      run:
+        working-directory: packaging/android
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK
+        uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: "25"
+
+      - name: Activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+
+      - name: Restore signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android-signing.keystore
+          chmod 600 android-signing.keystore
+
+      - name: Install packaging dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build signed APK
+        env:
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.BUBBLEWRAP_KEY_PASSWORD }}
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.BUBBLEWRAP_KEYSTORE_PASSWORD }}
+        run: pnpm run build:apk
+
+      - name: Generate build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
+        with:
+          subject-path: packaging/android/dist/*.apk
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: forestmate-android-apk
+          path: |
+            packaging/android/dist/*.apk
+            packaging/android/dist/*.sha256
+          if-no-files-found: error
+
+      - name: Upload release assets
+        if: ${{ github.event_name == 'release' || inputs.upload_to_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -n "$RELEASE_TAG"
+          gh release upload "$RELEASE_TAG" dist/*.apk dist/*.sha256 --repo "$GITHUB_REPOSITORY" --clobber

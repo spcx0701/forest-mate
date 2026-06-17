@@ -130,7 +130,7 @@ forest-mate/
 ### 풀스택(백엔드 + 프런트, 권장)
 ```bash
 cd forest-mate
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements.lock
 .venv/bin/uvicorn server.main:app --port 5181
 ```
 - 랜딩 http://localhost:5181/home.html · 앱 http://localhost:5181/index.html · 관제 http://localhost:5181/dashboard.html

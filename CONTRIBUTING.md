@@ -47,7 +47,7 @@ Use Python 3.12 or newer.
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pip install --require-hashes -r requirements-dev.lock
 .venv/bin/uvicorn server.main:app --port 5181
 ```
 
@@ -61,6 +61,13 @@ Useful local URLs:
 The app works without API keys by using snapshot data and rule-based fallbacks.
 If you use live public-data APIs or LLM features, keep credentials in `.env` and
 out of git.
+
+When dependency pins change, regenerate the hashed lock files:
+
+```bash
+uv pip compile --python-version 3.12 --generate-hashes requirements.txt -o requirements.lock
+uv pip compile --python-version 3.12 --generate-hashes requirements-dev.txt -o requirements-dev.lock
+```
 
 ## Testing
 
