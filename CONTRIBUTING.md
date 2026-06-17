@@ -65,8 +65,8 @@ out of git.
 When dependency pins change, regenerate the hashed lock files:
 
 ```bash
-uv pip compile --python-version 3.12 --generate-hashes requirements.txt -o requirements.lock
-uv pip compile --python-version 3.12 --generate-hashes requirements-dev.txt -o requirements-dev.lock
+uv pip compile --python-version 3.12 --python-platform x86_64-manylinux_2_28 --generate-hashes requirements.txt -o requirements.lock
+uv pip compile --python-version 3.12 --python-platform x86_64-manylinux_2_28 --generate-hashes requirements-dev.txt -o requirements-dev.lock
 ```
 
 ## Testing
