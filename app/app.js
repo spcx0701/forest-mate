@@ -8,6 +8,7 @@ const nowHM = () => { const d = new Date(); return `${String(d.getHours()).padSt
 /* ---------------- 상태 저장 ---------------- */
 const DEFAULTS = {
   profile: { set: false, name: "", fit: 2, knee: true, heart: false },
+  account: null,
   settings: { offRoute: true, family: true },
   lang: "ko",
   region: "eunpyeong",
@@ -31,6 +32,13 @@ if (!S.installAt) { S.installAt = Date.now(); save(); }   // 최초 사용일(�
 /* URL 파라미터 (?t=tab&demo=57 — 화면 캡처/시연용) */
 const Q = new URLSearchParams(location.search);
 const DEMO = Q.get("demo") !== null ? Math.min(100, Math.max(0, +Q.get("demo") || 57)) : null;
+function timeoutSignal(ms) {
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  if (typeof AbortController === "undefined") return undefined;
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
 
 /* ---------------- 클라우드 API 클라이언트 ----------------
  * 백엔드(/api/v1)가 살아 있으면 cloud 모드: 산행지수·추천·챗·산행기록·SOS가
@@ -41,17 +49,40 @@ const API = {
   // index.html에서 window.FM_API_BASE = "https://<배포도메인>/api/v1" 로 주입한다.
   base: (typeof window !== "undefined" && window.FM_API_BASE) || "/api/v1",
   mode: "local",
+  lastError: "",
   token: localStorage.getItem("fm_token") || null,
+  authToken: localStorage.getItem("fm_auth_token") || null,
   hikeId: null,
+  hikeStartPromise: null,
   async init() {
     if (location.protocol === "file:") return false;
+    this.consumeAuthRedirect();
     try {
-      const r = await fetch(this.base + "/healthz", { signal: AbortSignal.timeout(1500) });
+      const r = await fetch(this.base + "/healthz", { signal: timeoutSignal(1500) });
       if (!r.ok) throw new Error();
       this.mode = "cloud";
-      if (!this.token) await this.register();
+      this.lastError = "";
+      if (this.authToken) await this.loadMe();
       return true;
-    } catch { this.mode = "local"; return false; }
+    } catch (err) {
+      this.mode = "local";
+      this.lastError = err && err.message ? err.message : "server unavailable";
+      return false;
+    }
+  },
+  consumeAuthRedirect() {
+    const hash = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+    const token = hash.get("auth_token");
+    const err = hash.get("auth_error");
+    if (token) {
+      this.authToken = token;
+      localStorage.setItem("fm_auth_token", token);
+      history.replaceState(null, "", location.pathname + location.search);
+      toast("로그인 완료", "워치와 웹에서도 기록을 볼 수 있어요", "🔐");
+    } else if (err) {
+      history.replaceState(null, "", location.pathname + location.search);
+      toast("로그인 실패", "소셜 계정 연결을 완료하지 못했어요", "🔐", true);
+    }
   },
   async register() {
     const p = S.profile;
@@ -60,14 +91,20 @@ const API = {
     localStorage.setItem("fm_token", reg.token);
     return reg;
   },
+  async ensureToken() {
+    if (!this.authToken && !this.token) await this.register();
+  },
   headers(auth = true) {
     const h = { "Content-Type": "application/json" };
-    if (auth && this.token) h.Authorization = "Bearer " + this.token;
+    const bearer = this.authToken || this.token;
+    if (auth && bearer) h.Authorization = "Bearer " + bearer;
     return h;
   },
   async get(path, auth = true, retry = true) {
-    const r = await fetch(this.base + path, { headers: this.headers(auth), signal: AbortSignal.timeout(3000) });
-    if (r.status === 401 && auth && this.token && retry) {   // 토큰 무효 → 재등록 후 1회 재시도
+    if (auth) await this.ensureToken();
+    const r = await fetch(this.base + path, { headers: this.headers(auth), signal: timeoutSignal(3000) });
+    if (r.status === 401 && auth && retry) {   // 토큰 무효 → 게스트 기기 재등록 후 1회 재시도
+      this.clearAccount();
       localStorage.removeItem("fm_token"); this.token = null;
       await this.register();
       return this.get(path, auth, false);
@@ -76,19 +113,100 @@ const API = {
     return r.json();
   },
   async post(path, body, auth = true, retry = true) {
+    if (auth) await this.ensureToken();
     const r = await fetch(this.base + path, {
       method: "POST", headers: this.headers(auth), body: JSON.stringify(body || {}),
-      signal: AbortSignal.timeout(4000),
+      signal: timeoutSignal(4000),
     });
     // 토큰이 무효(서버 DB 교체·만료·revoke)면 익명 기기 재등록 후 1회 재시도.
     // 이게 없으면 산행·SOS 같은 인증 호출이 조용히 로컬 폴백돼 관제에 안 잡힌다.
-    if (r.status === 401 && auth && this.token && retry) {
+    if (r.status === 401 && auth && retry) {
+      this.clearAccount();
       localStorage.removeItem("fm_token"); this.token = null;
       await this.register();
       return this.post(path, body, auth, false);
     }
     if (!r.ok) throw new Error(path + " " + r.status);
     return r.json();
+  },
+  async patch(path, body, auth = true) {
+    if (auth) await this.ensureToken();
+    const r = await fetch(this.base + path, {
+      method: "PATCH", headers: this.headers(auth), body: JSON.stringify(body || {}),
+      signal: timeoutSignal(4000),
+    });
+    if (!r.ok) throw new Error(path + " " + r.status);
+    return r.json();
+  },
+  setAccount(body) {
+    this.authToken = body.access_token;
+    localStorage.setItem("fm_auth_token", body.access_token);
+    if (body.device_token) {
+      this.token = body.device_token;
+      localStorage.setItem("fm_token", body.device_token);
+    }
+    S.account = body.user;
+    if (body.user && body.user.profile) {
+      S.profile = { ...S.profile, ...body.user.profile, set: true };
+    }
+    save();
+  },
+  clearAccount(clearServerToken = true) {
+    if (clearServerToken) this.authToken = null;
+    localStorage.removeItem("fm_auth_token");
+    S.account = null;
+    save();
+  },
+  async loadMe() {
+    try {
+      const me = await this.get("/auth/me", true, false);
+      this.setAccount({ access_token: this.authToken, device_token: me.device_token, user: me.user });
+      return me;
+    } catch {
+      this.clearAccount();
+      return null;
+    }
+  },
+  async accountRegister(email, password) {
+    await this.ensureToken();
+    const p = S.profile;
+    const body = await this.post("/auth/register", {
+      email, password, name: p.name || "산친구", fit: p.fit, knee: p.knee, heart: p.heart,
+      device_token: this.token,
+    }, false);
+    this.setAccount(body);
+    return body;
+  },
+  async accountLogin(email, password) {
+    const body = await this.post("/auth/login", { email, password, device_token: this.token }, false);
+    this.setAccount(body);
+    return body;
+  },
+  async saveProfile() {
+    if (this.mode !== "cloud" || !this.authToken) return;
+    const p = S.profile;
+    const me = await this.patch("/auth/me/profile", {
+      name: p.name || "산친구", fit: p.fit, knee: p.knee, heart: p.heart,
+    });
+    S.account = me.user; save();
+  },
+  async logout() {
+    if (this.authToken) {
+      try { await this.post("/auth/logout", {}, true, false); } catch {}
+    }
+    this.clearAccount();
+  },
+  async oauth(provider) {
+    await this.ensureToken();
+    const p = S.profile;
+    const params = new URLSearchParams({
+      device_token: this.token || "",
+      name: p.name || "산친구",
+      fit: String(p.fit || 2),
+      knee: String(!!p.knee),
+      heart: String(!!p.heart),
+    });
+    location.href = `${this.base}/auth/oauth/${provider}/start?${params.toString()}`;
   },
 };
 
@@ -123,59 +241,272 @@ function calcIndex(r) {
 }
 function idxLabel(v) { return v >= 80 ? "좋음 — 산행하기 좋은 날 🌤" : v >= 60 ? "보통 — 기상 변화에 유의하세요 ⛅" : "주의 — 무리한 산행은 피하세요 ⚠️"; }
 
-function paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel) {
+let currentConditionContext = null;
+function normalizeWeather(weather) {
+  return { ...weather, rainProb: weather.rainProb ?? weather.rain_prob ?? 0 };
+}
+function conditionMapRegions() {
+  const rows = [];
+  for (const course of FM_DATA.courses || []) {
+    const region = FM_DATA.regions[course.region];
+    if (!region) continue;
+    const [lat, lon] = courseLatLon(course);
+    rows.push({
+      name: region.name,
+      mountain: (course.name || course.peak || "").split(" ")[0] || course.name,
+      lat,
+      lon,
+      fire: region.fire,
+      landslide: region.landslide,
+      weather: normalizeWeather(region.weather),
+      sunsetAt: region.sunsetAt,
+      selected: S.selectedMountain && S.selectedMountain.name === course.name,
+    });
+  }
+  if (!rows.length) {
+    for (const region of Object.values(FM_DATA.regions || {})) {
+      rows.push({
+        name: region.name,
+        mountain: region.name,
+        fire: region.fire,
+        landslide: region.landslide,
+        weather: normalizeWeather(region.weather),
+        sunsetAt: region.sunsetAt,
+      });
+    }
+  }
+  return rows;
+}
+function paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel, regionName, sunsetScore) {
   const C = 276.5;
+  currentConditionContext = {
+    index: v,
+    regionName,
+    placeLabel,
+    fire,
+    landslide,
+    weather: normalizeWeather(weather),
+    sunsetAt,
+    sunsetScore,
+    mapRegions: conditionMapRegions(),
+    mode: API.mode,
+    updatedAt: nowHM(),
+  };
   $("idxVal").textContent = v;
   $("idxArc").style.strokeDashoffset = (C * (1 - v / 100)).toFixed(1);
   $("idxArc").style.stroke = v >= 80 ? "#B7E4C7" : v >= 60 ? "#FFD8A8" : "#FFB3B8";
   $("idxLabel").innerHTML = placeLabel
     ? `${idxLabel(v)}<span class="idx-place">${placeLabel} <a id="mntReset">✕ 내 지역</a></span>`
     : idxLabel(v);
-  const wxCls = weather.score >= 75 ? "ok" : "mid";
-  $("idxGrid").innerHTML = `
-    <div class="idx-item"><b class="${fire.score >= 80 ? "ok" : "mid"}">산불위험 ${fire.level}</b>${fire.src}</div>
-    <div class="idx-item"><b class="${landslide.score >= 80 ? "ok" : "mid"}">산사태 ${landslide.label}</b>위험지도 ${landslide.grade}등급</div>
-    <div class="idx-item"><b class="${wxCls}">산악기상 ${weather.temp}°C</b>${weather.station}</div>
-    <div class="idx-item"><b class="mid">일몰 ${sunsetAt}</b>16시 이후 입산 주의</div>`;
+  const items = FM_CONDITION_DETAILS.buildConditionSummaryItems(currentConditionContext);
+  $("idxGrid").innerHTML = items.map((item) => `
+    <button type="button" class="idx-item condition-trigger" data-condition="${item.id}" aria-label="${esc(item.ariaLabel)}">
+      <b class="${item.tone}">${esc(item.title)}</b>${esc(item.body)}
+      <span class="idx-more">자세히</span>
+    </button>`).join("");
+  qsa("#idxGrid .condition-trigger").forEach((b) => b.addEventListener("click", () => openConditionDetail(b.dataset.condition)));
   const reset = $("mntReset");
   if (reset) reset.addEventListener("click", () => { S.selectedMountain = null; save(); renderHome(); });
 }
 
 async function fetchConditions(path) {
-  const d = await API.get(path);
+  const d = await API.get(path, false);
   return {
-    v: d.score, sunsetAt: d.conditions.sunset_at, place: d.place,
+    v: d.score, sunsetAt: d.conditions.sunset_at, sunsetScore: d.conditions.sunset_score, place: d.place, regionName: d.conditions.name,
     fire: { level: d.conditions.fire.level, score: d.conditions.fire.score, src: d.conditions.fire.src },
-    landslide: d.conditions.landslide, weather: { ...d.conditions.weather },
+    landslide: d.conditions.landslide, weather: normalizeWeather(d.conditions.weather),
   };
 }
 
+function openConditionDetail(id) {
+  if (!currentConditionContext) return;
+  const d = FM_CONDITION_DETAILS.buildConditionDetail(id, currentConditionContext);
+  $("extSheet").innerHTML = `
+    <div class="condition-panel" style="--condition-accent:${esc(d.accent || "#74C69D")}">
+      <button class="condition-close" data-close="extModal" aria-label="닫기">×</button>
+      <div class="condition-topline">
+        <span>${esc(d.modeLabel || "DATA")}</span>
+        <span>${esc(d.updatedAt)}</span>
+      </div>
+      <div class="condition-hero">
+        <div>
+          <div class="condition-kicker">${d.icon} ${esc(d.title)}</div>
+          <div class="condition-value">${esc(d.heroValue)}</div>
+        </div>
+        <div class="condition-gauge">
+          <span>${esc(String(currentConditionContext.index || "--"))}</span>
+          <small>산행지수</small>
+        </div>
+      </div>
+      <div class="condition-feed">
+        ${d.feed.map((f) => `<div class="feed-chip"><span>${esc(f.kind)}</span><b>${esc(f.label)}</b><small>${esc(f.value)}</small></div>`).join("")}
+      </div>
+      <div class="condition-chart">
+        <div class="chart-head"><b>${esc(d.radar.title)}</b><span>${esc(d.radar.scale)}</span></div>
+        ${conditionRadarSvg(d.radar.axes, d.accent)}
+      </div>
+      <div class="condition-map">
+        <div class="chart-head"><b>${esc(d.map.title)}</b><span>${esc(d.map.caption)}</span></div>
+        ${conditionMapMarkup(d.map)}
+      </div>
+      <div class="condition-card-grid">
+        ${d.cards.map((c) => `<div class="signal-card ${esc(c.level || "neutral")}"><span>${esc(c.label)}</span><b>${esc(c.value)}</b><small>${esc(c.note)}</small></div>`).join("")}
+      </div>
+      <div class="condition-guide">
+        <b>${esc(d.actionTitle || "출발 전 확인")}</b>
+        <div class="condition-step">${esc(d.primaryAction || (d.guidance && d.guidance[0]) || "")}</div>
+      </div>
+      <div class="condition-source">${esc(d.source)}</div>
+    </div>`;
+  $("extModal").classList.add("show");
+  requestAnimationFrame(() => initConditionMap(d.map));
+}
+
+function conditionRadarSvg(axes, accent) {
+  const W = 360, H = 196, cx = 180, cy = 96, radius = 58, labelRadius = 84;
+  const safe = axes && axes.length ? axes : [{ label: "", value: 0, note: "" }];
+  const point = (axis, i, r = radius) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * i) / safe.length;
+    const value = Math.max(0, Math.min(100, Number(axis.value) || 0));
+    const rr = r * (value / 100);
+    return [cx + Math.cos(angle) * rr, cy + Math.sin(angle) * rr, angle];
+  };
+  const maxPoint = (i, r = radius) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * i) / safe.length;
+    return [cx + Math.cos(angle) * r, cy + Math.sin(angle) * r, angle];
+  };
+  const rings = [0.25, 0.5, 0.75, 1].map((scale) => {
+    const pts = safe.map((_, i) => {
+      const [x, y] = maxPoint(i, radius * scale);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+    return `<polygon class="radar-grid" points="${pts}"/>`;
+  }).join("");
+  const spokes = safe.map((_, i) => {
+    const [x, y] = maxPoint(i);
+    return `<line class="radar-spoke" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`;
+  }).join("");
+  const shape = safe.map((axis, i) => {
+    const [x, y] = point(axis, i);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const dots = safe.map((axis, i) => {
+    const [x, y] = point(axis, i);
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2"/>`;
+  }).join("");
+  const labels = safe.map((axis, i) => {
+    const [x, y] = maxPoint(i, labelRadius);
+    const anchor = x < cx - 8 ? "end" : x > cx + 8 ? "start" : "middle";
+    return `<text x="${x.toFixed(1)}" y="${Math.max(14, Math.min(H - 12, y)).toFixed(1)}" text-anchor="${anchor}">${esc(axis.label)}</text>`;
+  }).join("");
+  const legend = safe.map((axis) => `<div class="radar-axis"><span>${esc(axis.label)}</span><b>${esc(String(axis.value))}</b><small>${esc(axis.note || "")}</small></div>`).join("");
+  return `<div class="radar-wrap">
+    <svg class="radar-graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="현재 위험 벡터 레이더 그래프">
+      <defs><linearGradient id="radarFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${esc(accent || "#74C69D")}" stop-opacity=".54"/><stop offset="1" stop-color="${esc(accent || "#74C69D")}" stop-opacity=".12"/></linearGradient></defs>
+      <g>${rings}${spokes}</g>
+      <polygon class="radar-fill" points="${shape}"/>
+      <polyline class="radar-line" points="${shape} ${shape.split(" ")[0]}" fill="none"/>
+      <g class="radar-dots">${dots}</g>
+      <g class="radar-labels">${labels}</g>
+    </svg>
+    <div class="radar-axis-list">${legend}</div>
+  </div>`;
+}
+
+function conditionMapMarkup(map) {
+  const safe = map && map.zones && map.zones.length ? map.zones : [];
+  const legend = (map && map.legend ? map.legend : []).map((l) => `<span class="map-legend-item ${esc(l.level)}"><i></i>${esc(l.label)}</span>`).join("");
+  const rows = safe.map((z) => `<div class="zone-row ${esc(z.level)}"><span>${esc(z.label)}</span><b>${esc(z.value)}</b><small>${esc(z.note)}</small></div>`).join("");
+  return `<div class="zone-map-wrap">
+    <div class="map-legend">${legend}</div>
+    <div id="conditionLeafletMap" class="condition-leaflet-map" role="img" aria-label="${esc(map.title)}"></div>
+    <div class="zone-list">${rows}</div>
+  </div>`;
+}
+
+let conditionLeafletMap = null;
+function mapTileConfig() {
+  if (window.FM_MAP_TILE_URL) {
+    return {
+      url: window.FM_MAP_TILE_URL,
+      options: { maxZoom: 18, attribution: window.FM_MAP_ATTRIBUTION || "" },
+    };
+  }
+  if (window.FM_VWORLD_KEY) {
+    return {
+      url: `https://api.vworld.kr/req/wmts/1.0.0/${window.FM_VWORLD_KEY}/Base/{z}/{y}/{x}.png`,
+      options: { maxZoom: 19, attribution: window.FM_MAP_ATTRIBUTION || "VWorld" },
+    };
+  }
+  return {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    options: { maxZoom: 18, attribution: "© OpenStreetMap contributors" },
+  };
+}
+function initConditionMap(mapData) {
+  const el = $("conditionLeafletMap");
+  if (!el || !window.L || !mapData || !Array.isArray(mapData.zones)) return;
+  if (conditionLeafletMap) {
+    conditionLeafletMap.remove();
+    conditionLeafletMap = null;
+  }
+  const points = mapData.zones
+    .map((z) => ({ ...z, lat: Number(z.lat), lon: Number(z.lon) }))
+    .filter((z) => Number.isFinite(z.lat) && Number.isFinite(z.lon));
+  if (!points.length) return;
+  const map = L.map(el, { attributionControl: false, zoomControl: false, dragging: true, scrollWheelZoom: false, tap: false });
+  const tile = mapTileConfig();
+  L.tileLayer(tile.url, tile.options).addTo(map);
+  const bounds = [];
+  const color = { low: "#58d68d", mid: "#ffd166", high: "#ff6b6b" };
+  points.forEach((z) => {
+    const marker = L.circleMarker([z.lat, z.lon], {
+      radius: z.size === "l" ? 10 : 8,
+      color: "#fff",
+      weight: 3,
+      fillColor: color[z.level] || "#58d68d",
+      fillOpacity: 0.95,
+    }).addTo(map);
+    marker.bindTooltip(`${z.note.split("·")[0].trim()} · ${z.value}`, {
+      permanent: true,
+      direction: "right",
+      offset: [9, 0],
+      className: "condition-map-label",
+    });
+    marker.bindPopup(`<b>${esc(z.label)}</b><br>${esc(z.value)}<br>${esc(z.note)}`);
+    bounds.push([z.lat, z.lon]);
+  });
+  map.fitBounds(bounds, { padding: [22, 22], maxZoom: 11 });
+  conditionLeafletMap = map;
+  setTimeout(() => map.invalidateSize(), 120);
+}
+
 async function renderHome() {
-  let v, fire, landslide, weather, sunsetAt, placeLabel = null;
+  let v, fire, landslide, weather, sunsetAt, sunsetScore, regionName, placeLabel = null;
   const sel = API.mode === "cloud" ? S.selectedMountain : null;
   if (sel) {
     try {
       const c = await fetchConditions(`/mountains/${encodeURIComponent(sel.listNo)}/index`);
-      ({ v, fire, landslide, weather, sunsetAt } = c);
+      ({ v, fire, landslide, weather, sunsetAt, sunsetScore, regionName } = c);
       placeLabel = `🏔 ${sel.name} · ${c.place}`;
     } catch { S.selectedMountain = null; }
   }
   if (placeLabel === null && API.mode === "cloud" && S.activeLoc) {
     try {
       const c = await fetchConditions(`/index/gps?lat=${S.activeLoc.lat}&lon=${S.activeLoc.lon}`);
-      ({ v, fire, landslide, weather, sunsetAt } = c);
+      ({ v, fire, landslide, weather, sunsetAt, sunsetScore, regionName } = c);
       placeLabel = `📍 ${S.activeLoc.label}`;
     } catch { S.activeLoc = null; }
   }
   if (placeLabel === null) {
     const r = FM_DATA.regions[S.region];
-    v = calcIndex(r); fire = r.fire; landslide = r.landslide; weather = r.weather; sunsetAt = r.sunsetAt;
+    v = calcIndex(r); fire = r.fire; landslide = r.landslide; weather = r.weather; sunsetAt = r.sunsetAt; sunsetScore = r.sunsetScore; regionName = r.name;
     if (API.mode === "cloud") {
-      try { ({ v, fire, landslide, weather, sunsetAt } = await fetchConditions(`/index?region=${S.region}`)); }
+      try { ({ v, fire, landslide, weather, sunsetAt, sunsetScore, regionName } = await fetchConditions(`/index?region=${S.region}`)); }
       catch { /* 로컬 계산 유지 */ }
     }
   }
-  paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel);
+  paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel, regionName, sunsetScore);
   updateLocLabel();
   renderReco();
   $("briefing").innerHTML = `<b>${FM_DATA.briefings[new Date().getDay() % FM_DATA.briefings.length].split(".")[0]}.</b><br>${FM_DATA.briefings[new Date().getDay() % FM_DATA.briefings.length].split(".").slice(1).join(".").trim()}`;
@@ -208,7 +539,7 @@ async function renderReco() {
   const loc = API.mode === "cloud" ? S.activeLoc : null;
   if (loc) {
     try {
-      const d = await API.get(`/mountains/nearby?lat=${loc.lat}&lon=${loc.lon}&radius=60&limit=6`);
+      const d = await API.get(`/mountains/nearby?lat=${loc.lat}&lon=${loc.lon}&radius=60&limit=6`, false);
       if (d.items && d.items.length) {
         $("recoNote").textContent = `${loc.label} 주변 · ${notes.join(" · ")} 반영`;
         $("recoList").innerHTML = d.items.map((m) => `
@@ -228,7 +559,7 @@ async function renderReco() {
   let list = FM_DATA.courses.map((c) => ({ c, s: matchScore(c) })).sort((a, b) => b.s - a.s);
   if (API.mode === "cloud") {
     try {
-      const cloud = await API.get(`/recommend?fit=${p.fit}&knee=${p.knee}&heart=${p.heart}`);
+      const cloud = await API.get(`/recommend?fit=${p.fit}&knee=${p.knee}&heart=${p.heart}`, false);
       list = cloud
         .map((r) => ({ c: FM_DATA.courses.find((c) => c.id === r.course_id), s: r.score }))
         .filter((x) => x.c);
@@ -291,7 +622,8 @@ function openCourse(id) {
 }
 
 /* ---------------- 산행: 지도 + 시뮬레이션 ---------------- */
-const Hike = { course: null, prog: 0, active: false, ended: false, timer: null, hr: 92, alerted: {}, sunsetLeft: null };
+const Hike = { course: null, prog: 0, active: false, ended: false, timer: null, hr: 92, alerted: {}, sunsetLeft: null, watch: null, watchPair: null, watchPoll: null };
+const WATCH_FRESH_MS = 65000;
 
 function selectCourse(id) {
   Hike.course = FM_DATA.courses.find((x) => x.id === id);
@@ -329,7 +661,7 @@ function buildMap() {
     setTimeout(() => map.invalidateSize(), 160);
     // 코스 산의 실제 등산로 선 표시(이름→카탈로그 코드 해석)
     if (API.mode === "cloud") {
-      API.get(`/mountains?q=${encodeURIComponent(c.name.split(" ")[0])}&size=1`)
+      API.get(`/mountains?q=${encodeURIComponent(c.name.split(" ")[0])}&size=1`, false)
         .then((r) => { if (r.items && r.items[0]) drawTrails(map, r.items[0].list_no); })
         .catch(() => {});
     }
@@ -414,6 +746,95 @@ function renderHikeStats(c) {
   $("stAlt").innerHTML = `${interp(c.elev, Hike.prog)}<small>m</small>`;
   $("stHr").innerHTML = Hike.active || Hike.prog > 0 ? `${Hike.hr}<small>bpm</small>` : "—";
 }
+function watchIsFresh() {
+  return !!(Hike.watch && Hike.watch.connected && Hike.watch.seenAtMs && Date.now() - Hike.watch.seenAtMs < WATCH_FRESH_MS);
+}
+function renderWatchStatus() {
+  const card = $("watchCard"), title = $("watchTitle"), text = $("watchText"), btn = $("btnWatchPair"), code = $("watchCode");
+  if (!card || !title || !text || !btn || !code) return;
+  const fresh = watchIsFresh();
+  card.classList.toggle("on", fresh);
+  btn.disabled = API.mode !== "cloud";
+  btn.textContent = fresh ? "재연결" : "연결";
+  code.style.display = Hike.watchPair ? "block" : "none";
+  code.textContent = Hike.watchPair ? Hike.watchPair.code : "";
+  if (fresh) {
+    title.textContent = "⌚ Galaxy Watch 연결됨";
+    const battery = Hike.watch.battery == null ? "배터리 —" : `배터리 ${Hike.watch.battery}%`;
+    text.textContent = `${Hike.watch.hr || "—"}bpm · ${battery} · ${Hike.watch.age_sec || 0}초 전`;
+  } else if (Hike.watchPair) {
+    title.textContent = "⌚ 워치 페어링 코드";
+    text.textContent = "워치앱에서 코드를 입력하세요";
+  } else if (API.mode !== "cloud") {
+    title.textContent = "⌚ Galaxy Watch";
+    text.textContent = "서버 연결 필요";
+  } else if (!Hike.active) {
+    title.textContent = "⌚ Galaxy Watch";
+    text.textContent = "워치 착용 대기 · 시작하면 기록 연결";
+  } else if (!API.hikeId) {
+    title.textContent = "⌚ Galaxy Watch";
+    text.textContent = "서버 산행 준비 중";
+  } else {
+    title.textContent = "⌚ Galaxy Watch";
+    text.textContent = "워치앱 연결 대기";
+  }
+}
+async function ensureCloudHike() {
+  if (API.mode !== "cloud" || !Hike.course) return false;
+  if (API.hikeId) return true;
+  if (API.hikeStartPromise) {
+    try { await API.hikeStartPromise; } catch {}
+    return !!API.hikeId;
+  }
+  API.hikeStartPromise = API.post("/hikes", { course_id: Hike.course.id })
+    .then((r) => { API.hikeId = r.hike_id; return r; })
+    .finally(() => { API.hikeStartPromise = null; });
+  try { await API.hikeStartPromise; } catch {}
+  return !!API.hikeId;
+}
+async function startWatchPairing() {
+  if (API.mode !== "cloud") return toast("서버 연결 필요", "백엔드 연결 시 워치앱을 연결할 수 있어요", "⌚");
+  if (Hike.active && !(await ensureCloudHike())) return toast("연결 실패", "서버 산행을 준비하지 못했어요", "⌚", true);
+  try {
+    const payload = API.hikeId ? { hike_id: API.hikeId } : {};
+    const r = await API.post("/watch/pair/start", payload);
+    Hike.watchPair = { code: r.code, expiresAt: Date.now() + r.expires_in * 1000 };
+    renderWatchStatus();
+    toast("워치 페어링 코드", `${r.code} 를 워치앱에 입력하세요`, "⌚", false, 5200);
+    startWatchPolling();
+  } catch {
+    toast("워치 연결 실패", "잠시 후 다시 시도해주세요", "⌚", true);
+  }
+}
+async function fetchWatchLatest() {
+  if (API.mode !== "cloud") return;
+  try {
+    const path = API.hikeId ? `/watch/latest?hike_id=${API.hikeId}` : "/watch/latest";
+    const w = await API.get(path);
+    Hike.watch = { ...w, seenAtMs: Date.now() };
+    if (w.connected) {
+      Hike.watchPair = null;
+      if (w.hr) Hike.hr = w.hr;
+      if (w.lat != null && w.lon != null) onGps(w.lat, w.lon, w.acc || 0);
+      else renderHikeUI();
+    } else {
+      renderWatchStatus();
+    }
+  } catch { /* 오프라인 폴백 유지 */ }
+}
+function startWatchPolling() {
+  clearInterval(Hike.watchPoll);
+  Hike.watchPoll = setInterval(fetchWatchLatest, 5000);
+  fetchWatchLatest();
+}
+function stopWatchPolling(reset = false) {
+  clearInterval(Hike.watchPoll);
+  Hike.watchPoll = null;
+  if (reset) {
+    Hike.watch = null;
+    Hike.watchPair = null;
+  }
+}
 function renderGpsStatus() {
   const gt = $("gpsTag");
   if (!gt) return;
@@ -442,17 +863,15 @@ function renderHikeUI() {
   renderHikeStats(c);
   renderGpsStatus();
   renderGuardStatus();
+  renderWatchStatus();
 }
 function startHike() {
   if (!Hike.course) { toast("코스를 먼저 선택하세요", "홈의 AI 추천에서 코스를 골라주세요", "🧭"); return; }
   Hike.active = true; Hike.ended = false;
   clearInterval(Hike.timer);
   Hike.timer = setInterval(tick, 1000);
-  if (API.mode === "cloud" && !API.hikeId) {
-    API.post("/hikes", { course_id: Hike.course.id })
-      .then((r) => { API.hikeId = r.hike_id; })
-      .catch(() => {});
-  }
+  if (API.mode === "cloud" && !API.hikeId) ensureCloudHike().then(renderWatchStatus);
+  startWatchPolling();
   logEvent(`입산 체크인 — ${Hike.course.name} (예상 하산 ${fmtMin(Hike.course.minutes)} 후)`);
   if (S.settings.family) logEvent("가족 안심 공유 시작 (어머니, 동생)");
   // 실제 GPS 위치 동기화 — watchPosition으로 실 위치대로 이동·기록(자동 진행 아님)
@@ -466,12 +885,12 @@ function startHike() {
   renderHikeUI();
 }
 function stopGeo() { if (Hike.geoId != null && navigator.geolocation) { navigator.geolocation.clearWatch(Hike.geoId); Hike.geoId = null; } }
-function pauseHike() { Hike.active = false; clearInterval(Hike.timer); stopGeo(); renderHikeUI(); }
+function pauseHike() { Hike.active = false; clearInterval(Hike.timer); stopGeo(); stopWatchPolling(true); renderHikeUI(); }
 function endHike(byUser = true) {
   clearInterval(Hike.timer);
   const c = Hike.course;
   const doneKm = +(c.km * Hike.prog).toFixed(1);
-  Hike.active = false; Hike.ended = true; stopGeo();
+  Hike.active = false; Hike.ended = true; stopGeo(); stopWatchPolling(true);
   S.june.cnt += 1; S.june.km = +(S.june.km + doneKm).toFixed(1);
   S.june.kcal += Math.round(doneKm * 260);
   S.june.co2 = +(S.june.co2 + doneKm * 0.38).toFixed(1);
@@ -487,11 +906,15 @@ function endHike(byUser = true) {
 let tickCount = 0;
 function tick() {
   // 진행도는 GPS(onGps)가 갱신 — tick은 심박·서버 트랙 전송만(자동 전진 없음).
-  Hike.hr = Math.round(92 + 18 * Math.sin(Hike.prog * 6) + Math.random() * 6);
+  if (!watchIsFresh()) Hike.hr = Math.round(92 + 18 * Math.sin(Hike.prog * 6) + Math.random() * 6);
   const c = Hike.course;
   if (API.mode === "cloud" && API.hikeId && ++tickCount % 5 === 0) {
     const t = { progress: +Hike.prog.toFixed(4), alt: interp(c.elev, Hike.prog), hr: Hike.hr };
-    if (Hike.gps) { t.lat = Hike.gps.lat; t.lon = Hike.gps.lon; }   // 실제 GPS 동기화
+    if (watchIsFresh() && Hike.watch.lat != null && Hike.watch.lon != null) {
+      t.lat = Hike.watch.lat; t.lon = Hike.watch.lon;
+    } else if (Hike.gps) {
+      t.lat = Hike.gps.lat; t.lon = Hike.gps.lon;
+    }
     API.post(`/hikes/${API.hikeId}/track`, t).catch(() => {});
   }
   renderHikeUI();
@@ -514,6 +937,7 @@ setInterval(sunsetTick, 1000);
 
 $("btnHike").addEventListener("click", () => (Hike.active ? pauseHike() : startHike()));
 $("btnEnd").addEventListener("click", () => endHike(true));
+if ($("btnWatchPair")) $("btnWatchPair").addEventListener("click", startWatchPairing);
 $("btnDemo").addEventListener("click", () => {
   if (!Hike.active) return toast("먼저 산행을 시작하세요", "데모 이동은 산행 중에만 동작해요", "🧪");
   demoStep();
@@ -788,6 +1212,7 @@ function monthBars(months, monthly) {
 }
 async function loadCloudSummary(months) {
   if (API.mode !== "cloud") return null;
+  if (!API.authToken && !API.token && !S.profile.set) return null;
   try {
     const s = await API.get("/hikes/summary");
     lastSum = s;   // 배지·지역 다양성 캐시
@@ -839,8 +1264,22 @@ function renderProfileExtra() {
   box.innerHTML =
     `<span>🧭 방문 지역 <b>${regions}</b>곳</span><span>⛰ 완등 코스 <b>${courses}</b></span><span>🏅 배지 <b>${earned}/${total}</b></span>`;
 }
+function renderAccountStatus() {
+  const acct = S.account;
+  if (!$("acctTitle")) return;
+  if (acct) {
+    $("acctTitle").textContent = `${acct.email || "소셜 계정"} 연결됨`;
+    $("acctSub").textContent = `${(acct.providers || []).join(" · ") || "account"} · 기록 동기화 ON`;
+    $("btnAccount").textContent = "관리";
+  } else {
+    $("acctTitle").textContent = "계정 없이 사용 중";
+    $("acctSub").textContent = API.mode === "cloud" ? "가입하면 워치·웹·산행 기록이 연동돼요" : "서버 연결 시 계정을 만들 수 있어요";
+    $("btnAccount").textContent = "가입/로그인";
+  }
+}
 async function loadHikeLogItems() {
   if (API.mode !== "cloud") return [];
+  if (!API.authToken && !API.token && !S.profile.set) return [];
   try { return (await API.get("/hikes")).items || []; }
   catch { return []; }
 }
@@ -850,7 +1289,7 @@ async function renderMy() {
   const months = last6Months();
   const summary = await loadCloudSummary(months) || fallbackMySummary(months);
   renderProfileSummary(summary);
-  renderProfileExtra();
+  renderProfileExtra(); renderAccountStatus();
   const hikes = await loadHikeLogItems();
   renderHikeLog(hikes); renderCalendar(hikes);
   renderBadges(); renderFavs(); renderIns();
@@ -971,14 +1410,84 @@ $("insBtn").addEventListener("click", () => {
 });
 
 /* ---------------- 온보딩 ---------------- */
+let ftueTimer = null;
 function openOnboard() {
-  $("obName").value = S.profile.set ? S.profile.name : "";
+  if ($("obName")) $("obName").value = S.profile.set ? S.profile.name : "";
   qsa("#obFit button").forEach((b) => b.classList.toggle("on", +b.dataset.v === S.profile.fit));
   qsa("#obChecks .ckc").forEach((b) => {
     const v = b.dataset.v;
     b.classList.toggle("on", v === "knee" ? S.profile.knee : v === "heart" ? S.profile.heart : !S.profile.knee && !S.profile.heart);
   });
-  $("onboard").classList.add("show");
+  const onboard = $("onboard");
+  const splash = qs("#onboard .ftue-splash");
+  const content = qs("#onboard .ftue-content");
+  onboard.classList.remove("ready");
+  if (splash) {
+    splash.style.visibility = "visible";
+    splash.style.opacity = "1";
+    splash.style.removeProperty("transform");
+    splash.style.removeProperty("top");
+  }
+  if (content) {
+    content.style.opacity = "0";
+    content.style.transform = "translateY(34px)";
+  }
+  onboard.classList.add("show");
+  clearTimeout(ftueTimer);
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  ftueTimer = setTimeout(() => {
+    onboard.classList.add("ready");
+    if (content) {
+      content.style.opacity = "1";
+      content.style.transform = "translateY(0)";
+    }
+    if (splash) {
+      splash.style.opacity = "1";
+      splash.style.visibility = "visible";
+      splash.style.removeProperty("transform");
+      splash.style.removeProperty("top");
+    }
+  }, reduced ? 0 : 1150);
+}
+function captureOnboardProfile() {
+  S.profile.name = $("obName") ? ($("obName").value.trim() || "산친구") : (S.profile.name || "산친구");
+  S.profile.fit = qs("#obFit button.on") ? +qs("#obFit button.on").dataset.v : (S.profile.fit || 2);
+  S.profile.knee = qs('#obChecks .ckc[data-v="knee"]') ? qs('#obChecks .ckc[data-v="knee"]').classList.contains("on") : !!S.profile.knee;
+  S.profile.heart = qs('#obChecks .ckc[data-v="heart"]') ? qs('#obChecks .ckc[data-v="heart"]').classList.contains("on") : !!S.profile.heart;
+  S.profile.set = true; save();
+}
+function authMessage(msg, ok = false) {
+  const el = $("authMsg");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.classList.toggle("ok", ok);
+  el.classList.toggle("err", !!msg && !ok);
+}
+async function emailAuth(mode, prefix = "auth") {
+  if (API.mode !== "cloud") return toast("서버 연결 필요", "백엔드 연결 시 계정을 만들 수 있어요", "🔐");
+  if (prefix === "auth") captureOnboardProfile();
+  const email = $(`${prefix}Email`).value.trim();
+  const password = $(`${prefix}Password`).value;
+  const msg = prefix === "auth" ? authMessage : (text, ok) => {
+    const el = $(`${prefix}Msg`); if (el) { el.textContent = text || ""; el.className = `auth-msg ${ok ? "ok" : "err"}`; }
+  };
+  if (!email || !password) { msg("이메일과 비밀번호를 입력해주세요", false); return; }
+  try {
+    if (mode === "register") await API.accountRegister(email, password);
+    else await API.accountLogin(email, password);
+    msg(mode === "register" ? "가입이 완료됐어요" : "로그인됐어요", true);
+    $("onboard").classList.remove("show");
+    $("extModal").classList.remove("show");
+    renderMy(); renderHome();
+    toast(mode === "register" ? "가입 완료" : "로그인 완료", "워치와 웹에서도 기록을 볼 수 있어요", "🔐");
+  } catch {
+    msg(mode === "register" ? "이미 가입된 이메일이거나 입력값을 확인해주세요" : "이메일 또는 비밀번호를 확인해주세요", false);
+  }
+}
+async function socialAuth(provider) {
+  if (API.mode !== "cloud") return toast("서버 연결 필요", "백엔드 연결 시 소셜 계정을 연결할 수 있어요", "🔐");
+  if ($("onboard").classList.contains("show")) captureOnboardProfile();
+  await API.oauth(provider);
 }
 qsa("#obFit button").forEach((b) => b.addEventListener("click", () => {
   qsa("#obFit button").forEach((x) => x.classList.remove("on")); b.classList.add("on");
@@ -988,16 +1497,16 @@ qsa("#obChecks .ckc").forEach((b) => b.addEventListener("click", () => {
   else { qs('#obChecks .ckc[data-v="none"]').classList.remove("on"); b.classList.toggle("on"); }
 }));
 $("obSave").addEventListener("click", () => {
-  S.profile.name = $("obName").value.trim() || "산친구";
-  S.profile.fit = +qs("#obFit button.on").dataset.v;
-  S.profile.knee = qs('#obChecks .ckc[data-v="knee"]').classList.contains("on");
-  S.profile.heart = qs('#obChecks .ckc[data-v="heart"]').classList.contains("on");
-  S.profile.set = true; save();
+  captureOnboardProfile();
+  API.saveProfile().catch(() => {});
   $("onboard").classList.remove("show");
   renderHome(); renderMy();
-  toast(`${S.profile.name}님, 환영해요!`, "프로필에 맞춰 코스 추천을 조정했어요", "🌲");
+  toast("나중에 할게요", "마이 탭에서 언제든 계정을 만들 수 있어요", "🌲");
 });
 $("btnEditProf").addEventListener("click", openOnboard);
+$("authCreate").addEventListener("click", () => emailAuth("register"));
+$("authLogin").addEventListener("click", () => emailAuth("login"));
+qsa(".social-row button[data-provider]").forEach((b) => b.addEventListener("click", () => socialAuth(b.dataset.provider)));
 
 /* ---------------- 공용 닫기 / 지역 / 벨 ---------------- */
 qsa("[data-close]").forEach((b) => b.addEventListener("click", () => $(b.dataset.close).classList.remove("show")));
@@ -1005,6 +1514,12 @@ document.addEventListener("click", (e) => {
   if (e.target.classList && e.target.classList.contains("overlay")) e.target.classList.remove("show");
   const dc = e.target.closest && e.target.closest("[data-close]");
   if (dc) $(dc.dataset.close).classList.remove("show");
+  const routeBtn = e.target.closest && e.target.closest("[data-route-provider]");
+  if (routeBtn) {
+    e.preventDefault();
+    openRouteFromCurrent(routeBtn);
+    return;
+  }
   if (e.target && e.target.id === "setHomeBtn") {           // 길찾기 '집 등록'(전역)
     if (!navigator.geolocation) return toast("위치 미지원", "이 기기는 GPS를 지원하지 않아요", "🏠");
     navigator.geolocation.getCurrentPosition(
@@ -1086,7 +1601,7 @@ function notificationLocationLabel() {
 async function gpsNotification(locLabel) {
   if (!S.activeLoc || API.mode !== "cloud") return null;
   try {
-    const g = await API.get(`/index/gps?lat=${S.activeLoc.lat}&lon=${S.activeLoc.lon}`);
+    const g = await API.get(`/index/gps?lat=${S.activeLoc.lat}&lon=${S.activeLoc.lon}`, false);
     return {
       ic: "📍",
       t: `${esc(locLabel)} 오늘 산행지수 ${g.score}`,
@@ -1139,9 +1654,9 @@ function urlB64ToUint8(b64) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 async function enablePush() {
-  if (API.mode !== "cloud") return toast("온라인 필요", "서버 연결 시 가능해요", "🔔");
+  if (API.mode !== "cloud") return toast("서버 연결 필요", "백엔드 연결 시 가능해요", "🔔");
   try {
-    const v = await API.get("/push/vapid");
+    const v = await API.get("/push/vapid", false);
     if (!v.enabled || !v.publicKey) return toast("푸시 준비 중", "관리자가 VAPID 키를 설정하면 켜져요(지금은 인앱 알림으로 동작)", "🔔", false, 4500);
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return toast("미지원", "이 기기는 푸시를 지원하지 않아요", "🔔");
     if ((await Notification.requestPermission()) !== "granted") return toast("알림 권한 필요", "브라우저 알림 권한을 허용해주세요", "🔔");
@@ -1166,17 +1681,17 @@ function openMntSearch() {
   $("mntQ").value = "";
   $("mntResults").innerHTML = API.mode === "cloud"
     ? `<div class="mnt-empty">산 이름을 입력하면 전국에서 검색해요.</div>`
-    : `<div class="mnt-empty">전국 산 검색은 온라인(서버 연결) 상태에서 동작해요.</div>`;
+    : `<div class="mnt-empty">전국 산 검색은 서버 연결 상태에서 동작해요.</div>`;
   setTimeout(() => $("mntQ").focus(), 120);
 }
 async function runMntSearch(q) {
   q = q.trim();
   const box = $("mntResults");
   if (!q) { box.innerHTML = `<div class="mnt-empty">산 이름을 입력하면 전국에서 검색해요.</div>`; return; }
-  if (API.mode !== "cloud") { box.innerHTML = `<div class="mnt-empty">전국 산 검색은 온라인 상태에서 동작해요.</div>`; return; }
+  if (API.mode !== "cloud") { box.innerHTML = `<div class="mnt-empty">전국 산 검색은 서버 연결 상태에서 동작해요.</div>`; return; }
   box.innerHTML = `<div class="mnt-empty">검색 중…</div>`;
   try {
-    const d = await API.get(`/mountains?q=${encodeURIComponent(q)}&size=30`);
+    const d = await API.get(`/mountains?q=${encodeURIComponent(q)}&size=30`, false);
     if (!d.items.length) { box.innerHTML = `<div class="mnt-empty">'${esc(q)}' 검색 결과가 없어요.</div>`; return; }
     box.innerHTML =
       `<div class="mnt-empty" style="text-align:left;padding:2px 2px 8px">전국 ${d.total.toLocaleString()}개 중 ${d.items.length}개 · <b>탭하면 산행지수</b></div>` +
@@ -1196,13 +1711,13 @@ function mntRow(m) {
 }
 async function findNearby() {
   const box = $("mntResults");
-  if (API.mode !== "cloud") { box.innerHTML = `<div class="mnt-empty">주변 산 찾기는 온라인 상태에서 동작해요.</div>`; return; }
+  if (API.mode !== "cloud") { box.innerHTML = `<div class="mnt-empty">주변 산 찾기는 서버 연결 상태에서 동작해요.</div>`; return; }
   if (!navigator.geolocation) { box.innerHTML = `<div class="mnt-empty">이 기기는 위치 기능을 지원하지 않아요.</div>`; return; }
   box.innerHTML = `<div class="mnt-empty">📍 현재 위치를 확인하는 중…</div>`;
   navigator.geolocation.getCurrentPosition(async (pos) => {
     const { latitude: lat, longitude: lon } = pos.coords;
     try {
-      const d = await API.get(`/mountains/nearby?lat=${lat}&lon=${lon}&radius=40&limit=25`);
+      const d = await API.get(`/mountains/nearby?lat=${lat}&lon=${lon}&radius=40&limit=25`, false);
       if (!d.items.length) { box.innerHTML = `<div class="mnt-empty">반경 40km 내 등록된 산이 없어요. 검색을 이용해 주세요.</div>`; return; }
       box.innerHTML =
         `<div class="mnt-empty" style="text-align:left;padding:2px 2px 8px">📍 내 주변 ${d.count}곳 · 가까운 순 · <b>탭하면 산행지수</b></div>` +
@@ -1253,7 +1768,7 @@ async function openMountainDetail(listNo, name) {
   $("extSheet").innerHTML = `<h3>${esc(name)}</h3><p class="sub">정보를 불러오는 중…</p>`;
   if (API.mode !== "cloud") { return selectMountainIndex(listNo, name); }
   try {
-    const d = await API.get(`/mountains/${encodeURIComponent(listNo)}/index`);
+    const d = await API.get(`/mountains/${encodeURIComponent(listNo)}/index`, false);
     const m = d.mountain, fac = m.facilities || {};
     const facHtml = Object.keys(fac).length
       ? Object.entries(fac).map(([k, v]) => `<span class="fac">${FAC_ICON[k] || "•"} ${k} ${v}</span>`).join("")
@@ -1299,7 +1814,7 @@ const TRAIL_COLOR = { 쉬움: "#2D6A4F", 보통: "#E08A1E", 어려움: "#C9304E"
 async function drawTrails(map, listNo) {
   if (!map || !listNo || API.mode !== "cloud") return 0;
   try {
-    const d = await API.get(`/mountains/${encodeURIComponent(listNo)}/trails`);
+    const d = await API.get(`/mountains/${encodeURIComponent(listNo)}/trails`, false);
     if (!d.segs || !d.segs.length) return 0;
     const bounds = [];
     d.segs.forEach((s) => {
@@ -1313,12 +1828,84 @@ async function drawTrails(map, listNo) {
   } catch { return 0; }
 }
 function homeLoc() { return S.home || null; }
+function routeCoord(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(6).replace(/0+$/, "").replace(/\.$/, "") : "";
+}
+function routePoint(lat, lon, name) {
+  return { lat: routeCoord(lat), lon: routeCoord(lon), name: String(name || "도착지").trim() || "도착지" };
+}
+function kakaoPointPath(p) {
+  return `${encodeURIComponent(p.name)},${p.lat},${p.lon}`;
+}
+function kakaoRouteUrl(origin, dest) {
+  return origin
+    ? `https://map.kakao.com/link/from/${kakaoPointPath(origin)}/to/${kakaoPointPath(dest)}`
+    : `https://map.kakao.com/link/to/${kakaoPointPath(dest)}`;
+}
+function googleRouteUrl(origin, dest) {
+  const params = new URLSearchParams({ api: "1", destination: `${dest.lat},${dest.lon}`, travelmode: "walking" });
+  if (origin) params.set("origin", `${origin.lat},${origin.lon}`);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+function routeUrl(provider, origin, dest) {
+  return provider === "google" ? googleRouteUrl(origin, dest) : kakaoRouteUrl(origin, dest);
+}
+function openRouteUrl(url, pendingWin) {
+  if (pendingWin && !pendingWin.closed) {
+    pendingWin.location.href = url;
+    return;
+  }
+  const opened = window.open(url, "_blank", "noopener");
+  if (!opened) location.href = url;
+}
+function setRouteButtonBusy(btn, busy) {
+  if (!btn) return;
+  if (busy) {
+    btn.dataset.routeText = btn.textContent;
+    btn.textContent = "위치 확인 중...";
+    btn.disabled = true;
+  } else {
+    btn.textContent = btn.dataset.routeText || btn.textContent;
+    btn.disabled = false;
+    delete btn.dataset.routeText;
+  }
+}
+function currentRouteOrigin() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error("geolocation unsupported")); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(routePoint(pos.coords.latitude, pos.coords.longitude, "현재 위치")),
+      reject,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
+  });
+}
+async function openRouteFromCurrent(btn) {
+  const provider = btn.dataset.routeProvider || "kakao";
+  const dest = routePoint(btn.dataset.routeLat, btn.dataset.routeLon, decodeURIComponent(btn.dataset.routeName || ""));
+  if (!dest.lat || !dest.lon) return toast("길찾기 오류", "도착지 좌표가 없어 길찾기를 열 수 없어요", "🧭", true);
+  const pendingWin = window.open("about:blank", "_blank");
+  if (pendingWin) pendingWin.opener = null;
+  setRouteButtonBusy(btn, true);
+  try {
+    const origin = await currentRouteOrigin();
+    openRouteUrl(routeUrl(provider, origin, dest), pendingWin);
+    toast("길찾기 열기", "현재 위치와 도착지 좌표를 함께 넘겼어요", "🧭");
+  } catch {
+    openRouteUrl(routeUrl(provider, null, dest), pendingWin);
+    toast("위치 권한 필요", "도착지는 좌표로 열었어요. 지도앱에서 출발지를 선택해주세요", "🧭", true);
+  } finally {
+    setRouteButtonBusy(btn, false);
+  }
+}
 function dirButtons(lat, lon, name) {
-  const n = encodeURIComponent(name), h = homeLoc();
+  const dest = routePoint(lat, lon, name), h = homeLoc();
+  const routeAttrs = `data-route-lat="${dest.lat}" data-route-lon="${dest.lon}" data-route-name="${encodeURIComponent(dest.name)}"`;
   return `<div class="dir-row">
-    <a class="dir-btn kakao" href="https://map.kakao.com/link/to/${n},${lat},${lon}" target="_blank" rel="noopener">📍 현재위치→ 카카오맵</a>
-    <a class="dir-btn" href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" rel="noopener">구글맵</a>
-    ${h ? `<a class="dir-btn home" href="https://map.kakao.com/link/from/우리집,${h.lat},${h.lon}/to/${n},${lat},${lon}" target="_blank" rel="noopener">🏠 집에서</a>`
+    <button type="button" class="dir-btn kakao" data-route-provider="kakao" ${routeAttrs}>📍 현재위치→ 카카오맵</button>
+    <button type="button" class="dir-btn" data-route-provider="google" ${routeAttrs}>구글맵</button>
+    ${h ? `<a class="dir-btn home" href="${kakaoRouteUrl(routePoint(h.lat, h.lon, "우리집"), dest)}" target="_blank" rel="noopener">🏠 집에서</a>`
         : `<button class="dir-btn" id="setHomeBtn">🏠 집 등록</button>`}
   </div>`;
 }
@@ -1348,7 +1935,7 @@ async function openPlan(m) {
   $("extSheet").innerHTML = `<h3>📅 ${esc(m.name)} 산행 일정</h3><p class="sub">예보를 불러오는 중…</p>`;
   let days = [];
   if (API.mode === "cloud" && m.lat) {
-    try { days = (await API.get(`/forecast?lat=${m.lat}&lon=${m.lon}`)).days; } catch { /* */ }
+    try { days = (await API.get(`/forecast?lat=${m.lat}&lon=${m.lon}`, false)).days; } catch { /* */ }
   }
   const rows = days.length ? days.map((d) => {
     const ok = d.score >= 70 ? "good" : d.score >= 50 ? "mid" : "bad";
@@ -1357,7 +1944,7 @@ async function openPlan(m) {
       <div><b>${d.label}</b><span>${d.dow}</span></div>
       <div class="plan-wx">🌡${d.temp}° · ☔${d.rain_prob}% · 🔥${d.fire}</div>
       <div class="plan-score">${d.score}<small>${tip}</small></div></div>`;
-  }).join("") : `<p class="sub">예보를 불러오지 못했어요(오프라인). 온라인에서 다시 시도해 주세요.</p>`;
+  }).join("") : `<p class="sub">예보를 불러오지 못했어요. 서버 연결 후 다시 시도해 주세요.</p>`;
   $("extSheet").innerHTML = `
     <h3>📅 ${esc(m.name)} 산행 일정</h3>
     <p class="sub">날짜별 날씨·산불 적합도 (기상청 단기예보). 날짜를 눌러 일정을 저장하세요.</p>
@@ -1374,6 +1961,69 @@ async function openPlan(m) {
 /* ---------------- 숲나들e 연동 (숲 소식 · 치유의숲) ---------------- */
 const FOREST_URL = "https://www.foresttrip.go.kr";
 function openExt(html) { $("extSheet").innerHTML = html; $("extModal").classList.add("show"); }
+function providerButton(provider) {
+  const labels = { google: "Google", kakao: "Kakao", naver: "Naver" };
+  const aria = { google: "Google로 시작", kakao: "카카오로 시작", naver: "네이버로 시작" };
+  const logos = {
+    google: `<span class="provider-logo google-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9c-.3 1.4-1 2.5-2.1 3.3v2.7h3.4c2-1.8 3.4-4.6 3.4-8z"/><path fill="#34A853" d="M12 23c3 0 5.6-1 7.4-2.8L16 17.5c-.9.6-2.2 1-4 1-3.1 0-5.7-2.1-6.7-4.9H1.8v2.8C3.6 20.3 7.5 23 12 23z"/><path fill="#FBBC05" d="M5.3 13.6c-.2-.6-.4-1.3-.4-2s.1-1.4.4-2V6.8H1.8C1.1 8.2.7 9.8.7 11.6s.4 3.4 1.1 4.8l3.5-2.8z"/><path fill="#EA4335" d="M12 4.7c1.6 0 3.1.6 4.2 1.7l3.1-3.1C17.6 1.6 15 0 12 0 7.5 0 3.6 2.7 1.8 6.8l3.5 2.8C6.3 6.8 8.9 4.7 12 4.7z"/></svg></span>`,
+    kakao: `<span class="provider-logo kakao-logo" aria-hidden="true"></span>`,
+    naver: `<span class="provider-logo naver-logo" aria-hidden="true"></span>`,
+  };
+  return `<button data-provider="${provider}" aria-label="${aria[provider]}">${logos[provider]}<span>${labels[provider]}로 시작</span></button>`;
+}
+function authForm(prefix) {
+  return `
+    <div class="auth-form">
+      <div class="social-row social-row-stack" aria-label="소셜 계정으로 계속하기">
+        ${providerButton("google")}
+        ${providerButton("kakao")}
+        ${providerButton("naver")}
+      </div>
+      <div class="auth-divider"><span>이메일로 계속하기</span></div>
+      <input type="email" id="${prefix}Email" placeholder="이메일">
+      <input type="password" id="${prefix}Password" placeholder="비밀번호" autocomplete="current-password">
+      <div class="auth-actions">
+        <button id="${prefix}Create">가입하기</button>
+        <button id="${prefix}Login">로그인</button>
+      </div>
+      <span class="auth-msg" id="${prefix}Msg"></span>
+    </div>`;
+}
+function openAccount() {
+  const acct = S.account;
+  if (acct) {
+    openExt(`
+      <h3>🔐 계정 관리</h3>
+      <p class="sub">산행 기록과 워치 데이터가 이 계정에 저장돼요.</p>
+      <div class="loc-card">
+        <div class="row"><span>이메일</span><b>${esc(acct.email || "소셜 계정")}</b></div>
+        <div class="row"><span>연결</span><b>${esc((acct.providers || []).join(" · ") || "account")}</b></div>
+        <div class="row"><span>프로필</span><b>${esc(S.profile.name || "산친구")} · ${["", "초급", "중급", "상급"][S.profile.fit]}</b></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn ghost" data-close="extModal">닫기</button>
+        <button class="btn danger" id="acctLogout">로그아웃</button>
+      </div>`);
+    $("acctLogout").addEventListener("click", async () => {
+      await API.logout();
+      $("extModal").classList.remove("show");
+      renderMy();
+      toast("로그아웃", "이 기기에서는 게스트 모드로 전환됐어요", "🔐");
+    });
+    return;
+  }
+  openExt(`
+    <div class="account-glass-panel">
+      <h3>계정 만들기 또는 로그인</h3>
+      <p class="sub">가입하면 워치와 웹에서도 산행 기록을 볼 수 있어요.</p>
+      ${authForm("acct")}
+      <div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>
+    </div>`);
+  $("acctCreate").addEventListener("click", () => emailAuth("register", "acct"));
+  $("acctLogin").addEventListener("click", () => emailAuth("login", "acct"));
+  qsa("#extSheet .social-row button[data-provider]").forEach((b) => b.addEventListener("click", () => socialAuth(b.dataset.provider)));
+}
+$("btnAccount").addEventListener("click", openAccount);
 function openRest() {
   openExt(`
     <h3>🏕 축령산 치유의숲 · 숲 명상</h3>
@@ -1452,7 +2102,8 @@ async function init() {
   const t = Q.get("t");
   if (t) show(t);
   else if (location.hash) show(location.hash.slice(1));
-  if (!S.profile.set && !t && DEMO === null && !Q.get("embed")) setTimeout(openOnboard, 600);
+  const forceFtue = Q.get("ftue") === "1" || Q.get("onboard") === "1";
+  if ((forceFtue || !S.profile.set) && !t && DEMO === null && !Q.get("embed")) setTimeout(openOnboard, 600);
 }
 init();
 

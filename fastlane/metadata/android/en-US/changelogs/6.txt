@@ -1,0 +1,6 @@
+ForestMate 1.1.0 update batch.
+
+- Adds account-backed session protection and authentication endpoints.
+- Adds richer trail condition detail surfaces and search visibility metadata.
+- Adds Galaxy Watch pairing and sensor upload groundwork.
+- Moves Android packaging to pnpm-managed dependencies.

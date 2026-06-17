@@ -1,0 +1,5 @@
+packages:
+  - .
+
+overrides:
+  "@types/node": 25.9.3

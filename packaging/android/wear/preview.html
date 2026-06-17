@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>숲길동무 Watch Preview</title>
+<style>
+  :root {
+    --bg: #050807;
+    --screen: #071B11;
+    --pine: #123924;
+    --mint: #B7E4C7;
+    --leaf: #5FD08F;
+    --lime: #D7F9B1;
+    --warn: #FFD166;
+    --danger: #FF6B6B;
+    --text: #F4F7F2;
+    --muted: rgba(244, 247, 242, .66);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(49, 78, 61, .35), transparent 38%),
+      #101211;
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .watch-shell {
+    width: min(92vmin, 410px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    padding: 16px;
+    background: linear-gradient(145deg, #262b28, #060807);
+    box-shadow: 0 24px 80px rgba(0,0,0,.58), inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--screen);
+    isolation: isolate;
+  }
+  .screen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 1px rgba(183,228,199,.13), inset 0 -32px 62px rgba(0,0,0,.42);
+    z-index: 12;
+  }
+  .map {
+    position: absolute;
+    inset: -7%;
+    width: 114%;
+    height: 114%;
+    z-index: 0;
+  }
+  .progress-ring {
+    position: absolute;
+    inset: 9px;
+    border-radius: 50%;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .shade {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+      linear-gradient(to bottom, rgba(5,8,7,.78), transparent 31%, transparent 62%, rgba(5,8,7,.82)),
+      radial-gradient(circle at 50% 48%, transparent 0 50%, rgba(5,8,7,.52) 68%, rgba(5,8,7,.88) 100%);
+  }
+  .top {
+    position: absolute;
+    z-index: 4;
+    top: 31px;
+    left: 84px;
+    right: 84px;
+    text-align: center;
+  }
+  .course {
+    font-size: 13px;
+    font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .state {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding: 3px 9px;
+    min-height: 22px;
+    border-radius: 999px;
+    background: rgba(183,228,199,.13);
+    color: var(--mint);
+    font-size: 10px;
+    font-weight: 900;
+  }
+  .nav-card {
+    position: absolute;
+    z-index: 4;
+    top: 90px;
+    left: 58px;
+    right: 58px;
+    min-height: 82px;
+    border-radius: 28px;
+    padding: 11px 13px;
+    background: rgba(6, 20, 13, .74);
+    border: 1px solid rgba(183,228,199,.17);
+    text-align: center;
+    backdrop-filter: blur(8px);
+  }
+  .turn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .arrow {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: var(--mint);
+    color: #062014;
+    display: grid;
+    place-items: center;
+    font-size: 25px;
+    font-weight: 950;
+  }
+  .turn b {
+    display: block;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .turn span {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+  }
+  .offroute {
+    margin-top: 8px;
+    color: var(--warn);
+    font-size: 10px;
+    font-weight: 900;
+  }
+  .metrics {
+    position: absolute;
+    z-index: 5;
+    left: 60px;
+    right: 60px;
+    bottom: 56px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .metric {
+    min-width: 0;
+    height: 48px;
+    border-radius: 17px;
+    background: rgba(11, 36, 23, .82);
+    border: 1px solid rgba(183,228,199,.12);
+    display: grid;
+    place-items: center;
+    padding: 5px 2px;
+  }
+  .metric b {
+    display: block;
+    font-size: 13px;
+    line-height: 1.05;
+    white-space: nowrap;
+  }
+  .metric span {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 8.5px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+  .metric.hr b { color: #FF9FA7; }
+  .metric.compass b { color: var(--lime); }
+  .controls {
+    position: absolute;
+    z-index: 6;
+    left: 112px;
+    right: 112px;
+    bottom: 22px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+  button {
+    border: 0;
+    min-width: 70px;
+    height: 31px;
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 10px;
+    font-weight: 950;
+    background: rgba(183,228,199,.14);
+    border: 1px solid rgba(183,228,199,.16);
+  }
+  button.primary {
+    color: #062014;
+    background: var(--mint);
+  }
+  .fallback {
+    display: none;
+    position: absolute;
+    z-index: 8;
+    inset: 74px 54px auto;
+    border-radius: 28px;
+    padding: 14px;
+    background: rgba(5, 14, 10, .94);
+    border: 1px solid rgba(183,228,199,.2);
+    text-align: center;
+  }
+  .fallback.show { display: block; }
+  .fallback b {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 7px;
+  }
+  .fallback input {
+    width: 100%;
+    height: 42px;
+    border-radius: 16px;
+    border: 1px solid rgba(183,228,199,.55);
+    background: rgba(183,228,199,.08);
+    color: var(--text);
+    text-align: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 20px;
+    font-weight: 950;
+    letter-spacing: 4px;
+  }
+  .toast {
+    position: absolute;
+    z-index: 10;
+    left: 70px;
+    right: 70px;
+    bottom: 92px;
+    padding: 8px 10px;
+    border-radius: 18px;
+    background: rgba(255, 209, 102, .94);
+    color: #2b2100;
+    font-size: 10px;
+    font-weight: 950;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity .18s, transform .18s;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+  <main class="watch-shell" aria-label="숲길동무 Watch hiking screen">
+    <section class="screen">
+      <svg class="map" viewBox="0 0 400 400" aria-hidden="true">
+        <defs>
+          <radialGradient id="terrain" cx="48%" cy="42%" r="70%">
+            <stop offset="0%" stop-color="#174A2F"/>
+            <stop offset="58%" stop-color="#0A2B1A"/>
+            <stop offset="100%" stop-color="#04100A"/>
+          </radialGradient>
+          <filter id="soft"><feGaussianBlur stdDeviation="1.4"/></filter>
+        </defs>
+        <rect width="400" height="400" fill="url(#terrain)"/>
+        <path d="M36 96 C86 70 120 82 169 52 C221 20 279 40 358 20" stroke="#2B6442" stroke-width="2" fill="none" opacity=".34"/>
+        <path d="M-10 183 C55 143 126 169 183 126 C239 83 305 107 420 68" stroke="#2B6442" stroke-width="2" fill="none" opacity=".4"/>
+        <path d="M-10 278 C73 222 144 256 214 214 C282 174 333 190 430 151" stroke="#2B6442" stroke-width="2" fill="none" opacity=".42"/>
+        <path d="M32 356 C106 298 176 317 246 280 C311 246 361 254 417 224" stroke="#2B6442" stroke-width="2" fill="none" opacity=".28"/>
+        <path d="M116 337 C125 273 142 240 185 212 C227 185 237 152 268 107 C286 80 306 61 338 42" stroke="#1C3828" stroke-width="18" fill="none" opacity=".8" filter="url(#soft)"/>
+        <path d="M116 337 C125 273 142 240 185 212 C227 185 237 152 268 107 C286 80 306 61 338 42" stroke="#74C69D" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <path d="M116 337 C125 273 142 240 185 212" stroke="#D7F9B1" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <path d="M238 152 C250 141 260 127 268 107" stroke="#FFD166" stroke-width="11" fill="none" stroke-linecap="round"/>
+        <g transform="translate(185 212) rotate(38)">
+          <path d="M0 -16 L10 13 L0 8 L-10 13 Z" fill="#F4F7F2" stroke="#062014" stroke-width="2"/>
+        </g>
+      </svg>
+      <svg class="progress-ring" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="47" fill="none" stroke="rgba(183,228,199,.12)" stroke-width="2.2"/>
+        <circle id="progressArc" cx="50" cy="50" r="47" fill="none" stroke="#B7E4C7" stroke-width="2.8" stroke-linecap="round" stroke-dasharray="295" stroke-dashoffset="188" transform="rotate(-90 50 50)"/>
+      </svg>
+      <div class="shade"></div>
+
+      <div class="top">
+        <div class="course">북한산 백운대</div>
+        <div class="state" id="stateText">경로 수신 완료 · 36%</div>
+      </div>
+
+      <div class="nav-card">
+        <div class="turn">
+          <div class="arrow" id="turnArrow">↗</div>
+          <div><b id="turnMain">220m 우측</b><span id="turnSub">백운대 방향 · 난간길 주의</span></div>
+        </div>
+        <div class="offroute" id="safetyLine">코스에서 8m · 정상 범위</div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric hr"><b id="hrValue">139</b><span>bpm</span></div>
+        <div class="metric"><b id="remainValue">2.7</b><span>km left</span></div>
+        <div class="metric"><b id="altValue">612</b><span>m alt</span></div>
+        <div class="metric compass"><b id="bearingValue">NE</b><span>312°</span></div>
+      </div>
+
+      <div class="controls">
+        <button class="primary" id="pauseBtn">일시정지</button>
+        <button id="sosBtn">SOS 길게</button>
+      </div>
+
+      <div class="fallback" id="fallbackBox">
+        <b>백업 연결</b>
+        <input id="pairCode" value="584907" inputmode="numeric" maxlength="6" aria-label="페어링 코드">
+      </div>
+      <div class="toast" id="toast"></div>
+    </section>
+  </main>
+
+<script>
+  const pauseBtn = document.getElementById("pauseBtn");
+  const sosBtn = document.getElementById("sosBtn");
+  const toast = document.getElementById("toast");
+  const stateText = document.getElementById("stateText");
+  const safetyLine = document.getElementById("safetyLine");
+  const turnMain = document.getElementById("turnMain");
+  const turnSub = document.getElementById("turnSub");
+  const hrValue = document.getElementById("hrValue");
+  const progressArc = document.getElementById("progressArc");
+  let paused = false;
+  let toastTimer;
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 1400);
+  }
+
+  pauseBtn.addEventListener("click", () => {
+    paused = !paused;
+    pauseBtn.textContent = paused ? "재개" : "일시정지";
+    stateText.textContent = paused ? "기록 일시정지 · 36%" : "경로 수신 완료 · 36%";
+    safetyLine.textContent = paused ? "기록을 멈췄습니다" : "코스에서 8m · 정상 범위";
+    showToast(paused ? "일시정지됨" : "기록 재개");
+  });
+
+  sosBtn.addEventListener("click", () => {
+    showToast("SOS는 길게 눌러 전송");
+  });
+
+  document.querySelector(".screen").addEventListener("dblclick", () => {
+    document.getElementById("fallbackBox").classList.toggle("show");
+    showToast("백업 코드 화면 전환");
+  });
+
+  setInterval(() => {
+    if (paused) return;
+    const hr = 137 + Math.round(Math.sin(Date.now() / 1800) * 4);
+    hrValue.textContent = String(hr);
+    const offset = 188 - Math.sin(Date.now() / 4200) * 5;
+    progressArc.setAttribute("stroke-dashoffset", offset.toFixed(1));
+  }, 900);
+</script>
+</body>
+</html>

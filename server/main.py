@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 
 from .config import get_settings
 from .db import SessionLocal, init_db
-from .routers import dashboard, hikes, public, push
+from .routers import auth, dashboard, hikes, public, push, watch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("forestmate")
@@ -93,7 +93,9 @@ def create_app() -> FastAPI:
                        allow_headers=["*"])
 
     app.include_router(public.router, prefix="/api/v1", tags=["public"])
+    app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
     app.include_router(hikes.router, prefix="/api/v1", tags=["hikes"])
+    app.include_router(watch.router, prefix="/api/v1", tags=["watch"])
     app.include_router(dashboard.router, prefix="/api/v1", tags=["dashboard"])
     app.include_router(push.router, prefix="/api/v1", tags=["push"])
 

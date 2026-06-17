@@ -1,9 +1,9 @@
-"""영속 모델 — 기기(익명 인증)·산행·트랙·SOS·경보."""
+"""영속 모델 — 계정·기기·산행·트랙·SOS·경보."""
 import secrets
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -35,6 +35,77 @@ class Device(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     hikes: Mapped[list["Hike"]] = relationship(back_populates="device")
+
+
+class User(Base):
+    """서비스 계정 — 이메일/소셜 로그인 뒤 서버가 소유하는 canonical profile."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    name: Mapped[str] = mapped_column(String(32), default="산친구")
+    fit: Mapped[int] = mapped_column(Integer, default=2)
+    knee: Mapped[bool] = mapped_column(Boolean, default=False)
+    heart: Mapped[bool] = mapped_column(Boolean, default=False)
+    avatar_url: Mapped[str] = mapped_column(String(512), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AuthIdentity(Base):
+    """로그인 수단 — password/google/kakao/naver를 같은 사용자에 연결."""
+
+    __tablename__ = "auth_identities"
+    __table_args__ = (UniqueConstraint("provider", "provider_user_id", name="uq_auth_provider_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(24), index=True)
+    provider_user_id: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    credential_hash: Mapped[str] = mapped_column(String(255), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AuthSession(Base):
+    """자체 로그인 세션 — 원문 토큰은 DB에 저장하지 않고 해시만 보관."""
+
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_agent: Mapped[str] = mapped_column(String(255), default="")
+    ip: Mapped[str] = mapped_column(String(64), default="")
+
+
+class UserDevice(Base):
+    """계정과 익명 기기 토큰의 연결 — 기존 산행 기록을 계정으로 승격한다."""
+
+    __tablename__ = "user_devices"
+    __table_args__ = (UniqueConstraint("device_id", name="uq_user_device_device"),)
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    device_id: Mapped[str] = mapped_column(ForeignKey("devices.id"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class OAuthState(Base):
+    """소셜 로그인 CSRF state — OAuth 콜백에서 1회 소비한다."""
+
+    __tablename__ = "oauth_states"
+
+    state_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(24), index=True)
+    device_token: Mapped[str] = mapped_column(String(128), default="")
+    profile_json: Mapped[str] = mapped_column(Text, default="{}")
+    redirect_path: Mapped[str] = mapped_column(String(255), default="/index.html")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class Hike(Base):
@@ -72,6 +143,35 @@ class TrackPoint(Base):
     hike: Mapped[Hike] = relationship(back_populates="points")
 
 
+class WatchPair(Base):
+    """워치 페어링 코드 — 폰/PWA가 만들고 워치가 1회 사용한다."""
+
+    __tablename__ = "watch_pairs"
+
+    code: Mapped[str] = mapped_column(String(6), primary_key=True)
+    hike_id: Mapped[str | None] = mapped_column(ForeignKey("hikes.id"), index=True, nullable=True)
+    device_id: Mapped[str] = mapped_column(ForeignKey("devices.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), default="", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class WatchSample(Base):
+    """워치 최신 센서 샘플 — 심박/GPS/배터리."""
+
+    __tablename__ = "watch_samples"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    hike_id: Mapped[str] = mapped_column(ForeignKey("hikes.id"), index=True)
+    hr: Mapped[int] = mapped_column(Integer)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    acc: Mapped[float | None] = mapped_column(Float, nullable=True)
+    battery: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class SosEvent(Base):
     __tablename__ = "sos_events"
 
@@ -96,6 +196,24 @@ class PushSub(Base):
     p256dh: Mapped[str] = mapped_column(String(255))
     auth: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class WatchSession(Base):
+    """페어링된 워치 세션 — 산행 중 센서 업로드 토큰과 최신 상태."""
+
+    __tablename__ = "watch_sessions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    device_id: Mapped[str] = mapped_column(String(32), index=True)
+    hike_id: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True, default=_token)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    last_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    last_acc: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    battery: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class Mountain(Base):

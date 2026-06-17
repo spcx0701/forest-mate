@@ -44,6 +44,17 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:forestmate@example.com"
 
+    # 계정/로그인 — 자체 세션 + OAuth Authorization Code 콜백
+    public_base_url: str = ""  # 비우면 요청 Host 기준으로 redirect_uri 생성
+    auth_session_days: int = 90
+    auth_state_ttl_minutes: int = 10
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    kakao_client_id: str = ""      # Kakao REST API key
+    kakao_client_secret: str = ""
+    naver_client_id: str = ""
+    naver_client_secret: str = ""
+
     @property
     def push_enabled(self) -> bool:
         return bool(self.vapid_public_key and self.vapid_private_key)
