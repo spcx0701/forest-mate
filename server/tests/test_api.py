@@ -5,6 +5,15 @@ from datetime import timedelta
 import pytest
 
 
+def _csp_directives(csp):
+    directives = {}
+    for directive in csp.split(";"):
+        parts = directive.strip().split()
+        if parts:
+            directives[parts[0]] = set(parts[1:])
+    return directives
+
+
 def test_healthz_snapshot_mode(client):
     res = client.get("/api/v1/healthz")
     assert res.status_code == 200
@@ -28,12 +37,10 @@ def test_security_headers_present(client, path):
 
 def test_csp_allows_wikipedia_thumbnail_images(client):
     res = client.get("/index.html")
-    csp = res.headers["content-security-policy"]
+    directives = _csp_directives(res.headers["content-security-policy"])
 
-    assert "connect-src" in csp
-    assert "https://ko.wikipedia.org" in csp
-    assert "img-src" in csp
-    assert "https://upload.wikimedia.org" in csp
+    assert "https://ko.wikipedia.org" in directives["connect-src"]
+    assert "https://upload.wikimedia.org" in directives["img-src"]
 
 
 def test_api_docs_avoid_external_swagger_assets(client):
