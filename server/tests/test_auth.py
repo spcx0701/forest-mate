@@ -159,6 +159,51 @@ def test_oauth_start_and_callback_create_account_session(client, register_device
     assert body["user"]["profile"]["heart"] is True
 
 
+def test_oauth_redirect_path_is_allow_listed(client, register_device, monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "google-client-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "google-client-secret")
+
+    from server.config import get_settings
+    from server.routers import auth as auth_router
+
+    get_settings.cache_clear()
+    issued = 0
+
+    async def fake_fetch_oauth_profile(provider, code, redirect_uri):
+        nonlocal issued
+        issued += 1
+        await asyncio.sleep(0)
+        return {
+            "provider_user_id": f"google-redirect-{issued}",
+            "email": f"redirect-{issued}@example.com",
+            "email_verified": True,
+            "name": "리다이렉트",
+            "avatar_url": "",
+        }
+
+    monkeypatch.setattr(auth_router, "fetch_oauth_profile", fake_fetch_oauth_profile)
+
+    def roundtrip(redirect_path: str) -> str:
+        _, legacy = register_device(name="소셜러")
+        start = client.get("/api/v1/auth/oauth/google/start", params={
+            "device_token": legacy["token"],
+            "redirect_path": redirect_path,
+        }, follow_redirects=False)
+        assert start.status_code in (302, 307)
+        state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+        callback = client.get("/api/v1/auth/oauth/google/callback", params={
+            "code": "provider-code",
+            "state": state,
+        }, follow_redirects=False)
+        assert callback.status_code in (302, 307)
+        return callback.headers["location"]
+
+    assert roundtrip("https://evil.example/callback").startswith("/index.html#auth_token=")
+    assert roundtrip("//evil.example/callback").startswith("/index.html#auth_token=")
+    assert roundtrip("/admin").startswith("/index.html#auth_token=")
+    assert roundtrip("/home.html").startswith("/home.html#auth_token=")
+
+
 def test_auth_helpers_cover_invalid_and_guest_edges(register_device):
     from fastapi import HTTPException
     from sqlalchemy import select
