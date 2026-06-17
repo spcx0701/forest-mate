@@ -10,6 +10,11 @@
   <a href="https://www.codefactor.io/repository/github/spcx0701/forest-mate"><img alt="CodeFactor" src="https://img.shields.io/codefactor/grade/github/spcx0701/forest-mate?label=code%20quality&logo=codefactor"></a>
   <a href="https://codecov.io/gh/spcx0701/forest-mate"><img alt="Coverage" src="https://img.shields.io/codecov/c/github/spcx0701/forest-mate?label=coverage&logo=codecov"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/spcx0701/forest-mate"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/spcx0701/forest-mate/badge"></a>
+  <a href="https://www.bestpractices.dev/en/projects/13285"><img alt="OpenSSF Best Practices" src="https://www.bestpractices.dev/projects/13285/badge"></a>
+  <a href="https://sonarcloud.io/summary/overall?id=spcx0701_forest-mate&branch=main"><img alt="Bugs" src="https://sonarcloud.io/api/project_badges/measure?project=spcx0701_forest-mate&metric=bugs"></a>
+  <a href="https://sonarcloud.io/summary/overall?id=spcx0701_forest-mate&branch=main"><img alt="Security Rating" src="https://sonarcloud.io/api/project_badges/measure?project=spcx0701_forest-mate&metric=security_rating"></a>
+  <a href="https://sonarcloud.io/summary/overall?id=spcx0701_forest-mate&branch=main"><img alt="Maintainability Rating" src="https://sonarcloud.io/api/project_badges/measure?project=spcx0701_forest-mate&metric=sqale_rating"></a>
+  <a href="https://sonarcloud.io/summary/overall?id=spcx0701_forest-mate&branch=main"><img alt="Technical Debt" src="https://sonarcloud.io/api/project_badges/measure?project=spcx0701_forest-mate&metric=sqale_index"></a>
   <img alt="Top language" src="https://img.shields.io/github/languages/top/spcx0701/forest-mate">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <a href="https://api.reuse.software/info/github.com/spcx0701/forest-mate"><img alt="REUSE status" src="https://api.reuse.software/badge/github.com/spcx0701/forest-mate"></a>
