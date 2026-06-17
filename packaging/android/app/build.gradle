@@ -53,9 +53,12 @@ def twaManifest = [
 android {
     compileSdkVersion 36
     namespace "kr.forestmate.app"
+    buildFeatures {
+        resValues true
+    }
     defaultConfig {
         applicationId "kr.forestmate.app"
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 35
         versionCode 6
         versionName "1.1.0"
