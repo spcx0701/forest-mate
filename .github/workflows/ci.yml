@@ -37,3 +37,73 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
       - name: Build image
         run: docker build -t forestmate:ci .
+
+  zap-baseline:
+    name: OWASP ZAP baseline (${{ matrix.target.name }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: home
+            path: /home.html
+          - name: app
+            path: /index.html
+          - name: api-docs
+            path: /docs
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install runtime dependencies
+        run: pip install -r requirements.txt
+      - name: Start ForestMate app
+        run: |
+          python -m uvicorn server.main:app --host 0.0.0.0 --port 5181 > uvicorn.log 2>&1 &
+          echo "$!" > uvicorn.pid
+      - name: Wait for scan target
+        env:
+          TARGET_PATH: ${{ matrix.target.path }}
+        run: |
+          python - <<'PY'
+          import os
+          import time
+          from urllib.error import HTTPError, URLError
+          from urllib.request import urlopen
+
+          url = f"http://127.0.0.1:5181{os.environ['TARGET_PATH']}"
+          last_error = None
+          for _ in range(30):
+              try:
+                  with urlopen(url, timeout=2) as response:
+                      if 200 <= response.status < 300:
+                          print(f"Ready: {url}")
+                          raise SystemExit(0)
+                      last_error = f"HTTP {response.status}"
+              except (HTTPError, URLError, TimeoutError) as exc:
+                  last_error = repr(exc)
+              time.sleep(1)
+          raise SystemExit(f"Target did not become ready: {url} ({last_error})")
+          PY
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25
+        with:
+          target: http://127.0.0.1:5181${{ matrix.target.path }}
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: zap-baseline-${{ matrix.target.name }}
+      - name: Add ZAP report summary
+        if: always()
+        run: |
+          if [ -f report_md.md ]; then
+            cat report_md.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ZAP markdown report was not generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Show server log on failure
+        if: failure()
+        run: cat uvicorn.log || true
