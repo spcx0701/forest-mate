@@ -74,7 +74,7 @@ async def lifespan(_: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="숲길동무 ForestMate API", version="1.0.0", lifespan=lifespan)
+    app = FastAPI(title="숲길동무 ForestMate API", version="1.1.0", lifespan=lifespan)
 
     @app.middleware("http")
     async def add_static_cache_headers(request, call_next):
