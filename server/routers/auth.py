@@ -88,9 +88,11 @@ def _provider_configured(provider: str) -> bool:
     return bool(client_id and client_secret)
 
 
-def _callback_url(request: Request, provider: str) -> str:
+def _callback_url(provider: str) -> str:
     settings = get_settings()
-    base = settings.public_base_url.rstrip("/") if settings.public_base_url else str(request.base_url).rstrip("/")
+    if not settings.public_base_url:
+        raise HTTPException(503, "PUBLIC_BASE_URL is required for OAuth")
+    base = settings.public_base_url.rstrip("/")
     return f"{base}/api/v1/auth/oauth/{provider}/callback"
 
 
@@ -164,19 +166,32 @@ def _oauth_error(error: str) -> RedirectResponse:
     return RedirectResponse("/index.html#auth_error=oauth_failed", status_code=302)
 
 
-def _oauth_authorization_redirect(provider: str, params: dict[str, str]) -> RedirectResponse:
-    query = urlencode(params)
+def _oauth_authorization_redirect(provider: str, client_id: str, redirect_uri: str, state: str) -> RedirectResponse:
     if provider == "google":
-        # Provider hosts are fixed server-side; only encoded OAuth parameters vary.
-        # codeql[py/url-redirection]
+        query = urlencode({
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "state": state,
+            "scope": "openid email profile",
+        })
         return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{query}", status_code=302)
     if provider == "kakao":
-        # Provider hosts are fixed server-side; only encoded OAuth parameters vary.
-        # codeql[py/url-redirection]
+        query = urlencode({
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "state": state,
+            "scope": "profile_nickname account_email",
+        })
         return RedirectResponse(f"https://kauth.kakao.com/oauth/authorize?{query}", status_code=302)
     if provider == "naver":
-        # Provider hosts are fixed server-side; only encoded OAuth parameters vary.
-        # codeql[py/url-redirection]
+        query = urlencode({
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "state": state,
+        })
         return RedirectResponse(f"https://nid.naver.com/oauth2.0/authorize?{query}", status_code=302)
     raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
 
@@ -273,7 +288,7 @@ async def logout(ctx: Annotated[AuthContext, Depends(get_auth_context)],
                 404: {"description": "Unknown OAuth provider"},
                 503: {"description": "OAuth provider is not configured"},
             })
-async def oauth_start(provider: str, request: Request, db: Annotated[Session, Depends(get_db)],
+async def oauth_start(provider: str, db: Annotated[Session, Depends(get_db)],
                       device_token: str = "", name: str = "산친구", fit: int = 2,
                       knee: bool = False, heart: bool = False,
                       redirect_path: Annotated[str, Query()] = "/index.html"):
@@ -282,7 +297,7 @@ async def oauth_start(provider: str, request: Request, db: Annotated[Session, De
     if not _provider_configured(provider):
         raise HTTPException(503, f"{provider} login is not configured")
     client_id, _ = _provider_credentials(provider)
-    cfg = _provider_config(provider)
+    redirect_uri = _callback_url(provider)
     state = secrets.token_urlsafe(32)
     profile = {"name": name[:16] or "산친구", "fit": fit, "knee": knee, "heart": heart}
     db.add(OAuthState(
@@ -292,15 +307,7 @@ async def oauth_start(provider: str, request: Request, db: Annotated[Session, De
         expires_at=utcnow() + timedelta(minutes=get_settings().auth_state_ttl_minutes),
     ))
     db.commit()
-    params = {
-        "response_type": "code",
-        "client_id": client_id,
-        "redirect_uri": _callback_url(request, provider),
-        "state": state,
-    }
-    if cfg["scope"]:
-        params["scope"] = cfg["scope"]
-    return _oauth_authorization_redirect(provider, params)
+    return _oauth_authorization_redirect(provider, client_id, redirect_uri, state)
 
 
 async def fetch_oauth_profile(provider: str, code: str, redirect_uri: str) -> dict:
@@ -411,7 +418,7 @@ async def oauth_callback(provider: str, request: Request, db: Annotated[Session,
     try:
         saved = _consume_oauth_state(db, provider, state)
         requested_profile = json.loads(saved.profile_json or "{}")
-        profile = await fetch_oauth_profile(provider, code, _callback_url(request, provider))
+        profile = await fetch_oauth_profile(provider, code, _callback_url(provider))
         user = _social_user(db, provider, profile, requested_profile)
         link_device_token_to_user(db, user, saved.device_token)
         token, _ = create_session(db, user, request.headers.get("user-agent", ""),

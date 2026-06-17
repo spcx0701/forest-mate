@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     vapid_subject: str = "mailto:forestmate@example.com"
 
     # 계정/로그인 — 자체 세션 + OAuth Authorization Code 콜백
-    public_base_url: str = ""  # 비우면 요청 Host 기준으로 redirect_uri 생성
+    public_base_url: str = ""  # OAuth 사용 시 외부에서 접근 가능한 API base URL
     auth_session_days: int = 90
     auth_state_ttl_minutes: int = 10
     watch_pair_claim_window_s: int = 60
