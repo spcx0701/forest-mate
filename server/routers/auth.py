@@ -34,6 +34,7 @@ from ..schemas import (AuthLoginIn, AuthMeOut, AuthOut, AuthRegisterIn,
 
 router = APIRouter()
 ACCOUNT_LOGIN_REQUIRED = "account login required"
+UNKNOWN_OAUTH_PROVIDER = "unknown oauth provider"
 
 OAUTH_PROVIDERS = {
     "google": {
@@ -65,7 +66,7 @@ def _provider_credentials(provider: str) -> tuple[str, str]:
         "naver": (settings.naver_client_id, settings.naver_client_secret),
     }
     if provider not in pairs:
-        raise ValueError("unknown oauth provider")
+        raise ValueError(UNKNOWN_OAUTH_PROVIDER)
     return pairs[provider]
 
 
@@ -234,7 +235,7 @@ async def oauth_start(provider: str, request: Request, db: Annotated[Session, De
                       knee: bool = False, heart: bool = False,
                       redirect_path: Annotated[str, Query()] = "/index.html"):
     if provider not in OAUTH_PROVIDERS:
-        raise HTTPException(404, "unknown oauth provider")
+        raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
     if not _provider_configured(provider):
         raise HTTPException(503, f"{provider} login is not configured")
     client_id, _ = _provider_credentials(provider)
@@ -361,7 +362,7 @@ async def oauth_callback(provider: str, request: Request, db: Annotated[Session,
     if error:
         return _oauth_error(error)
     if provider not in OAUTH_PROVIDERS:
-        raise HTTPException(404, "unknown oauth provider")
+        raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
     if not code or not state:
         return _oauth_error("invalid_oauth_callback")
     try:
