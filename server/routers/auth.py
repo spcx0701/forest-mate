@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.datastructures import URL
 
 from ..auth import (
     DUMMY_PASSWORD_HASH,
@@ -159,29 +160,31 @@ def _safe_oauth_redirect_path(path: str | None) -> str:
 
 def _oauth_error(error: str) -> RedirectResponse:
     safe_error = error if error in OAUTH_ERROR_CODES else "oauth_failed"
-    if safe_error == "access_denied":
-        return RedirectResponse("/index.html#auth_error=access_denied", status_code=302)
-    if safe_error == "invalid_oauth_callback":
-        return RedirectResponse("/index.html#auth_error=invalid_oauth_callback", status_code=302)
-    return RedirectResponse("/index.html#auth_error=oauth_failed", status_code=302)
+    fragment = urlencode({"auth_error": safe_error})
+    url = URL("/index.html").replace(fragment=fragment)
+    return RedirectResponse(str(url), status_code=302)
 
 
 def _oauth_authorization_redirect(provider: str, params: dict[str, str]) -> RedirectResponse:
-    query = urlencode(params)
     if provider == "google":
-        return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{query}", status_code=302)
+        url = URL("https://accounts.google.com/o/oauth2/v2/auth").include_query_params(**params)
+        return RedirectResponse(str(url), status_code=302)
     if provider == "kakao":
-        return RedirectResponse(f"https://kauth.kakao.com/oauth/authorize?{query}", status_code=302)
+        url = URL("https://kauth.kakao.com/oauth/authorize").include_query_params(**params)
+        return RedirectResponse(str(url), status_code=302)
     if provider == "naver":
-        return RedirectResponse(f"https://nid.naver.com/oauth2.0/authorize?{query}", status_code=302)
+        url = URL("https://nid.naver.com/oauth2.0/authorize").include_query_params(**params)
+        return RedirectResponse(str(url), status_code=302)
     raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
 
 
 def _oauth_success_redirect(path: str | None, token: str, provider: str) -> RedirectResponse:
     fragment = urlencode({"auth_token": token, "provider": provider})
     if _safe_oauth_redirect_path(path) == "/home.html":
-        return RedirectResponse(f"/home.html#{fragment}", status_code=302)
-    return RedirectResponse(f"/index.html#{fragment}", status_code=302)
+        url = URL("/home.html").replace(fragment=fragment)
+        return RedirectResponse(str(url), status_code=302)
+    url = URL("/index.html").replace(fragment=fragment)
+    return RedirectResponse(str(url), status_code=302)
 
 
 @router.get("/auth/providers")

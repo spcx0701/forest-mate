@@ -219,20 +219,31 @@ def test_oauth_redirect_helpers_cover_provider_and_error_edges():
     assert invalid.headers["location"] == "/index.html#auth_error=invalid_oauth_callback"
     assert auth_router._oauth_error("unexpected").headers["location"] == "/index.html#auth_error=oauth_failed"
 
-    assert auth_router._provider_config("google")["authorize_url"].startswith("https://accounts.google.com")
-    assert auth_router._provider_config("kakao")["authorize_url"].startswith("https://kauth.kakao.com")
-    assert auth_router._provider_config("naver")["authorize_url"].startswith("https://nid.naver.com")
+    def parsed_location(value: str):
+        parsed = urlparse(value)
+        assert parsed.scheme == "https"
+        return parsed
+
+    assert parsed_location(auth_router._provider_config("google")["authorize_url"]).netloc == "accounts.google.com"
+    assert parsed_location(auth_router._provider_config("kakao")["authorize_url"]).netloc == "kauth.kakao.com"
+    assert parsed_location(auth_router._provider_config("naver")["authorize_url"]).netloc == "nid.naver.com"
     with pytest.raises(HTTPException) as unknown_config:
         auth_router._provider_config("github")
     assert unknown_config.value.status_code == 404
 
     google = auth_router._oauth_authorization_redirect("google", {"state": "abc", "scope": "openid email"})
-    assert google.headers["location"].startswith("https://accounts.google.com/o/oauth2/v2/auth?")
-    assert "scope=openid+email" in google.headers["location"]
+    google_url = parsed_location(google.headers["location"])
+    assert google_url.netloc == "accounts.google.com"
+    assert google_url.path == "/o/oauth2/v2/auth"
+    assert parse_qs(google_url.query) == {"state": ["abc"], "scope": ["openid email"]}
     kakao = auth_router._oauth_authorization_redirect("kakao", {"state": "abc"})
-    assert kakao.headers["location"].startswith("https://kauth.kakao.com/oauth/authorize?")
+    kakao_url = parsed_location(kakao.headers["location"])
+    assert kakao_url.netloc == "kauth.kakao.com"
+    assert kakao_url.path == "/oauth/authorize"
     naver = auth_router._oauth_authorization_redirect("naver", {"state": "abc"})
-    assert naver.headers["location"].startswith("https://nid.naver.com/oauth2.0/authorize?")
+    naver_url = parsed_location(naver.headers["location"])
+    assert naver_url.netloc == "nid.naver.com"
+    assert naver_url.path == "/oauth2.0/authorize"
     with pytest.raises(HTTPException) as unknown_redirect:
         auth_router._oauth_authorization_redirect("github", {})
     assert unknown_redirect.value.status_code == 404
