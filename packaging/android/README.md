@@ -7,8 +7,8 @@
 - 패키지 ID: `kr.forestmate.app`
 - Wear OS 패키지 ID: `kr.forestmate.watch`
 - 빌드 도구: Bubblewrap TWA
-- 최종 파일: `dist/forestmate-android-v1.0.0.apk`
-- 체크섬: `dist/forestmate-android-v1.0.0.apk.sha256`
+- 최종 파일: `dist/forestmate-android-v1.1.0.apk`
+- 체크섬: `dist/forestmate-android-v1.1.0.apk.sha256`
 
 Bubblewrap는 내부적으로 AAB도 만들지만, `npm run build:apk`는 빌드 후 AAB를 삭제하고 APK만 `dist/`에 남긴다.
 
@@ -28,7 +28,7 @@ cd "/Users/dong9733/Documents/GitHub/forest-mate/packaging/android"
 이 단계는 JDK 17+, Android SDK, 서명키 생성 때문에 대화형으로 진행한다.
 
 ```bash
-cd "/Users/dong9733/Documents/LYT Kit 2/forest-mate/packaging/android"
+cd "/Users/dong9733/Documents/GitHub/forest-mate/packaging/android"
 npm install
 npm run init:project
 ```
@@ -48,13 +48,13 @@ npm run init:project
 서명키 비밀번호를 환경변수로 넣고 빌드한다.
 
 ```bash
-cd "/Users/dong9733/Documents/LYT Kit 2/forest-mate/packaging/android"
+cd "/Users/dong9733/Documents/GitHub/forest-mate/packaging/android"
 export BUBBLEWRAP_KEYSTORE_PASSWORD="..."
 export BUBBLEWRAP_KEY_PASSWORD="..."
 npm run build:apk
 ```
 
-완료 후 `dist/forestmate-android-v1.0.0.apk`만 배포한다.
+완료 후 `dist/forestmate-android-v1.1.0.apk`만 배포한다.
 
 ## 3. Digital Asset Links
 
@@ -64,7 +64,7 @@ TWA에서 주소창을 숨기려면 APK 서명키 SHA-256을 웹 서버의 `/.we
 npm run fingerprint
 ```
 
-출력된 SHA-256 값을 `/Users/dong9733/Documents/LYT Kit 2/forest-mate/app/.well-known/assetlinks.json`에 반영하고 다시 배포한다. 현재 v1.0.0 APK 서명 지문은 이미 반영되어 있다.
+출력된 SHA-256 값을 `/Users/dong9733/Documents/GitHub/forest-mate/app/.well-known/assetlinks.json`에 반영하고 다시 배포한다. 현재 배포 서명키 지문이 이 파일에 반영되어 있어야 한다.
 
 ## 4. 배포 방식
 
@@ -77,7 +77,7 @@ F-Droid 제출은 GitHub Release APK 업로드가 아니라 소스에서 unsigne
 F-Droid 빌드는 개인 서명키를 쓰지 않는다.
 
 ```bash
-cd "/Users/dong9733/Documents/LYT Kit 2/forest-mate/packaging/android"
+cd "/Users/dong9733/Documents/GitHub/forest-mate/packaging/android"
 ./gradlew --no-daemon assembleRelease
 ```
 
