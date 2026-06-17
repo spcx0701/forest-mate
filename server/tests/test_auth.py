@@ -109,6 +109,7 @@ def test_oauth_start_and_callback_create_account_session(client, register_device
     _, legacy = register_device(name="소셜러")
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "google-client-id")
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "google-client-secret")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://forestmate.example")
 
     from server.config import get_settings
     get_settings.cache_clear()
@@ -157,6 +158,122 @@ def test_oauth_start_and_callback_create_account_session(client, register_device
     assert body["user"]["email"] == "social@example.com"
     assert body["user"]["profile"]["name"] == "소셜러"
     assert body["user"]["profile"]["heart"] is True
+
+
+def test_oauth_redirect_path_is_allow_listed(client, register_device, monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "google-client-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "google-client-secret")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://forestmate.example")
+
+    from server.config import get_settings
+    from server.routers import auth as auth_router
+
+    get_settings.cache_clear()
+    issued = 0
+
+    async def fake_fetch_oauth_profile(provider, code, redirect_uri):
+        nonlocal issued
+        issued += 1
+        await asyncio.sleep(0)
+        return {
+            "provider_user_id": f"google-redirect-{issued}",
+            "email": f"redirect-{issued}@example.com",
+            "email_verified": True,
+            "name": "리다이렉트",
+            "avatar_url": "",
+        }
+
+    monkeypatch.setattr(auth_router, "fetch_oauth_profile", fake_fetch_oauth_profile)
+
+    def roundtrip(redirect_path: str) -> str:
+        _, legacy = register_device(name="소셜러")
+        start = client.get("/api/v1/auth/oauth/google/start", params={
+            "device_token": legacy["token"],
+            "redirect_path": redirect_path,
+        }, follow_redirects=False)
+        assert start.status_code in (302, 307)
+        state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+        callback = client.get("/api/v1/auth/oauth/google/callback", params={
+            "code": "provider-code",
+            "state": state,
+        }, follow_redirects=False)
+        assert callback.status_code in (302, 307)
+        return callback.headers["location"]
+
+    assert roundtrip("https://evil.example/callback").startswith("/index.html#auth_token=")
+    assert roundtrip("//evil.example/callback").startswith("/index.html#auth_token=")
+    assert roundtrip("/admin").startswith("/index.html#auth_token=")
+    assert roundtrip("/home.html").startswith("/home.html#auth_token=")
+
+
+def test_oauth_redirect_helpers_cover_provider_and_error_edges():
+    from fastapi import HTTPException
+
+    from server.routers import auth as auth_router
+
+    assert auth_router._safe_oauth_redirect_path(None) == "/index.html"
+    assert auth_router._safe_oauth_redirect_path("/index.html") == "/index.html"
+    assert auth_router._safe_oauth_redirect_path("/home.html") == "/home.html"
+    assert auth_router._safe_oauth_redirect_path("/admin") == "/index.html"
+
+    assert auth_router._oauth_error("access_denied").headers["location"] == "/index.html#auth_error=access_denied"
+    invalid = auth_router._oauth_error("invalid_oauth_callback")
+    assert invalid.headers["location"] == "/index.html#auth_error=invalid_oauth_callback"
+    assert auth_router._oauth_error("unexpected").headers["location"] == "/index.html#auth_error=oauth_failed"
+
+    assert auth_router._provider_config("google")["authorize_url"] == (
+        "https://accounts.google.com/o/oauth2/v2/auth"
+    )
+    assert auth_router._provider_config("kakao")["authorize_url"] == "https://kauth.kakao.com/oauth/authorize"
+    assert auth_router._provider_config("naver")["authorize_url"] == "https://nid.naver.com/oauth2.0/authorize"
+    with pytest.raises(HTTPException) as unknown_config:
+        auth_router._provider_config("github")
+    assert unknown_config.value.status_code == 404
+
+    redirect_uri = "https://forestmate.example/api/v1/auth/oauth/google/callback"
+    google = auth_router._oauth_authorization_redirect("google", "google-client", redirect_uri, "abc")
+    google_url = urlparse(google.headers["location"])
+    assert google_url.scheme == "https"
+    assert google_url.netloc == "accounts.google.com"
+    assert google_url.path == "/o/oauth2/v2/auth"
+    assert parse_qs(google_url.query) == {
+        "response_type": ["code"],
+        "client_id": ["google-client"],
+        "redirect_uri": [redirect_uri],
+        "state": ["abc"],
+        "scope": ["openid email profile"],
+    }
+    kakao = auth_router._oauth_authorization_redirect("kakao", "kakao-client", redirect_uri, "abc")
+    kakao_url = urlparse(kakao.headers["location"])
+    assert kakao_url.scheme == "https"
+    assert kakao_url.netloc == "kauth.kakao.com"
+    assert kakao_url.path == "/oauth/authorize"
+    assert parse_qs(kakao_url.query) == {
+        "response_type": ["code"],
+        "client_id": ["kakao-client"],
+        "redirect_uri": [redirect_uri],
+        "state": ["abc"],
+        "scope": ["profile_nickname account_email"],
+    }
+    naver = auth_router._oauth_authorization_redirect("naver", "naver-client", redirect_uri, "abc")
+    naver_url = urlparse(naver.headers["location"])
+    assert naver_url.scheme == "https"
+    assert naver_url.netloc == "nid.naver.com"
+    assert naver_url.path == "/oauth2.0/authorize"
+    assert parse_qs(naver_url.query) == {
+        "response_type": ["code"],
+        "client_id": ["naver-client"],
+        "redirect_uri": [redirect_uri],
+        "state": ["abc"],
+    }
+    with pytest.raises(HTTPException) as unknown_redirect:
+        auth_router._oauth_authorization_redirect("github", "client", redirect_uri, "abc")
+    assert unknown_redirect.value.status_code == 404
+
+    home = auth_router._oauth_success_redirect("/home.html", "token value")
+    assert home.headers["location"] == "/home.html#auth_token=token+value"
+    fallback = auth_router._oauth_success_redirect("/admin", "token")
+    assert fallback.headers["location"] == "/index.html#auth_token=token"
 
 
 def test_auth_helpers_cover_invalid_and_guest_edges(register_device):
@@ -413,9 +530,13 @@ def test_oauth_state_and_social_account_edge_cases(client, monkeypatch):
     from fastapi import HTTPException
 
     from server.auth import token_hash
+    from server.config import get_settings
     from server.db import SessionLocal
     from server.models import AuthIdentity, OAuthState, User, UserDevice, utcnow
     from server.routers import auth as auth_router
+
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://forestmate.example")
+    get_settings.cache_clear()
 
     db = SessionLocal()
     try:
