@@ -51,9 +51,9 @@ th{color:var(--sub);font-size:11px;text-align:left;padding:7px 8px;border-bottom
 td{padding:9px 8px;border-bottom:1px solid rgba(39,64,47,.5)}
 tr:last-child td{border:none}
 .risk{font-weight:800;font-size:11px;padding:3px 9px;border-radius:99px}
-.r1{background:rgba(229,72,77,.15);color:#FFD0D2}
-.r2{background:rgba(244,162,97,.14);color:#FFE0B8}
-.r3{background:rgba(116,198,157,.12);color:#D4F8E2}
+.r1{background:#5C1318;color:#fff}
+.r2{background:#5A320C;color:#fff}
+.r3{background:#17452B;color:#fff}
 .barrow{display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:6px}
 .barrow .bb{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
 .barrow .bb i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#74C69D,#2D6A4F)}
@@ -261,7 +261,7 @@ tr:last-child td{border:none}
     let summary;
     try {
       const r = await fetch("/api/v1/dashboard/summary", { signal: AbortSignal.timeout(2000) });
-      if (!r.ok) throw new Error();
+      if (!r.ok) throw new Error("dashboard summary request failed");
       summary = await r.json();
     } catch { return; } // 정적 호스팅(백엔드 없음) → 시뮬레이션 유지
 
@@ -280,7 +280,7 @@ tr:last-child td{border:none}
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${proto}://${location.host}/api/v1/ws/dashboard`);
     const bump = (id, d) => { const el = document.getElementById(id);
-      el.textContent = ((Number.parseInt(el.textContent.replace(/,/g, ""), 10) || 0) + d).toLocaleString(); };
+      el.textContent = ((Number.parseInt(el.textContent.replaceAll(",", ""), 10) || 0) + d).toLocaleString(); };
     ws.onmessage = (ev) => {
       const m = JSON.parse(ev.data);
       if (m.type === "ping") return;
