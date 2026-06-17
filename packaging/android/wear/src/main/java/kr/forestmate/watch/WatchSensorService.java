@@ -47,9 +47,12 @@ public class WatchSensorService extends Service implements SensorEventListener, 
     private Integer lastHr;
     private Integer lastAcc;
     private Integer lastBattery;
+    private Integer lastAlt;
+    private Integer lastHeading;
     private Double lastLat;
     private Double lastLon;
     private boolean uploading;
+    private long lastPersistAt;
 
     @Override
     public void onCreate() {
@@ -72,6 +75,7 @@ public class WatchSensorService extends Service implements SensorEventListener, 
             stopSelf();
             return START_NOT_STICKY;
         }
+        prefs.edit().putBoolean(MainActivity.KEY_STREAMING, true).apply();
         registerSensors();
         handler.removeCallbacks(uploadRunnable);
         handler.post(uploadRunnable);
@@ -88,6 +92,7 @@ public class WatchSensorService extends Service implements SensorEventListener, 
             } catch (SecurityException ignored) {
             }
         }
+        prefs.edit().putBoolean(MainActivity.KEY_STREAMING, false).apply();
         super.onDestroy();
     }
 
@@ -109,7 +114,15 @@ public class WatchSensorService extends Service implements SensorEventListener, 
             double z = event.values[2];
             double magnitude = Math.sqrt(x * x + y * y + z * z);
             lastAcc = Math.min(5000, Math.max(0, (int) Math.round(magnitude * 100)));
+        } else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR && event.values.length >= 3) {
+            float[] rotation = new float[9];
+            float[] orientation = new float[3];
+            SensorManager.getRotationMatrixFromVector(rotation, event.values);
+            SensorManager.getOrientation(rotation, orientation);
+            int heading = Math.round((float) Math.toDegrees(orientation[0]));
+            lastHeading = (heading + 360) % 360;
         }
+        persistSensorSnapshot(false);
     }
 
     @Override
@@ -121,6 +134,10 @@ public class WatchSensorService extends Service implements SensorEventListener, 
         if (location == null) return;
         lastLat = location.getLatitude();
         lastLon = location.getLongitude();
+        if (location.hasAltitude()) {
+            lastAlt = (int) Math.round(location.getAltitude());
+        }
+        persistSensorSnapshot(true);
     }
 
     @Override
@@ -144,6 +161,10 @@ public class WatchSensorService extends Service implements SensorEventListener, 
             if (accel != null) {
                 sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_NORMAL);
             }
+            Sensor rotation = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+            if (rotation != null) {
+                sensorManager.registerListener(this, rotation, SensorManager.SENSOR_DELAY_NORMAL);
+            }
         }
 
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) return;
@@ -165,9 +186,11 @@ public class WatchSensorService extends Service implements SensorEventListener, 
     private void uploadSnapshot() {
         if (uploading || token == null || token.length() == 0) return;
         updateBattery();
+        persistSensorSnapshot(true);
         final Integer hr = lastHr;
         final Double lat = lastLat;
         final Double lon = lastLon;
+        final Integer alt = lastAlt;
         final Integer acc = lastAcc;
         final Integer battery = lastBattery;
         if (hr == null && lat == null && lon == null && acc == null) return;
@@ -175,7 +198,12 @@ public class WatchSensorService extends Service implements SensorEventListener, 
         uploading = true;
         new Thread(() -> {
             try {
-                WatchApi.upload(apiBase, token, hr, lat, lon, acc, battery);
+                WatchApi.UploadResult result = WatchApi.upload(apiBase, token, hr, lat, lon, alt, acc, battery);
+                prefs.edit()
+                        .putFloat(MainActivity.KEY_LAST_PROGRESS, (float) result.progress)
+                        .putInt(MainActivity.KEY_LAST_DISTRESS_LEVEL, result.distressLevel)
+                        .putLong(MainActivity.KEY_LAST_UPLOAD_AT, System.currentTimeMillis())
+                        .apply();
                 handler.post(() -> updateNotification("전송됨"
                         + (hr != null ? " · " + hr + "bpm" : "")));
             } catch (Exception ex) {
@@ -257,6 +285,37 @@ public class WatchSensorService extends Service implements SensorEventListener, 
         int scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
         if (level >= 0 && scale > 0) {
             lastBattery = Math.min(100, Math.max(0, Math.round(level * 100f / scale)));
+        }
+    }
+
+    private void persistSensorSnapshot(boolean force) {
+        long now = System.currentTimeMillis();
+        if (!force && now - lastPersistAt < 1000L) return;
+        lastPersistAt = now;
+        SharedPreferences.Editor editor = prefs.edit();
+        putOrRemove(editor, MainActivity.KEY_LAST_HR, lastHr);
+        putOrRemove(editor, MainActivity.KEY_LAST_BATTERY, lastBattery);
+        putOrRemove(editor, MainActivity.KEY_LAST_ALT, lastAlt);
+        putOrRemove(editor, MainActivity.KEY_LAST_ACC, lastAcc);
+        putOrRemove(editor, MainActivity.KEY_LAST_HEADING, lastHeading);
+        if (lastLat != null) {
+            editor.putString(MainActivity.KEY_LAST_LAT, String.valueOf(lastLat));
+        } else {
+            editor.remove(MainActivity.KEY_LAST_LAT);
+        }
+        if (lastLon != null) {
+            editor.putString(MainActivity.KEY_LAST_LON, String.valueOf(lastLon));
+        } else {
+            editor.remove(MainActivity.KEY_LAST_LON);
+        }
+        editor.apply();
+    }
+
+    private void putOrRemove(SharedPreferences.Editor editor, String key, Integer value) {
+        if (value == null) {
+            editor.remove(key);
+        } else {
+            editor.putInt(key, value);
         }
     }
 

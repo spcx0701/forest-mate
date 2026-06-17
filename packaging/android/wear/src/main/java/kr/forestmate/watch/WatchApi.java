@@ -16,11 +16,30 @@ final class WatchApi {
         final String watchToken;
         final String hikeId;
         final String courseId;
+        final String courseName;
+        final Double courseKm;
+        final Integer courseElev;
+        final String route;
 
-        ClaimResult(String watchToken, String hikeId, String courseId) {
+        ClaimResult(String watchToken, String hikeId, String courseId,
+                    String courseName, Double courseKm, Integer courseElev, String route) {
             this.watchToken = watchToken;
             this.hikeId = hikeId;
             this.courseId = courseId;
+            this.courseName = courseName;
+            this.courseKm = courseKm;
+            this.courseElev = courseElev;
+            this.route = route;
+        }
+    }
+
+    static final class UploadResult {
+        final double progress;
+        final int distressLevel;
+
+        UploadResult(double progress, int distressLevel) {
+            this.progress = progress;
+            this.distressLevel = distressLevel;
         }
     }
 
@@ -33,21 +52,30 @@ final class WatchApi {
         JSONObject json = request(normalizeBase(apiBase) + "/watch/pair/claim", body, null);
         return new ClaimResult(
                 json.getString("watch_token"),
-                json.getString("hike_id"),
-                json.getString("course_id")
+                nullableString(json, "hike_id"),
+                nullableString(json, "course_id"),
+                nullableString(json, "course_name"),
+                nullableDouble(json, "course_km"),
+                nullableInt(json, "course_elev"),
+                nullableString(json, "route")
         );
     }
 
-    static void upload(String apiBase, String token, Integer hr, Double lat, Double lon,
-                       Integer acc, Integer battery) throws Exception {
+    static UploadResult upload(String apiBase, String token, Integer hr, Double lat, Double lon,
+                               Integer alt, Integer acc, Integer battery) throws Exception {
         JSONObject body = new JSONObject();
-        body.put("alt", 0);
+        body.put("alt", alt == null ? 0 : alt);
         if (hr != null) body.put("hr", hr);
         if (lat != null) body.put("lat", lat);
         if (lon != null) body.put("lon", lon);
         if (acc != null) body.put("acc", acc);
         if (battery != null) body.put("battery", battery);
-        request(normalizeBase(apiBase) + "/watch/track", body, token);
+        JSONObject json = request(normalizeBase(apiBase) + "/watch/track", body, token);
+        JSONObject distress = json.optJSONObject("distress");
+        return new UploadResult(
+                json.optDouble("progress", 0.0),
+                distress == null ? 0 : distress.optInt("level", 0)
+        );
     }
 
     private static JSONObject request(String url, JSONObject body, String bearerToken) throws Exception {
@@ -97,5 +125,17 @@ final class WatchApi {
             base = base.substring(0, base.length() - 1);
         }
         return base;
+    }
+
+    private static String nullableString(JSONObject json, String key) {
+        return json.has(key) && !json.isNull(key) ? json.optString(key, "") : "";
+    }
+
+    private static Double nullableDouble(JSONObject json, String key) {
+        return json.has(key) && !json.isNull(key) ? json.optDouble(key) : null;
+    }
+
+    private static Integer nullableInt(JSONObject json, String key) {
+        return json.has(key) && !json.isNull(key) ? json.optInt(key) : null;
     }
 }
