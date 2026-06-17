@@ -20,7 +20,10 @@ def test_security_headers_present(client, path):
     assert res.headers["x-frame-options"] == "DENY"
     assert res.headers["x-content-type-options"] == "nosniff"
     assert res.headers["referrer-policy"] == "strict-origin-when-cross-origin"
-    assert "frame-ancestors 'none'" in res.headers["content-security-policy"]
+    csp = res.headers["content-security-policy"]
+    assert "frame-ancestors 'none'" in csp
+    assert "'unsafe-inline'" not in csp
+    assert "*" not in csp
 
 
 def test_api_docs_avoid_external_swagger_assets(client):
@@ -29,6 +32,8 @@ def test_api_docs_avoid_external_swagger_assets(client):
     assert 'href="/openapi.json"' in res.text
     assert "swagger-ui-dist" not in res.text
     assert "cdn.jsdelivr.net" not in res.text
+    assert "<script" not in res.text
+    assert "<style" not in res.text
     assert client.head("/docs").status_code == 200
 
 

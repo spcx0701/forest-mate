@@ -4,8 +4,12 @@
 정적 프런트(app/)도 같은 오리진에서 서빙한다(CORS 불필요·배포 단순화).
 """
 import asyncio
+import base64
+import hashlib
 import logging
+import re
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -27,25 +31,16 @@ STATIC_LONG_CACHE_EXTENSIONS = (
     ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2"
 )
 API_PREFIX = "/api/v1"
-CONTENT_SECURITY_POLICY = (
-    "default-src 'self'; "
-    "base-uri 'self'; "
-    "object-src 'none'; "
-    "frame-ancestors 'none'; "
-    "frame-src 'none'; "
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
-    "style-src 'self' 'unsafe-inline' https://unpkg.com; "
-    "img-src 'self' data: blob: https:; "
-    "font-src 'self' data: https:; "
-    "connect-src 'self' https://api.vworld.kr https://*.tile.openstreetmap.org "
-    "https://tile.openstreetmap.org https://ko.wikipedia.org; "
-    "manifest-src 'self'; "
-    "worker-src 'self' blob:; "
-    "form-action 'self'; "
-    "upgrade-insecure-requests"
+INLINE_SCRIPT_RE = re.compile(r"<script(?:\s[^>]*)?>(.*?)</script>", re.IGNORECASE | re.DOTALL)
+INLINE_STYLE_RE = re.compile(r"<style(?:\s[^>]*)?>(.*?)</style>", re.IGNORECASE | re.DOTALL)
+STYLE_ATTRIBUTE_RE = re.compile(r"\sstyle=(['\"])(.*?)\1", re.IGNORECASE | re.DOTALL)
+MAP_TILE_ORIGINS = (
+    "https://a.tile.openstreetmap.org",
+    "https://b.tile.openstreetmap.org",
+    "https://c.tile.openstreetmap.org",
+    "https://tile.openstreetmap.org",
 )
 SECURITY_HEADERS = {
-    "Content-Security-Policy": CONTENT_SECURITY_POLICY,
     "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -72,7 +67,66 @@ def _load_baked_catalog() -> bool:
     return True
 
 
+def _csp_hash(value: str) -> str:
+    digest = hashlib.sha256(value.encode("utf-8")).digest()
+    return f"'sha256-{base64.b64encode(digest).decode('ascii')}'"
+
+
+@lru_cache(maxsize=1)
+def _inline_csp_hashes() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    script_hashes: set[str] = set()
+    style_hashes: set[str] = set()
+    style_attr_hashes: set[str] = set()
+    if not APP_DIR.exists():
+        return (), (), ()
+    for html_file in APP_DIR.glob("*.html"):
+        try:
+            text = html_file.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        script_hashes.update(_csp_hash(match.group(1)) for match in INLINE_SCRIPT_RE.finditer(text)
+                             if match.group(1).strip())
+        style_hashes.update(_csp_hash(match.group(1)) for match in INLINE_STYLE_RE.finditer(text)
+                            if match.group(1).strip())
+        style_attr_hashes.update(_csp_hash(match.group(2)) for match in STYLE_ATTRIBUTE_RE.finditer(text)
+                                 if match.group(2).strip())
+    return tuple(sorted(script_hashes)), tuple(sorted(style_hashes)), tuple(sorted(style_attr_hashes))
+
+
+def _content_security_policy() -> str:
+    script_hashes, style_hashes, style_attr_hashes = _inline_csp_hashes()
+    script_src = ("'self'", "https://cdn.jsdelivr.net", "https://unpkg.com", *script_hashes)
+    style_src = ("'self'", "https://unpkg.com", *style_hashes)
+    style_src_attr = ("'unsafe-hashes'", *style_attr_hashes) if style_attr_hashes else ("'none'",)
+    img_src = (
+        "'self'", "data:", "blob:", "https://api.vworld.kr", *MAP_TILE_ORIGINS,
+        "https://play.google.com", "https://fdroid.gitlab.io", "https://github.com",
+        "https://objects.githubusercontent.com", "https://forestmate.onrender.com",
+    )
+    connect_src = ("'self'", "https://api.vworld.kr", *MAP_TILE_ORIGINS, "https://ko.wikipedia.org")
+    directives = (
+        ("default-src", ("'self'",)),
+        ("base-uri", ("'self'",)),
+        ("object-src", ("'none'",)),
+        ("frame-ancestors", ("'none'",)),
+        ("frame-src", ("'none'",)),
+        ("script-src", script_src),
+        ("script-src-attr", ("'none'",)),
+        ("style-src", style_src),
+        ("style-src-attr", style_src_attr),
+        ("img-src", img_src),
+        ("font-src", ("'self'", "data:")),
+        ("connect-src", connect_src),
+        ("manifest-src", ("'self'",)),
+        ("worker-src", ("'self'", "blob:")),
+        ("form-action", ("'self'",)),
+        ("upgrade-insecure-requests", ()),
+    )
+    return "; ".join(" ".join((directive, *values)) for directive, values in directives)
+
+
 def _apply_security_headers(response) -> None:
+    response.headers.setdefault("Content-Security-Policy", _content_security_policy())
     for header, value in SECURITY_HEADERS.items():
         response.headers.setdefault(header, value)
 
@@ -84,15 +138,6 @@ def _api_docs_page() -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>숲길동무 ForestMate API Docs</title>
-<style>
-body{margin:0;background:#f6f9f4;color:#12301f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.55}
-main{max-width:780px;margin:0 auto;padding:48px 20px}
-h1{font-size:32px;margin:0 0 12px}
-p{color:#465b4f}
-a{color:#1f6b42;font-weight:800}
-.panel{background:#fff;border:1px solid #dbe7de;border-radius:10px;padding:20px;margin-top:22px}
-code{background:#eef5ef;border-radius:6px;padding:3px 6px}
-</style>
 </head>
 <body>
 <main>
