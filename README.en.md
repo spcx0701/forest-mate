@@ -28,13 +28,13 @@
 </p>
 
 <p align="center">
-  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="56"></a>
-  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="56"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" height="56"></a>
+  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="72"></a>
+  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="72"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" height="72"></a>
   <a href="https://github.com/spcx0701/forest-mate/releases/latest">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp" height="56">
-      <img alt="Get it on GitHub" src="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp" height="56">
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp" height="72">
+      <img alt="Get it on GitHub" src="https://raw.githubusercontent.com/LawnchairLauncher/lawnchair/16-dev/docs/assets/badge-github.webp" height="72">
     </picture>
   </a>
 </p>
@@ -49,6 +49,8 @@
   <a href="https://forestmate.onrender.com/dashboard.html"><strong>Dashboard</strong></a>
   &middot;
   <a href="https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408"><strong>Public Data Use Case</strong></a>
+  &middot;
+  <a href="https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK"><strong>Civic Tech Guide</strong></a>
 </p>
 
 <p align="center">
@@ -59,7 +61,7 @@ ForestMate is a hiking safety service that connects **pre-hike route choice -> o
 
 The project ships a web app, an operations dashboard, and an Android APK. With the backend connected, `/api/v1` serves live public data and hiking records. In static hosting environments, the app falls back to local data and rule-based logic so the main screens remain usable.
 
-> Submission package for the 2026 Forest Public Data and AI Startup Competition, Product and Service Development track. Listed as a [public-data use case on data.go.kr](https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408).
+> Submission package for the 2026 Forest Public Data and AI Startup Competition, Product and Service Development track. Listed as a [public-data use case on data.go.kr](https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408) and on [Civic Tech Guide](https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK).
 
 ## Key Features
 

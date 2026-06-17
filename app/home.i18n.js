@@ -39,12 +39,13 @@
       langLabel: "Language selector",
     },
     hero: {
-      badge: "🏆 <a href=\"https://www.kofpi.or.kr/notice/notice_01view.do?bb_seq=12456\" target=\"_blank\" rel=\"noopener\">2026 Forest Public Data and AI Startup Competition</a> - Product and Service Development track · <a href=\"https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408\" target=\"_blank\" rel=\"noopener\">data.go.kr use case</a>",
+      badge: "🏆 <a href=\"https://www.kofpi.or.kr/notice/notice_01view.do?bb_seq=12456\" target=\"_blank\" rel=\"noopener\">2026 Forest Public Data and AI Startup Competition</a> - Product and Service Development track · <a href=\"https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408\" target=\"_blank\" rel=\"noopener\">data.go.kr use case</a> · <a href=\"https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK\" target=\"_blank\" rel=\"noopener\">Civic Tech Guide</a>",
       title: "Beyond records:<br><em>trail data that</em><br>protects lives.",
       lead: "ForestMate combines 10 forest public-data sources with 5 AI engines to support personalized route choice, risk alerts, automatic distress detection, and public-sector response.",
       mobileDemo: "📱 Mobile app demo",
       dashboard: "🖥 Operations dashboard",
       github: "GitHub repository",
+      civicGuide: "Civic Tech Guide",
       phoneAlt: "ForestMate app home screen with today's hiking index and recommended routes",
       riskTag: "⚠️ Rockfall risk 300 m ahead - detour ready",
       distressTag: "🛡 Auto distress detection active",
@@ -104,7 +105,7 @@
       body: "<b>Forest data</b> - Korea Forest Service trail geospatial data · National Institute of Forest Science forest-fire danger forecast and mountain weather observations · Korea Forest Service landslide risk maps · Korea National Arboretum species knowledge · Korea Forest Welfare Institute Soopnarae · Korea Forestry Promotion Institute forest big-data exchange<br><b>Cross-domain data</b> - National Fire Agency mountain rescue activity data · Ministry of the Interior and Safety national grid reference system · Korea Meteorological Administration short-term forecast OpenAPI<br>Personal location data is processed only within device and guardian consent boundaries. Aggregated statistics are used after k-anonymization (k>=50) for location-privacy compliance.",
     },
     footer: {
-      intro: "© 2026 ForestMate - submitted to the <a href=\"https://www.kofpi.or.kr/notice/notice_01view.do?bb_seq=12456\" target=\"_blank\" rel=\"noopener\">2026 Forest Public Data and AI Startup Competition</a>",
+      intro: "© 2026 ForestMate - submitted to the <a href=\"https://www.kofpi.or.kr/notice/notice_01view.do?bb_seq=12456\" target=\"_blank\" rel=\"noopener\">2026 Forest Public Data and AI Startup Competition</a> · <a href=\"https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK\" target=\"_blank\" rel=\"noopener\">Civic Tech Guide</a>",
       github: "GitHub repository",
       contact: "Contact: spcx0701@gmail.com",
     },
@@ -125,6 +126,7 @@
     [".btnrow a:nth-child(1)", "hero.mobileDemo"],
     [".btnrow a:nth-child(2)", "hero.dashboard"],
     [".btnrow a:nth-child(3)", "hero.github"],
+    [".btnrow a:nth-child(4)", "hero.civicGuide"],
     [".ft1", "hero.riskTag"],
     [".ft2", "hero.distressTag"],
     [".stats .stat:nth-child(1) b", "stats.hikers.value"],
@@ -309,6 +311,7 @@
       sameAs: [
         "https://github.com/spcx0701/forest-mate",
         "https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408",
+        "https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK",
       ],
       offers: {
         "@type": "Offer",
