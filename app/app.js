@@ -4,6 +4,65 @@ const $ = (id) => document.getElementById(id);
 const qs = (sel, root = document) => root.querySelector(sel);
 const qsa = (sel, root = document) => [...root.querySelectorAll(sel)];
 const nowHM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+const clampNumber = (value, min, max, fallback) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+};
+const safeText = (value, fallback = "") => String(value ?? fallback).replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 240);
+const safeToken = (value) => /^[A-Za-z0-9._~+/=-]{12,4096}$/.test(String(value || "")) ? String(value) : null;
+function normalizeApiBase(raw) {
+  const fallback = "/api/v1";
+  const value = String(raw || fallback).trim();
+  if (value.startsWith("/") && !value.startsWith("//")) return value.replace(/\/+$/, "");
+  try {
+    const url = new URL(value, location.origin);
+    const sameOrigin = url.origin === location.origin;
+    const localHttp = url.protocol === "http:" && /^(localhost|127\.0\.0\.1|::1)$/.test(url.hostname);
+    if (url.protocol === "https:" || sameOrigin || localHttp) return url.href.replace(/\/+$/, "");
+  } catch {}
+  return fallback;
+}
+function sanitizeProfile(profile) {
+  const value = profile && typeof profile === "object" ? profile : {};
+  return {
+    set: Boolean(value.set),
+    name: safeText(value.name),
+    fit: clampNumber(value.fit, 1, 5, DEFAULTS.profile.fit),
+    knee: Boolean(value.knee),
+    heart: Boolean(value.heart),
+  };
+}
+function sanitizeAccount(user) {
+  if (!user || typeof user !== "object") return null;
+  return {
+    id: safeText(user.id),
+    email: safeText(user.email),
+    profile: sanitizeProfile(user.profile || {}),
+  };
+}
+function sanitizeState(state) {
+  const value = state && typeof state === "object" ? state : {};
+  return {
+    profile: sanitizeProfile(value.profile),
+    account: sanitizeAccount(value.account),
+    settings: {
+      offRoute: Boolean(value.settings && value.settings.offRoute),
+      family: Boolean(value.settings && value.settings.family),
+    },
+    lang: ["ko", "en", "zh", "ja"].includes(value.lang) ? value.lang : DEFAULTS.lang,
+    region: safeText(value.region, DEFAULTS.region),
+    aiCount: clampNumber(value.aiCount, 0, 100000, 0),
+    hikesDone: clampNumber(value.hikesDone, 0, 100000, 0),
+    june: {
+      cnt: clampNumber(value.june && value.june.cnt, 0, 100000, 0),
+      km: clampNumber(value.june && value.june.km, 0, 1000000, 0),
+      kcal: clampNumber(value.june && value.june.kcal, 0, 100000000, 0),
+      co2: clampNumber(value.june && value.june.co2, 0, 1000000, 0),
+    },
+    installAt: clampNumber(value.installAt, 0, Date.now(), null),
+    insurance: value.insurance ? safeText(value.insurance) : null,
+  };
+}
 
 /* ---------------- 상태 저장 ---------------- */
 const DEFAULTS = {
@@ -21,12 +80,12 @@ const DEFAULTS = {
   insurance: null,
 };
 let S;
-try { S = Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem("fm_state") || "{}")); }
+try { S = Object.assign({}, DEFAULTS, sanitizeState(JSON.parse(localStorage.getItem("fm_state") || "{}"))); }
 catch { S = { ...DEFAULTS }; }
 S.profile = Object.assign({}, DEFAULTS.profile, S.profile);
 S.settings = Object.assign({}, DEFAULTS.settings, S.settings);
 S.june = Object.assign({}, DEFAULTS.june, S.june);
-const save = () => { try { localStorage.setItem("fm_state", JSON.stringify(S)); } catch {} };
+const save = () => { try { localStorage.setItem("fm_state", JSON.stringify(sanitizeState(S))); } catch {} };
 if (!S.installAt) { S.installAt = Date.now(); save(); }   // 최초 사용일(로컬 경과일 계산용)
 
 /* URL 파라미터 (?t=tab&demo=57 — 화면 캡처/시연용) */
@@ -47,18 +106,18 @@ function timeoutSignal(ms) {
 const API = {
   // 기본은 동일 오리진(/api/v1). Capacitor(iOS) 번들 빌드처럼 오리진이 다른 경우
   // index.html에서 window.FM_API_BASE = "https://<배포도메인>/api/v1" 로 주입한다.
-  base: (typeof window !== "undefined" && window.FM_API_BASE) || "/api/v1",
+  base: normalizeApiBase(typeof window !== "undefined" ? window.FM_API_BASE : ""),
   mode: "local",
   lastError: "",
-  token: localStorage.getItem("fm_token") || null,
-  authToken: localStorage.getItem("fm_auth_token") || null,
+  token: null,
+  authToken: null,
   hikeId: null,
   hikeStartPromise: null,
   async init() {
     if (location.protocol === "file:") return false;
     this.consumeAuthRedirect();
     try {
-      const r = await fetch(this.base + "/healthz", { signal: timeoutSignal(1500) });
+      const r = await fetch(this.url("/healthz"), { signal: timeoutSignal(1500) });
       if (!r.ok) throw new Error();
       this.mode = "cloud";
       this.lastError = "";
@@ -75,10 +134,10 @@ const API = {
     const token = hash.get("auth_token");
     const err = hash.get("auth_error");
     if (token) {
-      this.authToken = token;
-      localStorage.setItem("fm_auth_token", token);
+      this.authToken = safeToken(token);
       history.replaceState(null, "", location.pathname + location.search);
-      toast("로그인 완료", "워치와 웹에서도 기록을 볼 수 있어요", "🔐");
+      if (this.authToken) toast("로그인 완료", "워치와 웹에서도 기록을 볼 수 있어요", "🔐");
+      else toast("로그인 실패", "인증 토큰 형식이 올바르지 않아요", "🔐", true);
     } else if (err) {
       history.replaceState(null, "", location.pathname + location.search);
       toast("로그인 실패", "소셜 계정 연결을 완료하지 못했어요", "🔐", true);
@@ -87,9 +146,12 @@ const API = {
   async register() {
     const p = S.profile;
     const reg = await this.post("/devices", { name: p.name, fit: p.fit, knee: p.knee, heart: p.heart }, false);
-    this.token = reg.token;
-    localStorage.setItem("fm_token", reg.token);
+    this.token = safeToken(reg.token);
     return reg;
+  },
+  url(path) {
+    const cleanPath = String(path || "").startsWith("/") ? String(path) : `/${path}`;
+    return this.base + cleanPath;
   },
   async ensureToken() {
     if (!this.authToken && !this.token) await this.register();
@@ -102,10 +164,10 @@ const API = {
   },
   async get(path, auth = true, retry = true) {
     if (auth) await this.ensureToken();
-    const r = await fetch(this.base + path, { headers: this.headers(auth), signal: timeoutSignal(3000) });
+    const r = await fetch(this.url(path), { headers: this.headers(auth), signal: timeoutSignal(3000) });
     if (r.status === 401 && auth && retry) {   // 토큰 무효 → 게스트 기기 재등록 후 1회 재시도
       this.clearAccount();
-      localStorage.removeItem("fm_token"); this.token = null;
+      this.token = null;
       await this.register();
       return this.get(path, auth, false);
     }
@@ -114,7 +176,7 @@ const API = {
   },
   async post(path, body, auth = true, retry = true) {
     if (auth) await this.ensureToken();
-    const r = await fetch(this.base + path, {
+    const r = await fetch(this.url(path), {
       method: "POST", headers: this.headers(auth), body: JSON.stringify(body || {}),
       signal: timeoutSignal(4000),
     });
@@ -122,7 +184,7 @@ const API = {
     // 이게 없으면 산행·SOS 같은 인증 호출이 조용히 로컬 폴백돼 관제에 안 잡힌다.
     if (r.status === 401 && auth && retry) {
       this.clearAccount();
-      localStorage.removeItem("fm_token"); this.token = null;
+      this.token = null;
       await this.register();
       return this.post(path, body, auth, false);
     }
@@ -131,7 +193,7 @@ const API = {
   },
   async patch(path, body, auth = true) {
     if (auth) await this.ensureToken();
-    const r = await fetch(this.base + path, {
+    const r = await fetch(this.url(path), {
       method: "PATCH", headers: this.headers(auth), body: JSON.stringify(body || {}),
       signal: timeoutSignal(4000),
     });
@@ -139,21 +201,20 @@ const API = {
     return r.json();
   },
   setAccount(body) {
-    this.authToken = body.access_token;
-    localStorage.setItem("fm_auth_token", body.access_token);
+    this.authToken = safeToken(body.access_token);
     if (body.device_token) {
-      this.token = body.device_token;
-      localStorage.setItem("fm_token", body.device_token);
+      this.token = safeToken(body.device_token);
     }
-    S.account = body.user;
+    S.account = sanitizeAccount(body.user);
     if (body.user && body.user.profile) {
-      S.profile = { ...S.profile, ...body.user.profile, set: true };
+      S.profile = { ...S.profile, ...sanitizeProfile(body.user.profile), set: true };
     }
     save();
   },
   clearAccount(clearServerToken = true) {
     if (clearServerToken) this.authToken = null;
     localStorage.removeItem("fm_auth_token");
+    localStorage.removeItem("fm_token");
     S.account = null;
     save();
   },
@@ -296,7 +357,7 @@ function paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel, regio
   $("idxArc").style.strokeDashoffset = (C * (1 - v / 100)).toFixed(1);
   $("idxArc").style.stroke = v >= 80 ? "#B7E4C7" : v >= 60 ? "#FFD8A8" : "#FFB3B8";
   $("idxLabel").innerHTML = placeLabel
-    ? `${idxLabel(v)}<span class="idx-place">${placeLabel} <a id="mntReset">✕ 내 지역</a></span>`
+    ? `${idxLabel(v)}<span class="idx-place">${esc(placeLabel)} <a id="mntReset">✕ 내 지역</a></span>`
     : idxLabel(v);
   const items = FM_CONDITION_DETAILS.buildConditionSummaryItems(currentConditionContext);
   $("idxGrid").innerHTML = items.map((item) => `
@@ -1012,7 +1073,7 @@ function openSosModal() {
     <div class="sos-pay">
       <div class="row"><span>국가지점번호</span><b>${c ? c.gridNo : "다사 5683 2741"}</b></div>
       <div class="row"><span>GPS</span><b>${c ? c.gps : "37.6584°N, 126.9778°E"}</b></div>
-      <div class="row"><span>신고자</span><b>${S.profile.name}님 · 심박 ${Hike.hr || 96}bpm</b></div>
+      <div class="row"><span>신고자</span><b>${esc(S.profile.name)}님 · 심박 ${Hike.hr || 96}bpm</b></div>
       <div class="row"><span>가까운 구조 거점</span><b>${c ? c.rescuePoint : "백운산장 헬기장 620m"}</b></div>
     </div>
     <div class="btnrow">
@@ -1061,10 +1122,45 @@ const chatLog = () => $("chatLog");
 function bubble(html, who = "bot") {
   const div = document.createElement("div");
   div.className = "msg " + who;
-  div.innerHTML = who === "bot" ? `<div class="who">🌲 숲이</div>${html}` : html;
+  if (who === "bot") {
+    const label = document.createElement("div");
+    label.className = "who";
+    label.textContent = "🌲 숲이";
+    div.appendChild(label);
+    appendSanitizedHtml(div, html);
+  } else {
+    div.textContent = String(html);
+  }
   chatLog().appendChild(div);
   $("ai").scrollTop = $("ai").scrollHeight;
   return div;
+}
+const CHAT_HTML_TAGS = new Set(["b", "br", "div", "i", "p"]);
+const CHAT_HTML_CLASSES = new Set(["danger-flag", "safe2", "conf"]);
+function appendSanitizedHtml(target, html) {
+  const parsed = new DOMParser().parseFromString(String(html), "text/html");
+  const convert = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent || "");
+    if (node.nodeType !== Node.ELEMENT_NODE) return document.createTextNode("");
+    const tag = node.tagName.toLowerCase();
+    const fragment = document.createDocumentFragment();
+    if (!CHAT_HTML_TAGS.has(tag)) {
+      node.childNodes.forEach((child) => fragment.appendChild(convert(child)));
+      return fragment;
+    }
+    const el = document.createElement(tag);
+    if (tag === "div") {
+      const classes = [...node.classList].filter((name) => CHAT_HTML_CLASSES.has(name));
+      if (classes.length) el.className = classes.join(" ");
+    }
+    if (tag === "i") {
+      const match = /^width:\s*(\d{1,3})%$/i.exec(node.getAttribute("style") || "");
+      if (match) el.style.width = `${clampNumber(match[1], 0, 100, 0)}%`;
+    }
+    node.childNodes.forEach((child) => el.appendChild(convert(child)));
+    return el;
+  };
+  parsed.body.childNodes.forEach((node) => target.appendChild(convert(node)));
 }
 function photoBubble(sp) {
   const div = document.createElement("div");
@@ -1670,7 +1766,7 @@ async function enablePush() {
 $("bellBtn").addEventListener("click", openNotifs);
 function refreshBellDot() {
   const dot = $("bellBtn") && $("bellBtn").querySelector("i");
-  if (dot) dot.style.display = ((S.plans || []).length || (S.favs || []).length) ? "block" : "block";
+  if (dot) dot.style.display = ((S.plans || []).length || (S.favs || []).length) ? "block" : "none";
 }
 
 /* ---------------- 전국 산 검색 (산림청 산정보) ---------------- */

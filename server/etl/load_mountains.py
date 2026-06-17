@@ -28,7 +28,8 @@ def _height(raw: str) -> int:
 
 def _sido(addr: str) -> str:
     """소재지 첫 토큰(시·도). 예: '서울특별시 은평구 …' → '서울특별시'."""
-    return (addr or "").split()[0] if addr else ""
+    parts = (addr or "").split()
+    return parts[0] if parts else ""
 
 
 def _is_top100(raw: str) -> bool:
@@ -93,7 +94,7 @@ async def run(max_pages: int | None = None, rows: int = 100) -> dict:
                 db.merge(_to_model(row))   # upsert (멱등)
             db.commit()
             loaded += len(items)
-            if (total and existing + loaded >= total) or (max_pages and page >= max_pages):
+            if (total is not None and existing + loaded >= total) or (max_pages is not None and page >= max_pages):
                 break
             page += 1
         return {"ok": True, "loaded": loaded, "total": total,
