@@ -204,6 +204,45 @@ def test_oauth_redirect_path_is_allow_listed(client, register_device, monkeypatc
     assert roundtrip("/home.html").startswith("/home.html#auth_token=")
 
 
+def test_oauth_redirect_helpers_cover_provider_and_error_edges():
+    from fastapi import HTTPException
+
+    from server.routers import auth as auth_router
+
+    assert auth_router._safe_oauth_redirect_path(None) == "/index.html"
+    assert auth_router._safe_oauth_redirect_path("/index.html") == "/index.html"
+    assert auth_router._safe_oauth_redirect_path("/home.html") == "/home.html"
+    assert auth_router._safe_oauth_redirect_path("/admin") == "/index.html"
+
+    assert auth_router._oauth_error("access_denied").headers["location"] == "/index.html#auth_error=access_denied"
+    invalid = auth_router._oauth_error("invalid_oauth_callback")
+    assert invalid.headers["location"] == "/index.html#auth_error=invalid_oauth_callback"
+    assert auth_router._oauth_error("unexpected").headers["location"] == "/index.html#auth_error=oauth_failed"
+
+    assert auth_router._provider_config("google")["authorize_url"].startswith("https://accounts.google.com")
+    assert auth_router._provider_config("kakao")["authorize_url"].startswith("https://kauth.kakao.com")
+    assert auth_router._provider_config("naver")["authorize_url"].startswith("https://nid.naver.com")
+    with pytest.raises(HTTPException) as unknown_config:
+        auth_router._provider_config("github")
+    assert unknown_config.value.status_code == 404
+
+    google = auth_router._oauth_authorization_redirect("google", {"state": "abc", "scope": "openid email"})
+    assert google.headers["location"].startswith("https://accounts.google.com/o/oauth2/v2/auth?")
+    assert "scope=openid+email" in google.headers["location"]
+    kakao = auth_router._oauth_authorization_redirect("kakao", {"state": "abc"})
+    assert kakao.headers["location"].startswith("https://kauth.kakao.com/oauth/authorize?")
+    naver = auth_router._oauth_authorization_redirect("naver", {"state": "abc"})
+    assert naver.headers["location"].startswith("https://nid.naver.com/oauth2.0/authorize?")
+    with pytest.raises(HTTPException) as unknown_redirect:
+        auth_router._oauth_authorization_redirect("github", {})
+    assert unknown_redirect.value.status_code == 404
+
+    home = auth_router._oauth_success_redirect("/home.html", "token value", "google")
+    assert home.headers["location"] == "/home.html#auth_token=token+value&provider=google"
+    fallback = auth_router._oauth_success_redirect("/admin", "token", "google")
+    assert fallback.headers["location"] == "/index.html#auth_token=token&provider=google"
+
+
 def test_auth_helpers_cover_invalid_and_guest_edges(register_device):
     from fastapi import HTTPException
     from sqlalchemy import select
