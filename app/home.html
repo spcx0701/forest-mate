@@ -85,10 +85,11 @@ h1 em{font-style:normal;color:var(--leaf)}
 .store{display:flex;gap:10px;margin-top:18px;font-size:12px;color:var(--sub);flex-wrap:wrap}
 .store span{background:#fff;border:1px solid #E5EDE6;border-radius:9px;padding:7px 11px;font-weight:700}
 .app-links{display:flex;align-items:center;gap:12px;margin-top:20px;max-width:980px;flex-wrap:wrap}
-.store-badge{display:inline-flex;align-items:center;justify-content:center;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none}
+.store-badge{display:inline-flex;align-items:center;justify-content:center;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;line-height:0}
 .store-badge:hover{transform:translateY(-2px)}
 .store-badge picture{display:block}
-.store-badge img{height:80px;width:auto;object-fit:contain;display:block}
+.store-badge img{height:80px;width:auto;object-fit:contain;display:block;vertical-align:middle}
+.store-badge.store-badge--obtainium{align-self:center}
 .store-badge.store-badge--obtainium img{height:54px}
 /* phone demo */
 .demo{position:relative;display:flex;justify-content:center}
