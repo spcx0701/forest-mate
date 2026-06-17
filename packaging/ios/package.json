@@ -16,7 +16,7 @@
     "@capacitor/push-notifications": "6.0.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "6.1.2"
+    "@capacitor/cli": "8.4.0"
   },
   "packageManager": "pnpm@11.7.0"
 }
