@@ -243,8 +243,19 @@ tr:last-child td{border:none}
   function hm() { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
   function pushEvent(cls, ico, b, s) {
     const div = document.createElement("div");
-    div.className = `ev ${cls} new`;
-    div.innerHTML = `<div class="ic">${ico}</div><div><b>${b}</b><span>${s}</span></div><time>${hm()}</time>`;
+    div.className = `ev ${/^(sos|warn|ok)$/.test(cls) ? cls : "ok"} new`;
+    const icon = document.createElement("div");
+    icon.className = "ic";
+    icon.textContent = ico;
+    const copy = document.createElement("div");
+    const title = document.createElement("b");
+    title.textContent = b;
+    const body = document.createElement("span");
+    body.textContent = s;
+    copy.append(title, body);
+    const time = document.createElement("time");
+    time.textContent = hm();
+    div.append(icon, copy, time);
     feed.prepend(div);
     while (feed.children.length > 6) feed.lastElementChild.remove();
   }
