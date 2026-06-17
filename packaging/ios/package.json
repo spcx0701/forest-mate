@@ -13,7 +13,7 @@
     "@capacitor/core": "6.1.2",
     "@capacitor/ios": "6.1.2",
     "@capacitor/geolocation": "6.0.1",
-    "@capacitor/push-notifications": "6.0.2"
+    "@capacitor/push-notifications": "8.1.1"
   },
   "devDependencies": {
     "@capacitor/cli": "6.1.2"
