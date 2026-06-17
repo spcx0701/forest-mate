@@ -21,7 +21,7 @@ class EventBus:
 
     def publish(self, event: dict[str, Any]) -> None:
         payload = json.dumps(event, ensure_ascii=False, default=str)
-        for q in list(self._subscribers):
+        for q in self._subscribers.copy():
             try:
                 q.put_nowait(payload)
             except asyncio.QueueFull:

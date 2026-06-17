@@ -37,6 +37,7 @@ def test_answer_uses_llm_when_enabled(monkeypatch):
     seen = {}
 
     async def fake_ask_llm(message, lang, context):
+        await asyncio.sleep(0)
         seen.update(message=message, lang=lang, context=context)
         return "LLM reply"
 

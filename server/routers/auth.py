@@ -65,7 +65,7 @@ def _provider_credentials(provider: str) -> tuple[str, str]:
         "naver": (settings.naver_client_id, settings.naver_client_secret),
     }
     if provider not in pairs:
-        raise HTTPException(404, "unknown oauth provider")  # NOSONAR: endpoints document provider errors.
+        raise HTTPException(404, "unknown oauth provider")
     return pairs[provider]
 
 
@@ -352,6 +352,7 @@ def _social_user(db: Session, provider: str, profile: dict, requested_profile: d
 
 @router.get("/auth/oauth/{provider}/callback",
             responses={
+                404: {"description": "Unknown OAuth provider"},
                 401: {"description": "Invalid or expired OAuth state"},
                 502: {"description": "OAuth token is missing"},
             })
