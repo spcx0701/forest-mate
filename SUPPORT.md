@@ -23,7 +23,7 @@ clearer impact statement before work is scheduled.
 
 ## Scope
 
-Support covers the public repository, PWA frontend, FastAPI backend, Android TWA
-packaging, F-Droid metadata, and documented deployment flow. It does not cover
-third-party public-data provider outages, app-store account problems, or
-production environments operated by downstream deployers.
+Support covers the public repository, PWA frontend, FastAPI backend, Kotlin
+native Android/Wear OS packaging, F-Droid metadata, and documented deployment
+flow. It does not cover third-party public-data provider outages, app-store
+account problems, or production environments operated by downstream deployers.
