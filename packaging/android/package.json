@@ -1,7 +1,7 @@
 {
   "name": "forestmate-android-apk",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "ForestMate Kotlin native Android and Wear OS APK packaging",
   "scripts": {
     "build:apk": "./gradlew --no-daemon :app:assembleDebug :wear:assembleDebug",

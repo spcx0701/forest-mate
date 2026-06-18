@@ -1,9 +1,10 @@
 # Contributing to ForestMate
 
 Thanks for helping improve ForestMate. This project combines a FastAPI backend,
-a static/PWA frontend, Android TWA packaging, F-Droid metadata, and forest public
-data workflows. Contributions are welcome when they improve safety, reliability,
-privacy, accessibility, documentation, or maintainability.
+a static/PWA frontend, Kotlin native Android and Wear OS packaging, F-Droid
+metadata, and forest public data workflows. Contributions are welcome when they
+improve safety, reliability, privacy, accessibility, documentation, or
+maintainability.
 
 Please also read the [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -105,15 +106,16 @@ The repository has Korean and English README entrypoints: `README.md` and
 
 ## Android and F-Droid Changes
 
-Android is packaged as a Trusted Web Activity under `packaging/android/`.
+Android is packaged as Kotlin native phone and Wear OS modules under
+`packaging/android/`.
 
 - GitHub direct APK releases use a signed APK built by the project maintainer.
 - F-Droid inclusion uses source builds and unsigned release APK output; F-Droid
   signs the final package itself.
 - Do not add Firebase, Crashlytics, AdMob, Google Play Services, tracking SDKs,
   or proprietary dependencies without an explicit maintainer decision.
-- Keep version updates consistent across `twa-manifest.json`, Gradle metadata,
-  release notes, and F-Droid metadata.
+- Keep version updates consistent across phone/wear Gradle metadata,
+  `packaging/android/package.json`, release notes, and F-Droid metadata.
 
 When touching Android or F-Droid files, document which build or scanner command
 you ran in the pull request.
