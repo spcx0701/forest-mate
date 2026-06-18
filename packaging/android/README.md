@@ -1,23 +1,23 @@
 # Android APK 배포
 
-숲길동무 Android 배포는 Play Console용 AAB가 아니라 직접 배포용 signed APK를 기준으로 한다.
+숲길동무 Android 배포는 Play Console용 AAB가 아니라 직접 배포용 signed APK를 기준으로 한다. 휴대폰 앱과 Wear OS 앱 모두 Kotlin native APK로 빌드한다. 웹 사용자는 별도 APK 없이 PWA 설치 경로를 사용할 수 있다.
 
 ## 산출물
 
 - 패키지 ID: `kr.forestmate.app`
 - Wear OS 패키지 ID: `kr.forestmate.watch`
-- 빌드 도구: Bubblewrap TWA + native Wear OS module
+- 빌드 도구: Android Gradle Plugin Kotlin native phone module + Kotlin native Wear OS module
 - 휴대폰 APK: `dist/forestmate-android-v1.1.0.apk`
 - 워치 APK: `dist/forestmate-wear-v1.1.0.apk`
 - 체크섬: 각 APK 옆의 `.sha256`
 
-Bubblewrap는 내부적으로 AAB도 만들지만, `npm run build:apk`는 빌드 후 AAB를 삭제하고 휴대폰 APK와 Wear OS APK만 `dist/`에 남긴다.
+GitHub Release workflow는 Gradle release APK를 빌드한 뒤 휴대폰 APK와 Wear OS APK만 `dist/`에 복사한다.
 
 ## Galaxy Watch / Wear OS 연동
 
 워치 앱은 별도 Wear OS 모듈(`:wear`)로 빌드한다. 손목 화면은 지도형 산행 화면 위에 남은 거리, 방향, 심박, 나침반, GPS, 배터리, 조난 위험 상태를 오버레이한다. 워치가 워치 전용 토큰을 받으면 전경 서비스가 심박·GPS·고도·나침반·가속도·배터리 샘플을 서버 `/api/v1/watch/track`으로 전송하고, 서버가 돌려준 진행률과 위험 레벨을 다시 워치 화면에 반영한다.
 
-6자리 코드는 기본 UX가 아니라 백업 연결이다. 현재 리포지토리는 Wear OS 네이티브 앱과 서버 토큰 연동을 포함하고, 워치 화면에서는 코드를 백업 버튼 아래로 숨긴다. 완전한 paired-phone 자동 핸드오프는 TWA 웹 레이어가 가진 익명 기기 토큰을 네이티브 Android 래퍼가 Wear OS Data Layer로 전달하는 별도 브리지에서 소유해야 한다.
+6자리 코드는 기본 UX가 아니라 백업 연결이다. 현재 리포지토리는 Kotlin native 휴대폰 앱, Wear OS 네이티브 앱, 서버 토큰 연동을 포함하고, 워치 화면에서는 코드를 백업 버튼 아래로 숨긴다. 완전한 paired-phone 자동 핸드오프는 향후 Wear OS Data Layer 브리지에서 소유한다.
 
 ```bash
 cd "/Users/dong9733/Documents/GitHub/forest-mate/packaging/android"
@@ -32,17 +32,8 @@ cd "/Users/dong9733/Documents/GitHub/forest-mate/packaging/android"
 
 ```bash
 cd "/Users/dong9733/Documents/GitHub/forest-mate/packaging/android"
-npm install
-npm run init:project
+./gradlew --no-daemon tasks --all
 ```
-
-프롬프트에서는 기존 설정값을 기준으로 입력한다.
-
-- Application ID: `kr.forestmate.app`
-- Host: `forestmate.onrender.com`
-- Name: `숲길동무 ForestMate`
-- Launcher name: `숲길동무`
-- Signing key alias: `forestmate`
 
 생성된 `android-signing.keystore`와 비밀번호는 유출되면 안 된다. 이 repo의 `packaging/.gitignore`는 keystore 커밋을 막는다.
 
@@ -54,20 +45,18 @@ npm run init:project
 cd "/Users/dong9733/Documents/GitHub/forest-mate/packaging/android"
 export BUBBLEWRAP_KEYSTORE_PASSWORD="..."
 export BUBBLEWRAP_KEY_PASSWORD="..."
-npm run build:apk
+./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease
 ```
 
-완료 후 `dist/forestmate-android-v1.1.0.apk`와 `dist/forestmate-wear-v1.1.0.apk`를 함께 배포한다.
+완료 후 signed release APK를 `dist/forestmate-android-v1.1.0.apk`와 `dist/forestmate-wear-v1.1.0.apk`로 복사해 함께 배포한다.
 
-## 3. Digital Asset Links
-
-TWA에서 주소창을 숨기려면 APK 서명키 SHA-256을 웹 서버의 `/.well-known/assetlinks.json`에 넣어야 한다.
+## 3. 서명 지문 확인
 
 ```bash
-npm run fingerprint
+./scripts/print-fingerprint.sh
 ```
 
-출력된 SHA-256 값을 `/Users/dong9733/Documents/GitHub/forest-mate/app/.well-known/assetlinks.json`에 반영하고 다시 배포한다. 현재 배포 서명키 지문이 이 파일에 반영되어 있어야 한다.
+출력된 SHA-256 값은 배포 기록과 스토어 제출 메타데이터 검증에 사용한다. 휴대폰 APK는 더 이상 웹앱을 여는 TWA가 아니므로 Digital Asset Links로 주소창을 숨기는 단계가 필요하지 않다.
 
 ## 4. 배포 방식
 

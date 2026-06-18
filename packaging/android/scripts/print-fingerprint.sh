@@ -19,7 +19,7 @@ fi
 
 if [[ ! -f "$KEYSTORE" ]]; then
   echo "error: signing keystore not found: $KEYSTORE" >&2
-  echo "Run npm run init:project first, or pass the keystore path as the first argument." >&2
+  echo "Create android-signing.keystore first, or pass the keystore path as the first argument." >&2
   exit 1
 fi
 
