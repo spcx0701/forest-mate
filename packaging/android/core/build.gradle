@@ -20,5 +20,6 @@ android {
 }
 
 dependencies {
+    testImplementation 'org.json:json:20260522'
     testImplementation 'junit:junit:4.13.2'
 }
