@@ -47,16 +47,15 @@ class WatchApi(
         alt: Int?,
         acc: Int?,
         battery: Int?,
-    ): UploadResult {
-        val body = JSONObject()
-            .put("alt", alt ?: 0)
-        if (hr != null) body.put("hr", hr)
-        if (lat != null) body.put("lat", lat)
-        if (lon != null) body.put("lon", lon)
-        if (acc != null) body.put("acc", acc)
-        if (battery != null) body.put("battery", battery)
+    ): UploadResult =
+        upload(token, WatchUploadRequest(hr, lat, lon, alt, acc, battery))
 
-        val json = postJson("/watch/track", body.toString(), token)
+    fun upload(token: String, request: WatchUploadRequest): UploadResult {
+        val json = postJson(
+            "/watch/track",
+            request.toJson().toString(),
+            token,
+        )
         val distress = json.optJSONObject("distress") ?: JSONObject()
         return UploadResult(
             progress = json.optDouble("progress", 0.0),
@@ -104,4 +103,23 @@ class WatchApi(
         private fun nullableInt(json: JSONObject, key: String): Int? =
             if (json.has(key) && !json.isNull(key)) json.optInt(key) else null
     }
+}
+
+data class WatchUploadRequest(
+    val hr: Int?,
+    val lat: Double?,
+    val lon: Double?,
+    val alt: Int?,
+    val acc: Int?,
+    val battery: Int?,
+) {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("alt", alt ?: 0)
+            if (hr != null) put("hr", hr)
+            if (lat != null) put("lat", lat)
+            if (lon != null) put("lon", lon)
+            if (acc != null) put("acc", acc)
+            if (battery != null) put("battery", battery)
+        }
 }
