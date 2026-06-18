@@ -2,6 +2,6 @@ ForestMate helps hikers check route conditions before and during a hike.
 
 It combines public forest and weather data with a safety index, trail recommendations, risk alerts, offline fallback data, and one-tap SOS flows. A companion dashboard is available for public-sector monitoring and incident response demonstrations.
 
-The Android app is a Trusted Web Activity for the published ForestMate web app. The web client and FastAPI server source are available in this repository and can be self-hosted. The default build connects to forestmate.onrender.com, so F-Droid metadata should mark it with the NonFreeNet anti-feature.
+The Android app is a Kotlin native client for the ForestMate FastAPI backend, and the Wear OS companion is also Kotlin native. The web client remains available as a separate PWA install path. The web client and FastAPI server source are available in this repository and can be self-hosted. The default build connects to forestmate.onrender.com, so F-Droid metadata should mark it with the NonFreeNet anti-feature.
 
 The Android build does not include advertising SDKs, Firebase, Crashlytics, Google Play Services, or proprietary tracking libraries.

@@ -2,9 +2,27 @@ plugins {
     id 'com.android.application'
 }
 
+def signingStoreFile = rootProject.file("android-signing.keystore")
+def signingStorePassword = System.getenv("BUBBLEWRAP_KEYSTORE_PASSWORD")
+def signingKeyPassword = System.getenv("BUBBLEWRAP_KEY_PASSWORD")
+def hasReleaseSigning = signingStoreFile.exists()
+        && signingStorePassword != null && signingStorePassword.length() > 0
+        && signingKeyPassword != null && signingKeyPassword.length() > 0
+
 android {
     compileSdkVersion 36
     namespace "kr.forestmate.app"
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile signingStoreFile
+                storePassword signingStorePassword
+                keyAlias "forestmate"
+                keyPassword signingKeyPassword
+            }
+        }
+    }
 
     defaultConfig {
         applicationId "kr.forestmate.app"
@@ -18,6 +36,9 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 

@@ -2,6 +2,6 @@
 
 산행지수, 맞춤 코스 추천, 위험 경고, 오프라인 폴백 데이터, 원터치 SOS 흐름을 제공합니다. 지자체와 공공기관 시연을 위한 관제 대시보드도 함께 포함되어 있습니다.
 
-Android 앱은 공개된 ForestMate 웹 앱을 여는 Trusted Web Activity입니다. 웹 클라이언트와 FastAPI 서버 소스는 이 저장소에 공개되어 직접 호스팅할 수 있습니다. 기본 빌드는 forestmate.onrender.com에 접속하므로 F-Droid 메타데이터에서는 NonFreeNet Anti-Feature로 표시하는 것이 맞습니다.
+Android 앱은 ForestMate FastAPI 백엔드와 직접 통신하는 Kotlin 네이티브 클라이언트이며, Wear OS 동반 앱도 Kotlin 네이티브입니다. 웹 클라이언트는 별도 PWA 설치 경로로 유지됩니다. 웹 클라이언트와 FastAPI 서버 소스는 이 저장소에 공개되어 직접 호스팅할 수 있습니다. 기본 빌드는 forestmate.onrender.com에 접속하므로 F-Droid 메타데이터에서는 NonFreeNet Anti-Feature로 표시하는 것이 맞습니다.
 
 Android 빌드에는 광고 SDK, Firebase, Crashlytics, Google Play Services, 독점 추적 라이브러리를 포함하지 않습니다.

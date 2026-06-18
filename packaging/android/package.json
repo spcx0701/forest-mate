@@ -2,18 +2,11 @@
   "name": "forestmate-android-apk",
   "private": true,
   "version": "1.1.0",
-  "description": "ForestMate Android TWA APK packaging",
+  "description": "ForestMate Kotlin native Android and Wear OS APK packaging",
   "scripts": {
-    "init:project": "./scripts/init-project.sh",
-    "build:apk": "./scripts/build-apk.sh",
+    "build:apk": "./gradlew --no-daemon :app:assembleDebug :wear:assembleDebug",
+    "build:release": "./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease",
     "build:wear": "./gradlew --no-daemon :wear:assembleDebug",
-    "fingerprint": "./scripts/print-fingerprint.sh",
-    "doctor": "bubblewrap doctor",
-    "validate:pwa": "bubblewrap validate --url=https://forestmate.onrender.com/index.html"
-  },
-  "devDependencies": {
-    "@bubblewrap/cli": "1.24.1",
-    "@types/node": "25.9.3"
-  },
-  "packageManager": "pnpm@11.7.0"
+    "fingerprint": "./scripts/print-fingerprint.sh"
+  }
 }

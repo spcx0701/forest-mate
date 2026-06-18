@@ -73,7 +73,7 @@ The project ships a web app, an operations dashboard, an Android APK, and a Wear
 - **Personalization** - Includes earned badges, a hike calendar, date-based suitability planning, location/favorite alerts, and Web Push notifications.
 - **B2G monitoring dashboard** - Shows real-time KPIs, a WebSocket feed, and k-anonymized risk heatmaps for municipalities and emergency operators.
 
-Android users can download `forestmate-android-vX.apk` from GitHub Releases. Galaxy Watch/Wear OS users install `forestmate-wear-vX.apk` from the same Release. The repository also includes source-build metadata for F-Droid submission. The current Android TWA opens the hosted `forestmate.onrender.com` service, so the F-Droid metadata declares the `NonFreeNet` Anti-Feature.
+Android users can download the Kotlin native `forestmate-android-vX.apk` from GitHub Releases. Galaxy Watch/Wear OS users install the Kotlin native `forestmate-wear-vX.apk` from the same Release. Web users can install the PWA path without an APK. The default Android build connects to the hosted `forestmate.onrender.com` API, so the F-Droid metadata declares the `NonFreeNet` Anti-Feature.
 
 ## B2G Monitoring Dashboard
 
@@ -100,6 +100,7 @@ ForestMate includes a real-time monitoring web dashboard for municipalities and 
 - **Backend** FastAPI, SQLAlchemy (SQLite/PostgreSQL), Pydantic, pytest, WebSocket
 - **Frontend** PWA with service worker, offline support, Web Push, vanilla JS, and Leaflet maps
 - **Data and AI** Korea public data APIs, Korea Forest Service data, VWorld geocoding, Claude LLM/RAG
+- **Android** Kotlin native phone APK and Kotlin native Wear OS companion
 - **Infrastructure** Docker, Render, GitHub Actions CI
 
 ## Architecture
@@ -123,7 +124,7 @@ forest-mate/
 |   |-- app.js            #   API client + fallback-aware app logic
 |   `-- data.js, sw.js    #   local fallback data and offline service worker
 |-- deploy                # Dockerfile, docker-compose.yml, render.yaml, .env.example
-|-- packaging/            # Android TWA APK, Wear OS APK, and iOS Capacitor packaging
+|-- packaging/            # Android Kotlin phone APK, Kotlin Wear OS APK, and iOS Capacitor packaging
 |-- deliverables/         # proposal DOCX and presentation PPTX
 |-- legal/                # privacy policy and terms
 `-- store/                # store listing metadata and submission runbook
