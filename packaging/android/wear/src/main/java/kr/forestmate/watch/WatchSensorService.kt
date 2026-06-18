@@ -32,11 +32,8 @@ import kotlin.math.roundToInt
 
 class WatchSensorService : Service(), SensorEventListener, LocationListener {
     private val handler = Handler(Looper.getMainLooper())
-    private val uploadRunnable = object : Runnable {
-        override fun run() {
-            uploadSnapshot()
-            handler.postDelayed(this, UPLOAD_INTERVAL_MS)
-        }
+    private val uploadRunnable = Runnable {
+        uploadTick()
     }
 
     private lateinit var prefs: SharedPreferences
@@ -90,6 +87,7 @@ class WatchSensorService : Service(), SensorEventListener, LocationListener {
         try {
             locationManager?.removeUpdates(this)
         } catch (_: SecurityException) {
+            locationManager = null
         }
         prefs.edit().putBoolean(MainActivity.KEY_STREAMING, false).apply()
         super.onDestroy()
@@ -131,6 +129,7 @@ class WatchSensorService : Service(), SensorEventListener, LocationListener {
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        // Accuracy changes are not surfaced in the watch UI.
     }
 
     override fun onLocationChanged(location: Location) {
@@ -143,9 +142,16 @@ class WatchSensorService : Service(), SensorEventListener, LocationListener {
     }
 
     override fun onProviderEnabled(provider: String) {
+        // The next location callback refreshes the watch snapshot.
     }
 
     override fun onProviderDisabled(provider: String) {
+        // Existing coordinates remain as the last known trail position.
+    }
+
+    private fun uploadTick() {
+        uploadSnapshot()
+        handler.postDelayed(uploadRunnable, UPLOAD_INTERVAL_MS)
     }
 
     private fun registerSensors() {
@@ -177,7 +183,9 @@ class WatchSensorService : Service(), SensorEventListener, LocationListener {
                 manager.requestLocationUpdates(provider, 5000L, 2f, this)
             }
         } catch (_: IllegalArgumentException) {
+            return
         } catch (_: SecurityException) {
+            return
         }
     }
 

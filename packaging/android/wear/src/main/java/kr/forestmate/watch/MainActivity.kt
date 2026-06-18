@@ -29,11 +29,8 @@ import kr.forestmate.core.api.UrlConnectionTransport
 
 class MainActivity : Activity() {
     private val refreshHandler = Handler(Looper.getMainLooper())
-    private val refreshRunnable = object : Runnable {
-        override fun run() {
-            renderState()
-            refreshHandler.postDelayed(this, 1000L)
-        }
+    private val refreshRunnable = Runnable {
+        refreshTick()
     }
 
     private lateinit var prefs: SharedPreferences
@@ -65,6 +62,11 @@ class MainActivity : Activity() {
     override fun onPause() {
         refreshHandler.removeCallbacks(refreshRunnable)
         super.onPause()
+    }
+
+    private fun refreshTick() {
+        renderState()
+        refreshHandler.postDelayed(refreshRunnable, 1000L)
     }
 
     private fun buildUi(): FrameLayout {
@@ -382,61 +384,97 @@ class MainActivity : Activity() {
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
+            val metrics = faceMetrics()
+            drawBackground(canvas, metrics)
+            drawProgress(canvas, metrics)
+            drawTitle(canvas, metrics)
+            drawHeartRate(canvas, metrics)
+            drawStatus(canvas, metrics)
+        }
+
+        private fun faceMetrics(): FaceMetrics {
             val w = width.toFloat()
             val h = height.toFloat()
-            val radius = minOf(w, h) / 2f - dp(8).toFloat()
-            val cx = w / 2f
-            val cy = h / 2f
+            return FaceMetrics(
+                w = w,
+                h = h,
+                radius = minOf(w, h) / 2f - dp(8).toFloat(),
+                cx = w / 2f,
+                cy = h / 2f,
+            )
+        }
 
+        private fun drawBackground(canvas: Canvas, metrics: FaceMetrics) {
             paint.style = Paint.Style.FILL
             paint.color = context.getColor(R.color.forest_deep)
-            canvas.drawRect(0f, 0f, w, h, paint)
+            canvas.drawRect(0f, 0f, metrics.w, metrics.h, paint)
 
             paint.color = 0x331B4332
-            canvas.drawCircle(cx, cy, radius, paint)
+            canvas.drawCircle(metrics.cx, metrics.cy, metrics.radius, paint)
+        }
 
+        private fun drawProgress(canvas: Canvas, metrics: FaceMetrics) {
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = dp(7).toFloat()
             paint.color = context.getColor(R.color.forest_mint)
-            arc.set(cx - radius, cy - radius, cx + radius, cy + radius)
+            arc.set(
+                metrics.cx - metrics.radius,
+                metrics.cy - metrics.radius,
+                metrics.cx + metrics.radius,
+                metrics.cy + metrics.radius,
+            )
             canvas.drawArc(arc, -90f, snapshot.progress.coerceIn(0f, 1f) * 360f, false, paint)
+        }
 
+        private fun drawTitle(canvas: Canvas, metrics: FaceMetrics) {
             paint.style = Paint.Style.FILL
             paint.textAlign = Paint.Align.CENTER
             paint.typeface = Typeface.DEFAULT_BOLD
             paint.color = context.getColor(R.color.forest_text)
             paint.textSize = dp(13).toFloat()
-            canvas.drawText(if (snapshot.connected) "ForestMate" else "대기 중", cx, dp(42).toFloat(), paint)
+            canvas.drawText(if (snapshot.connected) "ForestMate" else "대기 중", metrics.cx, dp(42).toFloat(), paint)
 
             paint.typeface = Typeface.DEFAULT
             paint.textSize = dp(10).toFloat()
             val course = snapshot.courseName.ifBlank { if (snapshot.backupVisible) "백업 코드 입력" else "휴대폰 산행 대기" }
-            canvas.drawText(course, cx, dp(65).toFloat(), paint)
+            canvas.drawText(course, metrics.cx, dp(65).toFloat(), paint)
             if (snapshot.route.isNotBlank()) {
-                canvas.drawText(snapshot.route, cx, dp(80).toFloat(), paint)
+                canvas.drawText(snapshot.route, metrics.cx, dp(80).toFloat(), paint)
             }
+        }
 
+        private fun drawHeartRate(canvas: Canvas, metrics: FaceMetrics) {
             paint.textSize = dp(20).toFloat()
             paint.typeface = Typeface.DEFAULT_BOLD
             val hrText = if (snapshot.hr > 0) "${snapshot.hr} bpm" else "-- bpm"
-            canvas.drawText(hrText, cx, cy + dp(8), paint)
+            canvas.drawText(hrText, metrics.cx, metrics.cy + dp(8), paint)
 
             paint.typeface = Typeface.DEFAULT
             paint.textSize = dp(9).toFloat()
             val gpsText = if (snapshot.hasGps) "GPS" else "GPS 대기"
             val batteryText = if (snapshot.battery >= 0) "${snapshot.battery}%" else "--%"
-            canvas.drawText("$gpsText · alt ${snapshot.alt} · $batteryText", cx, cy + dp(28), paint)
+            canvas.drawText("$gpsText · alt ${snapshot.alt} · $batteryText", metrics.cx, metrics.cy + dp(28), paint)
+        }
 
+        private fun drawStatus(canvas: Canvas, metrics: FaceMetrics) {
             val status = snapshot.message.ifBlank {
                 if (snapshot.streaming) "전송 중" else if (snapshot.connected) "전송 준비" else "백업 연결 가능"
             }
             paint.color = if (snapshot.distressLevel > 0) 0xFFFFD166.toInt() else context.getColor(R.color.forest_mint)
             paint.textSize = dp(9).toFloat()
-            canvas.drawText(status, cx, h - dp(52).toFloat(), paint)
+            canvas.drawText(status, metrics.cx, metrics.h - dp(52).toFloat(), paint)
         }
 
         private fun dp(value: Int): Int =
             (value * resources.displayMetrics.density + 0.5f).toInt()
+
+        private data class FaceMetrics(
+            val w: Float,
+            val h: Float,
+            val radius: Float,
+            val cx: Float,
+            val cy: Float,
+        )
     }
 
     companion object {
