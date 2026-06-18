@@ -23,6 +23,10 @@ object JsonParsers {
 
     fun courses(json: JSONObject): List<Course> {
         val array = json.optJSONArray("items") ?: JSONArray()
+        return courseArray(array)
+    }
+
+    fun courseArray(array: JSONArray): List<Course> {
         return (0 until array.length()).map { i ->
             val item = array.getJSONObject(i)
             Course(
@@ -32,6 +36,16 @@ object JsonParsers {
                 minutes = item.optInt("minutes", 0),
                 route = item.optString("route", ""),
                 hazards = hazards(item.optJSONArray("hazards") ?: JSONArray()),
+                level = item.optString("level", ""),
+                levelN = item.optInt("level_n", item.optInt("levelN", 0)),
+                crowd = item.optString("crowd", ""),
+                view = item.optInt("view", 0),
+                peak = item.optString("peak", ""),
+                gridNo = item.optString("grid_no", item.optString("gridNo", "")),
+                gps = item.optString("gps", ""),
+                rescuePoint = item.optString("rescue_point", item.optString("rescuePoint", "")),
+                fireStation = item.optString("fire_station", item.optString("fireStation", "")),
+                elevation = intList(item.optJSONArray("elev") ?: item.optJSONArray("elevation") ?: JSONArray()),
             )
         }
     }
@@ -42,6 +56,17 @@ object JsonParsers {
             token = json.optString("token", ""),
             name = json.optString("name", ""),
         )
+
+    fun authSession(json: JSONObject): AuthSession {
+        val user = json.optJSONObject("user") ?: JSONObject()
+        return AuthSession(
+            accessToken = json.optString("access_token", ""),
+            deviceToken = json.optString("device_token", ""),
+            userId = user.optString("id", ""),
+            email = user.optString("email", ""),
+            expiresIn = json.optInt("expires_in", 0),
+        )
+    }
 
     fun hikeStart(json: JSONObject): HikeStart =
         HikeStart(
@@ -90,6 +115,10 @@ object JsonParsers {
             totalKm = json.optDouble("total_km", 0.0),
             totalKcal = json.optInt("total_kcal", 0),
             level = json.optInt("level", 1),
+            activeDays = json.optInt("active_days", 0),
+            distinctCourses = json.optInt("distinct_courses", 0),
+            regions = json.optInt("regions", 0),
+            badges = badges(json.optJSONArray("badges") ?: JSONArray()),
         )
 
     fun hikeLog(json: JSONObject): List<HikeLogItem> {
@@ -112,6 +141,23 @@ object JsonParsers {
                 type = item.optString("type", ""),
                 grade = item.optString("grade", ""),
                 at = item.optDouble("at", 0.0),
+                note = item.optString("note", ""),
+            )
+        }
+
+    private fun intList(array: JSONArray): List<Int> =
+        (0 until array.length()).map { i -> array.optInt(i, 0) }
+
+    private fun badges(array: JSONArray): List<Badge> =
+        (0 until array.length()).map { i ->
+            val item = array.getJSONObject(i)
+            Badge(
+                id = item.optString("id", ""),
+                icon = item.optString("icon", ""),
+                label = item.optString("label", ""),
+                earned = item.optBoolean("earned", false),
+                progress = item.optDouble("progress", 0.0),
+                goal = item.optDouble("goal", 0.0),
             )
         }
 }

@@ -47,4 +47,28 @@ object NativeViews {
             textSize = 14f
             setTextColor(Color.rgb(36, 52, 43))
         }
+
+    fun sectionText(context: Context, textValue: String): TextView =
+        TextView(context).apply {
+            text = textValue
+            textSize = 18f
+            setPadding(0, 18, 0, 6)
+            setTextColor(Color.rgb(27, 67, 50))
+        }
+
+    fun bodyText(context: Context, textValue: String): TextView =
+        TextView(context).apply {
+            text = textValue
+            textSize = 14f
+            setPadding(0, 8, 0, 8)
+            setTextColor(Color.rgb(36, 52, 43))
+        }
+
+    fun captionText(context: Context, textValue: String): TextView =
+        TextView(context).apply {
+            text = textValue
+            textSize = 11f
+            setPadding(0, 4, 0, 10)
+            setTextColor(Color.rgb(83, 103, 92))
+        }
 }

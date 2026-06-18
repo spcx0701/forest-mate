@@ -1,0 +1,7 @@
+ForestMate 1.3.0 native feature parity release.
+
+- Restores native OpenStreetMap trail maps with route, GPS track, and safety markers.
+- Adds native course detail, hazard, rescue-point, and grid-number surfaces.
+- Sends GPS latitude/longitude with hike tracking updates.
+- Restores phone-side watch pairing, email account login/register, history, and badge progress.
+- Keeps phone and Wear OS APKs versioned together for direct, F-Droid, and Izzy-style distribution.

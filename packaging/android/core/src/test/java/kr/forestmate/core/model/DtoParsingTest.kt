@@ -42,4 +42,42 @@ class DtoParsingTest {
         assertEquals("bukhansan", courses[0].id)
         assertEquals(1, courses[0].hazards.size)
     }
+
+    @Test
+    fun parsesNativeCourseDetailFieldsForMapsAndRescue() {
+        val json = JSONObject(
+            """
+            {"items":[{
+              "id":"bukhansan",
+              "name":"북한산 백운대 코스",
+              "km":4.2,
+              "minutes":190,
+              "route":"백운대탐방지원센터 → 백운대 정상",
+              "level":"중",
+              "level_n":2,
+              "crowd":"보통",
+              "view":4,
+              "peak":"백운대 836m",
+              "grid_no":"다사 5683 2741",
+              "gps":"37.6584,126.9778",
+              "rescue_point":"백운산장 헬기장 620m",
+              "fire_station":"서울 종로소방서 산악구조대",
+              "elev":[120,180,260,390,480,542,650,770,836],
+              "hazards":[{"type":"낙석주의","grade":"산사태 1등급","at":0.62,"note":"우회로 권장"}]
+            }]}
+            """.trimIndent(),
+        )
+
+        val course = JsonParsers.courses(json).single()
+
+        assertEquals("중", course.level)
+        assertEquals(2, course.levelN)
+        assertEquals("백운대 836m", course.peak)
+        assertEquals("다사 5683 2741", course.gridNo)
+        assertEquals("37.6584,126.9778", course.gps)
+        assertEquals("백운산장 헬기장 620m", course.rescuePoint)
+        assertEquals("서울 종로소방서 산악구조대", course.fireStation)
+        assertEquals(9, course.elevation.size)
+        assertEquals("우회로 권장", course.hazards.single().note)
+    }
 }

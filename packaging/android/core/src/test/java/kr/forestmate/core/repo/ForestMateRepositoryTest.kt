@@ -4,6 +4,7 @@ import kr.forestmate.core.api.ApiConfig
 import kr.forestmate.core.api.ApiResult
 import kr.forestmate.core.api.FakeTransport
 import kr.forestmate.core.api.HttpResponse
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -85,6 +86,47 @@ class ForestMateRepositoryTest {
 
         assertEquals("safe", successValue(chat).reply)
         assertEquals("s1", successValue(sos).sosId)
+    }
+
+    @Test
+    fun sendsGpsCoordinatesWhenTrackingHike() {
+        val transport = FakeTransport(
+            postResponses = mapOf(
+                "https://example.test/api/hikes/h1/track" to HttpResponse(
+                    200,
+                    """{"progress":0.2,"distress":{"level":0}}""",
+                ),
+            ),
+        )
+        val repo = ForestMateRepository(ApiConfig("https://example.test/api"), transport)
+
+        val result = repo.trackHike(deviceToken = "t1", hikeId = "h1", progress = 0.2, lat = 37.1, lon = 127.2)
+
+        assertTrue(result is ApiResult.Success)
+        val body = JSONObject(transport.lastPostBody ?: "{}")
+        assertEquals(37.1, body.getDouble("lat"), 0.01)
+        assertEquals(127.2, body.getDouble("lon"), 0.01)
+        assertEquals("Bearer t1", transport.lastAuthorizationHeader)
+    }
+
+    @Test
+    fun registersAndLogsInEmailAccountWithLinkedDeviceToken() {
+        val authJson =
+            """{"access_token":"acct-token","expires_in":3600,"device_token":"device-token","user":{"id":"u1","email":"hiker@example.com","providers":["password"],"profile":{"name":"산친구","fit":2,"knee":false,"heart":false}}}"""
+        val transport = FakeTransport(
+            postResponses = mapOf(
+                "https://example.test/api/auth/register" to HttpResponse(201, authJson),
+                "https://example.test/api/auth/login" to HttpResponse(200, authJson),
+            ),
+        )
+        val repo = ForestMateRepository(ApiConfig("https://example.test/api"), transport)
+
+        val registered = repo.registerAccount("hiker@example.com", "password123", "device-token")
+        val loggedIn = repo.loginAccount("hiker@example.com", "password123", "device-token")
+
+        assertEquals("acct-token", successValue(registered).accessToken)
+        assertEquals("device-token", successValue(loggedIn).deviceToken)
+        assertEquals("hiker@example.com", successValue(loggedIn).email)
     }
 
     private fun <T> successValue(result: ApiResult<T>): T =
