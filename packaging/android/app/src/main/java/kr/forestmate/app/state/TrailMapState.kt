@@ -120,7 +120,7 @@ data class TrailMapState(
                 "inwangsan" -> listOf(0.0 to 0.0, 0.4 to -0.15, 0.95 to -0.05, 1.55 to 0.22, max(2.05, km * 0.78) to 0.38)
                 "achasan" -> listOf(0.0 to 0.0, 0.5 to 0.25, 1.05 to 0.7, 1.75 to 1.0, max(2.45, km * 0.72) to 1.22)
                 "dobong" -> listOf(0.0 to 0.0, 0.82 to 0.12, 1.75 to 0.52, 2.9 to 0.85, max(4.4, km * 0.7) to 1.03)
-                else -> listOf(0.0 to 0.0, (km * 0.25) to 0.1, (km * 0.55) to 0.32, (km * 0.85) to 0.48)
+                else -> listOf(0.0 to 0.0, km * 0.25 to 0.1, km * 0.55 to 0.32, km * 0.85 to 0.48)
             }
 
         private fun LatLon.offset(northKm: Double, eastKm: Double): LatLon {

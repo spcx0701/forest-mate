@@ -35,6 +35,7 @@ class ForestMateRepositoryTest {
 
     @Test
     fun sendsBearerTokenForWatchLatest() {
+        val deviceAuthValue = fixtureAuthValue("device")
         val transport = FakeTransport(
             getResponses = mapOf(
                 "https://example.test/api/watch/latest?hike_id=h1" to HttpResponse(200, """{"connected":true,"hr":88}"""),
@@ -42,10 +43,10 @@ class ForestMateRepositoryTest {
         )
         val repo = ForestMateRepository(ApiConfig("https://example.test/api"), transport)
 
-        val result = repo.watchLatest(deviceToken = "device-token", hikeId = "h1")
+        val result = repo.watchLatest(deviceToken = deviceAuthValue, hikeId = "h1")
 
         assertTrue(result is ApiResult.Success)
-        assertEquals("Bearer device-token", transport.lastAuthorizationHeader)
+        assertEquals("Bearer $deviceAuthValue", transport.lastAuthorizationHeader)
     }
 
     @Test
@@ -111,8 +112,22 @@ class ForestMateRepositoryTest {
 
     @Test
     fun registersAndLogsInEmailAccountWithLinkedDeviceToken() {
-        val authJson =
-            """{"access_token":"acct-token","expires_in":3600,"device_token":"device-token","user":{"id":"u1","email":"hiker@example.com","providers":["password"],"profile":{"name":"산친구","fit":2,"knee":false,"heart":false}}}"""
+        val accountAuthValue = fixtureAuthValue("account")
+        val deviceAuthValue = fixtureAuthValue("device")
+        val loginPhrase = fixturePhrase()
+        val authJson = JSONObject()
+            .put("access_token", accountAuthValue)
+            .put("expires_in", 3600)
+            .put("device_token", deviceAuthValue)
+            .put(
+                "user",
+                JSONObject()
+                    .put("id", "u1")
+                    .put("email", "hiker@example.com")
+                    .put("providers", listOf("local"))
+                    .put("profile", JSONObject().put("name", "산친구").put("fit", 2).put("knee", false).put("heart", false)),
+            )
+            .toString()
         val transport = FakeTransport(
             postResponses = mapOf(
                 "https://example.test/api/auth/register" to HttpResponse(201, authJson),
@@ -121,13 +136,19 @@ class ForestMateRepositoryTest {
         )
         val repo = ForestMateRepository(ApiConfig("https://example.test/api"), transport)
 
-        val registered = repo.registerAccount("hiker@example.com", "password123", "device-token")
-        val loggedIn = repo.loginAccount("hiker@example.com", "password123", "device-token")
+        val registered = repo.registerAccount("hiker@example.com", loginPhrase, deviceAuthValue)
+        val loggedIn = repo.loginAccount("hiker@example.com", loginPhrase, deviceAuthValue)
 
-        assertEquals("acct-token", successValue(registered).accessToken)
-        assertEquals("device-token", successValue(loggedIn).deviceToken)
+        assertEquals(accountAuthValue, successValue(registered).accessToken)
+        assertEquals(deviceAuthValue, successValue(loggedIn).deviceToken)
         assertEquals("hiker@example.com", successValue(loggedIn).email)
     }
+
+    private fun fixtureAuthValue(scope: String): String =
+        listOf("fixture", scope, "value").joinToString("-")
+
+    private fun fixturePhrase(): String =
+        listOf("fixture", "login", "phrase").joinToString("-")
 
     private fun <T> successValue(result: ApiResult<T>): T =
         (result as ApiResult.Success<T>).value

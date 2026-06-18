@@ -8,6 +8,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.text.InputType
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -188,6 +189,7 @@ class MainActivity : Activity() {
         }
         val password = EditText(this).apply {
             hint = "비밀번호"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             setSingleLine(true)
         }
         content.addView(NativeViews.sectionText(this, "계정"))
@@ -384,6 +386,7 @@ class MainActivity : Activity() {
         try {
             locationManager?.removeUpdates(listener)
         } catch (_: SecurityException) {
+            lastMessage = "위치 권한 상태가 변경되어 추적을 멈췄습니다."
         }
         locationListener = null
     }

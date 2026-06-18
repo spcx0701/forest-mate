@@ -70,7 +70,7 @@ object TrailMapViews {
     }
 
     private fun MapView.zoomToState(state: TrailMapState) {
-        val points = (state.routePoints + state.trackPoints + state.markers.map { it.point })
+        val points = state.routePoints + state.trackPoints + state.markers.map { it.point }
         if (points.size < 2) return
         val north = points.maxOf { it.lat }
         val south = points.minOf { it.lat }

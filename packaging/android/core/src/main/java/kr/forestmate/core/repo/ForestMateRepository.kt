@@ -17,6 +17,7 @@ import kr.forestmate.core.model.SosReceipt
 import kr.forestmate.core.model.TrackUpdate
 import kr.forestmate.core.model.WatchPairCode
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
 
@@ -135,7 +136,7 @@ class ForestMateRepository(
         }
         return try {
             ApiResult.Success(mapper(JSONObject(response.body.ifBlank { "{}" })))
-        } catch (ex: Exception) {
+        } catch (ex: JSONException) {
             ApiResult.Failure(0, "invalid response", ex)
         }
     }
@@ -150,7 +151,7 @@ class ForestMateRepository(
                 is JSONObject -> ApiResult.Success(JsonParsers.courses(root))
                 else -> ApiResult.Failure(0, "invalid response")
             }
-        } catch (ex: Exception) {
+        } catch (ex: JSONException) {
             ApiResult.Failure(0, "invalid response", ex)
         }
     }
