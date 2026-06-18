@@ -153,21 +153,16 @@ Modify `packaging/android/settings.gradle` to:
 include ':core', ':app', ':wear'
 ```
 
-Add Kotlin to `packaging/android/build.gradle` dependencies:
-
-```groovy
-dependencies {
-    classpath 'com.android.tools.build:gradle:9.2.1'
-    classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.10'
-}
-```
+Keep `packaging/android/build.gradle` on AGP 9.2.1 only. AGP 9 has built-in Kotlin
+support, so do not add `org.jetbrains.kotlin.android` or a Kotlin Gradle plugin
+classpath. Applying the old Kotlin Android plugin creates a duplicate `kotlin`
+extension and fails the build.
 
 Create `packaging/android/core/build.gradle`:
 
 ```groovy
 plugins {
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
 }
 
 android {
@@ -185,9 +180,6 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 }
 
 dependencies {
@@ -932,7 +924,6 @@ Replace `packaging/android/app/build.gradle` with:
 ```groovy
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
 }
 
 android {
@@ -959,9 +950,6 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 }
 
 dependencies {
@@ -1409,14 +1397,13 @@ git commit -m "feat(android): wire native phone flows to API"
 - Create: `packaging/android/wear/src/main/java/kr/forestmate/watch/WatchStateStore.kt`
 - Modify: `packaging/android/wear/build.gradle`
 
-- [ ] **Step 1: Update wear Gradle for Kotlin and tests**
+- [ ] **Step 1: Update wear Gradle for AGP built-in Kotlin and tests**
 
 Modify `packaging/android/wear/build.gradle`:
 
 ```groovy
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
 }
 ```
 
@@ -1430,16 +1417,13 @@ dependencies {
 }
 ```
 
-Set Java/Kotlin target to 17:
+Set Java target to 17. AGP built-in Kotlin uses `compileOptions.targetCompatibility`
+for the Kotlin JVM target, so do not add `kotlinOptions`.
 
 ```groovy
 compileOptions {
     sourceCompatibility JavaVersion.VERSION_17
     targetCompatibility JavaVersion.VERSION_17
-}
-
-kotlinOptions {
-    jvmTarget = "17"
 }
 ```
 

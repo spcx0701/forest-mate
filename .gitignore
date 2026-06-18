@@ -11,6 +11,7 @@ assets/**/concepts/
 
 # Android local SDK path
 packaging/android/local.properties
+packaging/android/core/build/
 packaging/android/wear/build/
 
 # 테스트 커버리지 산출물
