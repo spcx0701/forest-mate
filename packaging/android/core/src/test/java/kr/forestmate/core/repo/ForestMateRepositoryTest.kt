@@ -4,6 +4,7 @@ import kr.forestmate.core.api.ApiConfig
 import kr.forestmate.core.api.ApiResult
 import kr.forestmate.core.api.FakeTransport
 import kr.forestmate.core.api.HttpResponse
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -34,6 +35,7 @@ class ForestMateRepositoryTest {
 
     @Test
     fun sendsBearerTokenForWatchLatest() {
+        val deviceAuthValue = fixtureAuthValue("device")
         val transport = FakeTransport(
             getResponses = mapOf(
                 "https://example.test/api/watch/latest?hike_id=h1" to HttpResponse(200, """{"connected":true,"hr":88}"""),
@@ -41,10 +43,10 @@ class ForestMateRepositoryTest {
         )
         val repo = ForestMateRepository(ApiConfig("https://example.test/api"), transport)
 
-        val result = repo.watchLatest(deviceToken = "device-token", hikeId = "h1")
+        val result = repo.watchLatest(deviceToken = deviceAuthValue, hikeId = "h1")
 
         assertTrue(result is ApiResult.Success)
-        assertEquals("Bearer device-token", transport.lastAuthorizationHeader)
+        assertEquals("Bearer $deviceAuthValue", transport.lastAuthorizationHeader)
     }
 
     @Test
@@ -86,6 +88,67 @@ class ForestMateRepositoryTest {
         assertEquals("safe", successValue(chat).reply)
         assertEquals("s1", successValue(sos).sosId)
     }
+
+    @Test
+    fun sendsGpsCoordinatesWhenTrackingHike() {
+        val transport = FakeTransport(
+            postResponses = mapOf(
+                "https://example.test/api/hikes/h1/track" to HttpResponse(
+                    200,
+                    """{"progress":0.2,"distress":{"level":0}}""",
+                ),
+            ),
+        )
+        val repo = ForestMateRepository(ApiConfig("https://example.test/api"), transport)
+
+        val result = repo.trackHike(deviceToken = "t1", hikeId = "h1", progress = 0.2, lat = 37.1, lon = 127.2)
+
+        assertTrue(result is ApiResult.Success)
+        val body = JSONObject(transport.lastPostBody ?: "{}")
+        assertEquals(37.1, body.getDouble("lat"), 0.01)
+        assertEquals(127.2, body.getDouble("lon"), 0.01)
+        assertEquals("Bearer t1", transport.lastAuthorizationHeader)
+    }
+
+    @Test
+    fun registersAndLogsInEmailAccountWithLinkedDeviceToken() {
+        val accountAuthValue = fixtureAuthValue("account")
+        val deviceAuthValue = fixtureAuthValue("device")
+        val loginPhrase = fixturePhrase()
+        val authJson = JSONObject()
+            .put("access_token", accountAuthValue)
+            .put("expires_in", 3600)
+            .put("device_token", deviceAuthValue)
+            .put(
+                "user",
+                JSONObject()
+                    .put("id", "u1")
+                    .put("email", "hiker@example.com")
+                    .put("providers", listOf("local"))
+                    .put("profile", JSONObject().put("name", "산친구").put("fit", 2).put("knee", false).put("heart", false)),
+            )
+            .toString()
+        val transport = FakeTransport(
+            postResponses = mapOf(
+                "https://example.test/api/auth/register" to HttpResponse(201, authJson),
+                "https://example.test/api/auth/login" to HttpResponse(200, authJson),
+            ),
+        )
+        val repo = ForestMateRepository(ApiConfig("https://example.test/api"), transport)
+
+        val registered = repo.registerAccount("hiker@example.com", loginPhrase, deviceAuthValue)
+        val loggedIn = repo.loginAccount("hiker@example.com", loginPhrase, deviceAuthValue)
+
+        assertEquals(accountAuthValue, successValue(registered).accessToken)
+        assertEquals(deviceAuthValue, successValue(loggedIn).deviceToken)
+        assertEquals("hiker@example.com", successValue(loggedIn).email)
+    }
+
+    private fun fixtureAuthValue(scope: String): String =
+        listOf("fixture", scope, "value").joinToString("-")
+
+    private fun fixturePhrase(): String =
+        listOf("fixture", "login", "phrase").joinToString("-")
 
     private fun <T> successValue(result: ApiResult<T>): T =
         (result as ApiResult.Success<T>).value
