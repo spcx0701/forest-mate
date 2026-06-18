@@ -34,26 +34,29 @@ jobs:
         run: |
           echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
-      - name: Create attestation-capable builder
-        run: docker buildx create --use --name forestmate-builder
-
       - name: Publish image
         env:
           IMAGE: ghcr.io/${{ github.repository }}
         run: |
-          tags=(-t "$IMAGE:sha-${GITHUB_SHA}")
+          tags=("$IMAGE:sha-${GITHUB_SHA}")
           if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
-            tags+=(-t "$IMAGE:latest")
+            tags+=("$IMAGE:latest")
           fi
           if [ "${{ github.event_name }}" = "release" ]; then
-            tags+=(-t "$IMAGE:${GITHUB_REF_NAME}")
+            tags+=("$IMAGE:${GITHUB_REF_NAME}")
           fi
 
-          docker buildx build \
-            --push \
-            --provenance=true \
-            --sbom=true \
+          build_tags=()
+          for tag in "${tags[@]}"; do
+            build_tags+=(-t "$tag")
+          done
+
+          docker build \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            "${tags[@]}" \
+            "${build_tags[@]}" \
             .
+
+          for tag in "${tags[@]}"; do
+            docker push "$tag"
+          done
