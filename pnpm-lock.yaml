@@ -1,0 +1,30 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      fast-check:
+        specifier: 4.8.0
+        version: 4.8.0
+
+packages:
+
+  fast-check@4.8.0:
+    resolution: {integrity: sha512-GOJ158CUMnN6cSahsv4+ExARvIDuzzinFjkp0E9WtiBa5zcVeLozVkWaE4IzFcc+Y48Wp1EDlUZsXRyAztQcSg==}
+    engines: {node: '>=12.17.0'}
+
+  pure-rand@8.4.0:
+    resolution: {integrity: sha512-IoM8YF/jY0hiugFo/wOWqfmarlE6J0wc6fDK1PhftMk7MGhVZl88sZimmqBBFomLOCSmcCCpsfj7wXASCpvK9A==}
+
+snapshots:
+
+  fast-check@4.8.0:
+    dependencies:
+      pure-rand: 8.4.0
+
+  pure-rand@8.4.0: {}

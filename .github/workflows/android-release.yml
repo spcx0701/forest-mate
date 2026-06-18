@@ -70,9 +70,20 @@ jobs:
         run: pnpm run build:apk
 
       - name: Generate build provenance
+        id: apk-provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
         with:
           subject-path: packaging/android/dist/*.apk
+
+      - name: Stage release provenance bundle
+        if: ${{ github.event_name == 'release' || inputs.upload_to_release }}
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.apk-provenance.outputs.bundle-path }}
+        run: |
+          test -n "$RELEASE_TAG"
+          test -n "$PROVENANCE_BUNDLE"
+          asset_tag="${RELEASE_TAG#android-}"
+          cp "$PROVENANCE_BUNDLE" "dist/forestmate-android-${asset_tag}.sigstore.json"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -81,6 +92,7 @@ jobs:
           path: |
             packaging/android/dist/*.apk
             packaging/android/dist/*.sha256
+            packaging/android/dist/*.sigstore.json
           if-no-files-found: error
 
       - name: Upload release assets
@@ -89,4 +101,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test -n "$RELEASE_TAG"
-          gh release upload "$RELEASE_TAG" dist/*.apk dist/*.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$RELEASE_TAG" dist/*.apk dist/*.sha256 dist/*.sigstore.json --repo "$GITHUB_REPOSITORY" --clobber
