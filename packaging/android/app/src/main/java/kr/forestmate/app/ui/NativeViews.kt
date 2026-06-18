@@ -33,4 +33,18 @@ object NativeViews {
             gravity = Gravity.CENTER
             setOnClickListener { onClick() }
         }
+
+    fun actionButton(context: Context, label: String, onClick: () -> Unit): Button =
+        Button(context).apply {
+            text = label
+            isAllCaps = false
+            setOnClickListener { onClick() }
+        }
+
+    fun statusText(context: Context, textValue: String): TextView =
+        TextView(context).apply {
+            text = textValue
+            textSize = 14f
+            setTextColor(Color.rgb(36, 52, 43))
+        }
 }
