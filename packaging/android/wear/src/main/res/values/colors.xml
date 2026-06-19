@@ -1,6 +1,18 @@
 <resources>
+    <!-- 등고선 / CONTOUR watch face (system 1) -->
+    <color name="forest_cream">#F6F1E6</color>
+    <color name="forest_cream_end">#E7DEC9</color>
+    <color name="forest_ink">#16291F</color>
+    <color name="contour_ink">#163E2A</color>
+    <color name="forest_green">#1C8A4E</color>
+    <color name="forest_blue">#2E7FD6</color>
+    <color name="forest_sub">#54604F</color>
+    <color name="forest_heart">#E0322B</color>
+    <color name="forest_card">#FFFDF7</color>
+
+    <!-- legacy tokens (kept for any external refs) -->
     <color name="forest_deep">#071B11</color>
     <color name="forest_pine">#1B4332</color>
-    <color name="forest_mint">#B7E4C7</color>
-    <color name="forest_text">#F4F7F2</color>
+    <color name="forest_mint">#1C8A4E</color>
+    <color name="forest_text">#16291F</color>
 </resources>

@@ -1,0 +1,68 @@
+/* 등고선 디자인 시스템 — Contour Line motif layer (system 1 · CONTOUR).
+   Non-destructive overlay on top of app.css. Ports the cream/paper aesthetic,
+   organic ink-green contour texture, and green→teal→blue gradient accents from
+   ForestMate System.dc.html. Contour art (contour-ink.svg / contour-ghost.svg)
+   is generated from the same ring() algorithm as the design file. */
+
+:root{
+  /* paper surfaces */
+  --paper:#F6F1E6; --paper-end:#ECE4D2; --paper-card:#FFFDF7; --paper-border:#E6DFCD;
+  /* ink + text */
+  --c-ink:#16291F; --c-sub:#54604f; --c-body:#6a7163; --c-muted:#8a8a7e; --c-muted2:#9a9686;
+  /* brand spectrum */
+  --c-green:#1C8A4E; --c-teal:#22A29A; --c-blue:#2E7FD6; --c-neon:#46E59C; --c-sky:#3FB6E8;
+  /* signature gradient (use only for "what matters now") */
+  --c-grad:linear-gradient(120deg,#1C8A4E,#22A29A,#2E7FD6);
+  --c-grad-ring:linear-gradient(135deg,#46E59C,#3FB6E8);
+  /* dark index forest */
+  --c-index1:#15402B; --c-index2:#13513A;
+  /* chips & caution */
+  --c-chip-bg:#dcefe2; --c-chip-ink:#1C8A4E;
+  /* type — Space Grotesk (display) / JetBrains Mono (indicators), graceful fallback */
+  --c-mono:'JetBrains Mono','SFMono-Regular',ui-monospace,'Roboto Mono',monospace;
+  --c-display:'Space Grotesk','Pretendard',system-ui,sans-serif;
+}
+
+/* App shell: cream paper with an organic ink contour field. */
+#phone{
+  background-color:var(--paper);
+  background-image:url("contour-ink.svg"), linear-gradient(180deg,var(--paper),var(--paper-end));
+  background-size:cover, cover;
+  background-position:center, center;
+  background-repeat:no-repeat, no-repeat;
+  background-attachment:local;
+}
+
+/* Dark-forest index card with a ghost contour wash (the home summit). */
+.index-card{
+  background:linear-gradient(140deg,var(--c-index1),var(--c-index2) 72%) !important;
+  position:relative; overflow:hidden;
+}
+.index-card::after{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background:url("contour-ghost.svg") center/cover no-repeat; opacity:.8;
+}
+.index-card > *{ position:relative; z-index:1; }
+
+/* Green survey chips. */
+.chip{ background:var(--c-chip-bg) !important; color:var(--c-chip-ink) !important; }
+
+/* Monospace indicators — coordinates, indices, metrics (instrument feel). */
+.src, .idx-place, .gridtag, .loc, .offline, .live{ font-family:var(--c-mono); letter-spacing:.01em; }
+
+/* Display numerals lean on Space Grotesk. */
+.ring .val b, .st b, .kv b, .m4 .mm b, .condition-value, .plan-score{ font-family:var(--c-display); }
+
+/* Signature gradient utility for primary CTAs / "what matters now". */
+.btn.grad, .contour-cta{
+  background:var(--c-grad) !important; color:#fff !important; border:0 !important;
+}
+
+/* Contour divider — a topographic line between sections. */
+.contour-divider{
+  height:14px; margin:6px 2px; border:0;
+  background-image:radial-gradient(circle at 50% 130%, rgba(22,62,42,.16) 0 1px, transparent 2px);
+  background-size:26px 14px; background-repeat:repeat-x;
+}
+
+@media(prefers-reduced-motion:reduce){ #phone{ background-attachment:scroll; } }
