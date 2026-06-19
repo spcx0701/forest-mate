@@ -28,8 +28,8 @@ android {
         applicationId "kr.forestmate.app"
         minSdkVersion 23
         targetSdkVersion 35
-        versionCode 8
-        versionName "1.3.0"
+        versionCode 9
+        versionName "1.4.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
