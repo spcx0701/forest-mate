@@ -55,13 +55,14 @@ jobs:
           BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.BUBBLEWRAP_KEY_PASSWORD }}
           BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.BUBBLEWRAP_KEYSTORE_PASSWORD }}
         run: |
-          ./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease
+          ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease :wear:assembleRelease
           mkdir -p dist
           asset_tag="${RELEASE_TAG#android-}"
           test -n "$asset_tag" || asset_tag="local"
           cp app/build/outputs/apk/release/app-release.apk "dist/forestmate-android-${asset_tag}.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/forestmate-android-${asset_tag}.aab"
           cp wear/build/outputs/apk/release/wear-release.apk "dist/forestmate-wear-${asset_tag}.apk"
-          shasum -a 256 dist/*.apk > "dist/forestmate-android-${asset_tag}.sha256"
+          shasum -a 256 dist/*.apk dist/*.aab > "dist/forestmate-android-${asset_tag}.sha256"
 
       - name: Generate build provenance
         id: apk-provenance
@@ -85,6 +86,7 @@ jobs:
           name: forestmate-android-apks
           path: |
             packaging/android/dist/*.apk
+            packaging/android/dist/*.aab
             packaging/android/dist/*.sha256
             packaging/android/dist/*.sigstore.json
           if-no-files-found: error
