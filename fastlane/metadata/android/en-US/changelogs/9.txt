@@ -1,0 +1,7 @@
+ForestMate 1.4.0 Contour design system update.
+
+- Applies the paper-map "Contour" design system to the phone and watch apps.
+- Cream ground with living contour texture, a hike-index ring, and a green-to-blue gradient accent.
+- Redesigns the hike-index card, AI course cards, safety briefing, and bottom navigation.
+- Refreshes the watch face with a cream background, contour rings, and a progress ring.
+- Keeps all pre-Kotlin features (maps, GPS track, watch pairing, SOS, AI companion, history/badges).
