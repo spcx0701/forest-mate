@@ -9,8 +9,12 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
+import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -19,12 +23,14 @@ import kr.forestmate.app.state.LatLon
 import kr.forestmate.app.state.NavigationState
 import kr.forestmate.app.state.PhoneTab
 import kr.forestmate.app.state.TrailMapState
+import kr.forestmate.app.ui.Contour
 import kr.forestmate.app.ui.NativeViews
 import kr.forestmate.app.ui.TrailMapViews
 import kr.forestmate.core.api.ApiConfig
 import kr.forestmate.core.api.ApiResult
 import kr.forestmate.core.api.UrlConnectionTransport
 import kr.forestmate.core.model.Course
+import kr.forestmate.core.model.HikeIndex
 import kr.forestmate.core.repo.ForestMateRepository
 import org.osmdroid.config.Configuration
 import org.osmdroid.views.MapView
@@ -43,6 +49,7 @@ class MainActivity : Activity() {
     private var locationListener: LocationListener? = null
     private var tracking = false
     private var lastMessage = ""
+    private var hikeIndex: HikeIndex? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +60,7 @@ class MainActivity : Activity() {
         configureMaps()
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            background = Contour.appBackground()
         }
         setContentView(root)
         render()
@@ -113,14 +121,21 @@ class MainActivity : Activity() {
     private fun tabBar(): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(Contour.card)
+            elevation = Contour.dp(this@MainActivity, 12f).toFloat()
+            setPadding(
+                Contour.dp(this@MainActivity, 6f),
+                Contour.dp(this@MainActivity, 8f),
+                Contour.dp(this@MainActivity, 6f),
+                Contour.dp(this@MainActivity, 10f),
+            )
             PhoneTab.entries.forEach { tab ->
-                addView(
-                    NativeViews.tabButton(this@MainActivity, tab) {
-                        navigation = navigation.select(tab.id)
-                        render()
-                    },
-                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
-                )
+                val button = NativeViews.tabButton(this@MainActivity, tab) {
+                    navigation = navigation.select(tab.id)
+                    render()
+                }
+                NativeViews.styleTabSelection(button, tab == navigation.selected)
+                addView(button, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             }
         }
 
@@ -135,75 +150,352 @@ class MainActivity : Activity() {
     }
 
     private fun renderHome(content: LinearLayout, status: TextView) {
-        content.addView(NativeViews.actionButton(this, "산행지수 새로고침") { loadHome(status) })
-        content.addView(NativeViews.sectionText(this, "추천 코스"))
-        courses.forEach { course ->
-            content.addView(
-                NativeViews.actionButton(this, courseButtonText(course)) {
-                    selectCourse(course)
-                    navigation = navigation.select(PhoneTab.HIKE.id)
-                    lastMessage = "${course.name} 선택됨"
-                    render()
-                },
-            )
+        content.addView(indexCard())
+        content.addView(NativeViews.primaryButton(this, "산행지수 새로고침") { loadHome(status) })
+        content.addView(NativeViews.sectionHeader(this, "AI 맞춤 코스"))
+        courses.forEach { course -> content.addView(courseCard(course)) }
+    }
+
+    /** Dark-forest index card: score ring + greeting + 2×2 safety sub-index. */
+    private fun indexCard(): LinearLayout {
+        val card = NativeViews.heroCard(this, dark = true)
+        val idx = hikeIndex
+
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        row.addView(
+            NativeViews.ScoreRingView(this, idx?.score ?: 0),
+            LinearLayout.LayoutParams(Contour.dp(this, 92f), Contour.dp(this, 92f)).apply {
+                rightMargin = Contour.dp(this@MainActivity, 16f)
+            },
+        )
+        val rightCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        rightCol.addView(TextView(this).apply {
+            text = idx?.label ?: "산행지수를 불러오세요"
+            textSize = 17f
+            setTextColor(0xFFFFFFFF.toInt())
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        rightCol.addView(TextView(this).apply {
+            text = "오늘의 산행지수 · ${idx?.let { it.place.ifBlank { it.regionName } } ?: "위치 확인"}"
+            textSize = 11f
+            typeface = Contour.mono()
+            setTextColor(0xB3FFFFFF.toInt())
+            setPadding(0, Contour.dp(this@MainActivity, 4f), 0, Contour.dp(this@MainActivity, 10f))
+        })
+        rightCol.addView(subIndexGrid(idx))
+        row.addView(rightCol, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        card.addView(row)
+        return card
+    }
+
+    private fun subIndexGrid(idx: HikeIndex?): LinearLayout {
+        fun rowOf(a: Pair<String, String>, b: Pair<String, String>) =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(subTile(a.first, a.second), tileLp())
+                addView(subTile(b.first, b.second), tileLp())
+            }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(rowOf(
+                "산불위험" to (idx?.fireLevel?.ifBlank { "-" } ?: "-"),
+                "산악기상" to (idx?.let { "${it.temperatureC.toInt()}°C" } ?: "-"),
+            ))
+            addView(rowOf(
+                "강수확률" to (idx?.let { "${it.rainProbability}%" } ?: "-"),
+                "바람" to (idx?.let { "${"%.1f".format(it.windMps)}m/s" } ?: "-"),
+            ), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = Contour.dp(this@MainActivity, 6f) })
         }
     }
+
+    private fun tileLp(): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            rightMargin = Contour.dp(this@MainActivity, 6f)
+        }
+
+    private fun subTile(label: String, value: String): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = Contour.round(this@MainActivity, 0x1AFFFFFF, radiusDp = 8f)
+            setPadding(Contour.dp(this@MainActivity, 8f), Contour.dp(this@MainActivity, 6f), Contour.dp(this@MainActivity, 8f), Contour.dp(this@MainActivity, 6f))
+            addView(TextView(this@MainActivity).apply {
+                text = label
+                textSize = 9.5f
+                typeface = Contour.mono()
+                setTextColor(0x99FFFFFF.toInt())
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = value
+                textSize = 12.5f
+                setTextColor(0xFFFFFFFF.toInt())
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+        }
 
     private fun renderHike(content: LinearLayout, status: TextView) {
         status.text = hikeStatusText()
-        content.addView(NativeViews.sectionText(this, selectedCourse.name))
-        content.addView(NativeViews.bodyText(this, courseDetailText(selectedCourse)))
+        status.visibility = View.VISIBLE
+
+        val detail = NativeViews.card(this)
+        detail.addView(cardTitle(selectedCourse.name))
+        detail.addView(metaChips(courseChips(selectedCourse)))
+        detail.addView(NativeViews.bodyText(this, courseDetailText(selectedCourse)))
+        content.addView(detail)
+
         val map = TrailMapViews.createMap(this, mapState)
         currentMapView = map
-        content.addView(map)
+        content.addView(map, mapParams())
         content.addView(NativeViews.captionText(this, "© OpenStreetMap contributors · 추천 경로/위험 마커/GPS 트랙"))
+
         selectedCourse.hazards.forEach { hazard ->
-            content.addView(NativeViews.bodyText(this, "위험구간 ${hazard.at.percent()}: ${hazard.type} · ${hazard.grade}\n${hazard.note}"))
+            content.addView(
+                hazardCard(
+                    "위험구간 ${hazard.at.percent()} · ${hazard.type} · ${hazard.grade}",
+                    hazard.note,
+                ),
+            )
         }
-        content.addView(NativeViews.actionButton(this, if (tracking) "산행 일시정지" else "산행 시작") { toggleHike(status) })
-        content.addView(NativeViews.actionButton(this, "GPS 데모 이동") { demoGps(status) })
-        content.addView(NativeViews.actionButton(this, "산행 종료") { endHike(status) })
-        content.addView(NativeViews.actionButton(this, "Galaxy Watch 연결") { pairWatch(status) })
+
+        content.addView(NativeViews.primaryButton(this, if (tracking) "산행 일시정지" else "산행 시작") { toggleHike(status) })
+        content.addView(NativeViews.ghostButton(this, "GPS 데모 이동") { demoGps(status) })
+        content.addView(NativeViews.ghostButton(this, "산행 종료") { endHike(status) })
+        content.addView(NativeViews.primaryButton(this, "⌚ Galaxy Watch 연결") { pairWatch(status) })
     }
 
     private fun renderSos(content: LinearLayout, status: TextView) {
-        content.addView(NativeViews.bodyText(this, "국가지점번호 ${selectedCourse.gridNo}\n${selectedCourse.gps}\n${selectedCourse.fireStation}"))
-        content.addView(NativeViews.actionButton(this, "SOS 전송") { sendSos(status) })
+        val location = NativeViews.heroCard(this, dark = true)
+        location.addView(heroTitle("현재 위치"))
+        location.addView(heroLine("국가지점번호", selectedCourse.gridNo))
+        location.addView(heroLine("GPS", selectedCourse.gps))
+        location.addView(heroLine("관할 119", selectedCourse.fireStation))
+        content.addView(location)
+        content.addView(NativeViews.captionText(this, "버튼을 누르면 현재 산행 위치와 국가지점번호가 구조기관으로 전달됩니다."))
+        content.addView(NativeViews.dangerButton(this, "🆘 SOS 전송") { sendSos(status) })
     }
 
     private fun renderAi(content: LinearLayout, status: TextView) {
-        val input = EditText(this).apply {
-            hint = "숲이에게 질문"
-            setSingleLine(false)
-            setText("오늘 이 코스 안전해?")
-        }
-        content.addView(input)
-        content.addView(NativeViews.actionButton(this, "묻기") { sendChat(status, input.text.toString()) })
+        val card = NativeViews.card(this)
+        card.addView(cardTitle("AI 숲이"))
+        card.addView(NativeViews.bodyText(this, "날씨, 위험구간, 하산 여유를 물어보세요."))
+        val input = styledInput("숲이에게 질문", "오늘 이 코스 안전해?")
+        card.addView(input)
+        card.addView(NativeViews.primaryButton(this, "묻기") { sendChat(status, input.text.toString()) })
+        content.addView(card)
     }
 
     private fun renderMy(content: LinearLayout, status: TextView) {
-        val email = EditText(this).apply {
-            hint = "이메일"
-            setSingleLine(true)
-            setText(store.accountEmail)
-        }
-        val password = EditText(this).apply {
-            hint = "비밀번호"
+        val account = NativeViews.card(this)
+        account.addView(cardTitle("계정"))
+        val email = styledInput("이메일", store.accountEmail).apply { setSingleLine(true) }
+        val password = styledInput("비밀번호", "").apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             setSingleLine(true)
         }
-        content.addView(NativeViews.sectionText(this, "계정"))
-        content.addView(email)
-        content.addView(password)
-        content.addView(NativeViews.actionButton(this, "가입") { registerAccount(status, email.text.toString(), password.text.toString()) })
-        content.addView(NativeViews.actionButton(this, "로그인") { loginAccount(status, email.text.toString(), password.text.toString()) })
-        content.addView(NativeViews.actionButton(this, "기록/배지 불러오기") { loadSummary(status) })
-        content.addView(NativeViews.bodyText(this, "계정: ${store.accountEmail.ifBlank { "미연결" }}\n기기 등록: ${if (store.deviceToken.isBlank()) "대기" else "완료"}\n워치 코드: ${hikeFlow.watchPairCode ?: "없음"}"))
+        account.addView(email)
+        account.addView(password)
+        account.addView(NativeViews.primaryButton(this, "가입") { registerAccount(status, email.text.toString(), password.text.toString()) })
+        account.addView(NativeViews.ghostButton(this, "로그인") { loginAccount(status, email.text.toString(), password.text.toString()) })
+        content.addView(account)
+
+        content.addView(NativeViews.primaryButton(this, "기록/배지 불러오기") { loadSummary(status) })
+
+        val info = NativeViews.card(this)
+        info.addView(cardTitle("내 산행"))
+        info.addView(NativeViews.bodyText(this, "계정: ${store.accountEmail.ifBlank { "미연결" }}\n기기 등록: ${if (store.deviceToken.isBlank()) "대기" else "완료"}\n워치 코드: ${hikeFlow.watchPairCode ?: "없음"}"))
+        content.addView(info)
     }
+
+    // --- Contour-themed view helpers ----------------------------------------
+
+    /** AI 맞춤 코스 card: signature-gradient hero strip + match badge + grid coord. */
+    private fun courseCard(course: Course): LinearLayout {
+        val radius = Contour.dp(this, 18f)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = Contour.round(this@MainActivity, Contour.card, radiusDp = 18f, stroke = Contour.cardBorder, strokeDp = 1f)
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, radius.toFloat())
+                }
+            }
+            clipToOutline = true
+            elevation = Contour.dp(this@MainActivity, 4f).toFloat()
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.bottomMargin = Contour.dp(this@MainActivity, 14f)
+            layoutParams = lp
+        }
+
+        val hero = FrameLayout(this).apply { background = Contour.courseHeroStrip(this@MainActivity) }
+        hero.addView(
+            TextView(this).apply {
+                text = if (course.view > 0) "매칭 ${course.view}%" else "AI 추천"
+                textSize = 10f
+                typeface = Contour.mono()
+                setTextColor(0xFFFFFFFF.toInt())
+                background = Contour.pill(this@MainActivity, 0x47000000)
+                setPadding(Contour.dp(this@MainActivity, 8f), Contour.dp(this@MainActivity, 4f), Contour.dp(this@MainActivity, 8f), Contour.dp(this@MainActivity, 4f))
+            },
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START).apply {
+                leftMargin = Contour.dp(this@MainActivity, 10f)
+                topMargin = Contour.dp(this@MainActivity, 10f)
+            },
+        )
+        if (course.gridNo.isNotBlank()) {
+            hero.addView(
+                TextView(this).apply {
+                    text = "국가지점번호 ${course.gridNo}"
+                    textSize = 9f
+                    typeface = Contour.mono()
+                    setTextColor(0xE6FFFFFF.toInt())
+                },
+                FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.START).apply {
+                    leftMargin = Contour.dp(this@MainActivity, 12f)
+                    bottomMargin = Contour.dp(this@MainActivity, 9f)
+                },
+            )
+        }
+        card.addView(hero, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Contour.dp(this, 96f)))
+
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Contour.dp(this@MainActivity, 14f), Contour.dp(this@MainActivity, 12f), Contour.dp(this@MainActivity, 14f), Contour.dp(this@MainActivity, 14f))
+        }
+        body.addView(cardTitle(course.name))
+        body.addView(TextView(this).apply {
+            text = courseMetaLine(course)
+            textSize = 11.5f
+            typeface = Contour.mono()
+            setTextColor(Contour.sub)
+            setPadding(0, Contour.dp(this@MainActivity, 7f), 0, 0)
+        })
+        card.addView(body)
+
+        card.isClickable = true
+        card.setOnClickListener {
+            selectCourse(course)
+            navigation = navigation.select(PhoneTab.HIKE.id)
+            lastMessage = "${course.name} 선택됨"
+            render()
+        }
+        return card
+    }
+
+    private fun courseMetaLine(course: Course): String {
+        val time = if (course.minutes >= 60) "${course.minutes / 60}시간${(course.minutes % 60).let { if (it > 0) "${it}분" else "" }}" else "${course.minutes}분"
+        val level = course.level.ifBlank { "확인" }
+        return "▲ ${course.km}km   ◷ $time   ● 난이도 $level"
+    }
+
+    private fun courseChips(course: Course): List<String> =
+        listOf(
+            "${course.km}km",
+            course.level.ifBlank { "난이도 확인" },
+            course.crowd.ifBlank { "혼잡 확인" },
+        )
+
+    private fun metaChips(labels: List<String>): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, Contour.dp(this@MainActivity, 6f), 0, Contour.dp(this@MainActivity, 2f))
+            labels.forEach { label ->
+                addView(
+                    NativeViews.chip(this@MainActivity, label),
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { rightMargin = Contour.dp(this@MainActivity, 6f) },
+                )
+            }
+        }
+
+    private fun hazardCard(title: String, note: String): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = Contour.round(this@MainActivity, Contour.dangerBg, radiusDp = 14f, stroke = 0xFFF5C2C7.toInt(), strokeDp = 1f)
+            setPadding(Contour.dp(this@MainActivity, 13f), Contour.dp(this@MainActivity, 11f), Contour.dp(this@MainActivity, 13f), Contour.dp(this@MainActivity, 11f))
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.topMargin = Contour.dp(this@MainActivity, 6f)
+            lp.bottomMargin = Contour.dp(this@MainActivity, 6f)
+            layoutParams = lp
+            addView(TextView(this@MainActivity).apply {
+                text = title
+                textSize = 12.5f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(Contour.dangerInk)
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = note
+                textSize = 11.5f
+                setTextColor(0xFF7C4A4F.toInt())
+                setPadding(0, Contour.dp(this@MainActivity, 3f), 0, 0)
+            })
+        }
+
+    private fun cardTitle(text: String): TextView =
+        TextView(this).apply {
+            this.text = text
+            textSize = 15.5f
+            setTextColor(Contour.pine)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+
+    private fun heroTitle(text: String): TextView =
+        TextView(this).apply {
+            this.text = text
+            textSize = 17f
+            setTextColor(0xFFFFFFFF.toInt())
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, 0, 0, Contour.dp(this@MainActivity, 6f))
+        }
+
+    private fun heroBody(text: String): TextView =
+        TextView(this).apply {
+            this.text = text
+            textSize = 12.5f
+            setTextColor(0xCCFFFFFF.toInt())
+            setPadding(0, 0, 0, Contour.dp(this@MainActivity, 10f))
+        }
+
+    private fun heroLine(label: String, value: String): TextView =
+        TextView(this).apply {
+            text = "$label   $value"
+            textSize = 13f
+            setTextColor(0xFFFFFFFF.toInt())
+            setPadding(0, Contour.dp(this@MainActivity, 5f), 0, Contour.dp(this@MainActivity, 5f))
+        }
+
+    private fun styledInput(hintText: String, value: String): EditText =
+        EditText(this).apply {
+            hint = hintText
+            setText(value)
+            textSize = 14f
+            setTextColor(Contour.ink)
+            setHintTextColor(0xFF9AA8A0.toInt())
+            background = Contour.round(this@MainActivity, Contour.card, radiusDp = 12f, stroke = Contour.line, strokeDp = 1.5f)
+            setPadding(Contour.dp(this@MainActivity, 13f), Contour.dp(this@MainActivity, 12f), Contour.dp(this@MainActivity, 13f), Contour.dp(this@MainActivity, 12f))
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.topMargin = Contour.dp(this@MainActivity, 6f)
+            lp.bottomMargin = Contour.dp(this@MainActivity, 6f)
+            layoutParams = lp
+        }
+
+    private fun mapParams(): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            Contour.dp(this, 240f),
+        ).apply {
+            topMargin = Contour.dp(this@MainActivity, 6f)
+            bottomMargin = Contour.dp(this@MainActivity, 4f)
+        }
 
     private fun loadHome(status: TextView) {
         runApi(status, "산행지수와 추천을 불러오는 중...") {
-            val indexText = messageFor(repository.hikeIndex()) {
+            val indexResult = repository.hikeIndex()
+            if (indexResult is ApiResult.Success) hikeIndex = indexResult.value
+            val indexText = messageFor(indexResult) {
                 "산행지수 ${it.score}점 ${it.label} · ${it.regionName} · ${it.weatherLabel} ${it.temperatureC}°C"
             }
             val remoteCourses = repository.courses()
@@ -433,9 +725,6 @@ class MainActivity : Activity() {
             is ApiResult.Success -> success(result.value)
             is ApiResult.Failure -> result.displayMessage
         }
-
-    private fun courseButtonText(course: Course): String =
-        "${course.name} · ${course.km}km · ${course.level.ifBlank { "난이도 확인" }} · ${course.crowd.ifBlank { "혼잡 확인" }}"
 
     private fun courseDetailText(course: Course): String =
         "${course.route}\n${course.peak} · ${course.km}km · ${course.minutes}분 · 난이도 ${course.level}\n국가지점번호 ${course.gridNo}\n구조 거점 ${course.rescuePoint}\n관할 ${course.fireStation}"
