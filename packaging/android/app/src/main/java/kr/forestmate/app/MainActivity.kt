@@ -12,7 +12,9 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -308,10 +310,69 @@ class MainActivity : Activity() {
 
     // --- Contour-themed view helpers ----------------------------------------
 
+    /** AI 맞춤 코스 card: signature-gradient hero strip + match badge + grid coord. */
     private fun courseCard(course: Course): LinearLayout {
-        val card = NativeViews.card(this)
-        card.addView(cardTitle(course.name))
-        card.addView(metaChips(courseChips(course)))
+        val radius = Contour.dp(this, 18f)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = Contour.round(this@MainActivity, Contour.card, radiusDp = 18f, stroke = Contour.cardBorder, strokeDp = 1f)
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, radius.toFloat())
+                }
+            }
+            clipToOutline = true
+            elevation = Contour.dp(this@MainActivity, 4f).toFloat()
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.bottomMargin = Contour.dp(this@MainActivity, 14f)
+            layoutParams = lp
+        }
+
+        val hero = FrameLayout(this).apply { background = Contour.courseHeroStrip(this@MainActivity) }
+        hero.addView(
+            TextView(this).apply {
+                text = if (course.view > 0) "매칭 ${course.view}%" else "AI 추천"
+                textSize = 10f
+                typeface = Contour.mono()
+                setTextColor(0xFFFFFFFF.toInt())
+                background = Contour.pill(this@MainActivity, 0x47000000)
+                setPadding(Contour.dp(this@MainActivity, 8f), Contour.dp(this@MainActivity, 4f), Contour.dp(this@MainActivity, 8f), Contour.dp(this@MainActivity, 4f))
+            },
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START).apply {
+                leftMargin = Contour.dp(this@MainActivity, 10f)
+                topMargin = Contour.dp(this@MainActivity, 10f)
+            },
+        )
+        if (course.gridNo.isNotBlank()) {
+            hero.addView(
+                TextView(this).apply {
+                    text = "국가지점번호 ${course.gridNo}"
+                    textSize = 9f
+                    typeface = Contour.mono()
+                    setTextColor(0xE6FFFFFF.toInt())
+                },
+                FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.START).apply {
+                    leftMargin = Contour.dp(this@MainActivity, 12f)
+                    bottomMargin = Contour.dp(this@MainActivity, 9f)
+                },
+            )
+        }
+        card.addView(hero, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Contour.dp(this, 96f)))
+
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Contour.dp(this@MainActivity, 14f), Contour.dp(this@MainActivity, 12f), Contour.dp(this@MainActivity, 14f), Contour.dp(this@MainActivity, 14f))
+        }
+        body.addView(cardTitle(course.name))
+        body.addView(TextView(this).apply {
+            text = courseMetaLine(course)
+            textSize = 11.5f
+            typeface = Contour.mono()
+            setTextColor(Contour.sub)
+            setPadding(0, Contour.dp(this@MainActivity, 7f), 0, 0)
+        })
+        card.addView(body)
+
         card.isClickable = true
         card.setOnClickListener {
             selectCourse(course)
@@ -320,6 +381,12 @@ class MainActivity : Activity() {
             render()
         }
         return card
+    }
+
+    private fun courseMetaLine(course: Course): String {
+        val time = if (course.minutes >= 60) "${course.minutes / 60}시간${(course.minutes % 60).let { if (it > 0) "${it}분" else "" }}" else "${course.minutes}분"
+        val level = course.level.ifBlank { "확인" }
+        return "▲ ${course.km}km   ◷ $time   ● 난이도 $level"
     }
 
     private fun courseChips(course: Course): List<String> =

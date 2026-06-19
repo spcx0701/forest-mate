@@ -58,6 +58,25 @@
   background:var(--c-grad) !important; color:#fff !important; border:0 !important;
 }
 
+/* AI 맞춤 코스 hero strips: tint toward the signature spectrum + ghost contour. */
+.reco .r .thumb{ position:relative; }
+.reco .r .thumb::after{
+  content:""; position:absolute; inset:0; z-index:1; pointer-events:none; opacity:.92;
+  background:url("contour-ghost.svg") center/cover no-repeat,
+            linear-gradient(120deg, rgba(28,138,78,.42), rgba(34,162,154,.26) 52%, rgba(46,127,214,.42));
+}
+.reco .r .thumb .match, .reco .r .thumb > *{ position:relative; z-index:2; }
+
+/* Mono indicators on metric rows (instrument feel). */
+.r .meta, .stats4 .st span, .meta-row .kv span, .dir-row .dir-btn{ font-family:var(--c-mono); }
+
+/* Highlight the sunset sub-index, as in the design (neon wash). */
+.idx-grid .idx-item:last-child{ background:rgba(70,229,156,.16) !important; }
+.idx-grid .idx-item:last-child b{ color:#bff3d6 !important; }
+
+/* Section headers carry a faint contour tick before the label. */
+h2.sec{ position:relative; }
+
 /* Contour divider — a topographic line between sections. */
 .contour-divider{
   height:14px; margin:6px 2px; border:0;

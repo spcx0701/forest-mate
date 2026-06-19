@@ -163,6 +163,22 @@ object Contour {
         return LayerDrawable(arrayOf(base, field))
     }
 
+    /** Flat (square) signature-gradient strip with a ghost contour wash —
+     *  for course-card hero strips that sit under a separately-clipped card. */
+    fun courseHeroStrip(context: Context): LayerDrawable {
+        val base = signatureGradient(context, radiusDp = 0f)
+        val field = ContourBackground(
+            lineColor = ghost,
+            lineAlpha = 40,
+            rings = 12,
+            step = 16f,
+            amp = 12f,
+            cxFraction = 0.85f,
+            cyFraction = 0.2f,
+        )
+        return LayerDrawable(arrayOf(base, field))
+    }
+
     /** App background: cream paper gradient with a faint ink contour field. */
     fun appBackground(): LayerDrawable {
         val cream = GradientDrawable(
