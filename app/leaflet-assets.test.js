@@ -20,7 +20,7 @@ test("app shell loads Leaflet from same-origin vendored assets", () => {
 test("service worker precaches the same local Leaflet assets", () => {
   const sw = fs.readFileSync(path.join(appDir, "sw.js"), "utf8");
 
-  assert.match(sw, /const CACHE = "forestmate-v36";/);
+  assert.match(sw, /const CACHE = "forestmate-v37";/);
   assert.match(sw, /contour\.css\?v=/);
   assert.match(sw, new RegExp(`vendor/leaflet/leaflet\\.css\\?v=${leafletVersion}`));
   assert.match(sw, new RegExp(`vendor/leaflet/leaflet\\.js\\?v=${leafletVersion}`));

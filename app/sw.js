@@ -1,9 +1,9 @@
 /* 숲길동무 오프라인 서비스워커 — 음영지역 대비 전체 자산 캐시 (네트워크 우선) */
-const CACHE = "forestmate-v36";
+const CACHE = "forestmate-v37";
 const ASSETS = [
   "./index.html", "./vendor/leaflet/leaflet.css?v=20260618-local-leaflet", "./vendor/leaflet/leaflet.js?v=20260618-local-leaflet",
   "./vendor/leaflet/images/marker-icon.png", "./vendor/leaflet/images/marker-icon-2x.png", "./vendor/leaflet/images/marker-shadow.png", "./vendor/leaflet/images/layers.png", "./vendor/leaflet/images/layers-2x.png",
-  "./app.css?v=20260618-modal-bounce", "./contour.css?v=20260619-contour-system", "./contour-ink.svg", "./contour-ghost.svg", "./app.js?v=20260618-local-leaflet", "./condition-details.js?v=20260617-leaflet-map", "./hero-images.js?v=20260618-hero-proxy", "./data.js",
+  "./app.css?v=20260618-modal-bounce", "./contour.css?v=20260619-contour-fit", "./contour-ink.svg", "./contour-ghost.svg", "./app.js?v=20260618-local-leaflet", "./condition-details.js?v=20260617-leaflet-map", "./hero-images.js?v=20260618-hero-proxy", "./data.js",
   "./dashboard.html", "./home.html", "./home.i18n.js?v=20260618-civic-badges",
   "./manifest.json", "./icon-192.png", "./icon-512.png",
 ];
