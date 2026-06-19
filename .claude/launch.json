@@ -4,8 +4,9 @@
     {
       "name": "forestmate-web",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "app"],
-      "port": 8765
+      "runtimeArgs": ["scripts/dev_preview_server.py"],
+      "port": 8770,
+      "autoPort": true
     }
   ]
 }
