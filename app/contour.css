@@ -1,3 +1,11 @@
+/* Brand fonts (self-hosted woff2 — CSP font-src 'self', offline-safe).
+   Space Grotesk = display/numerals · JetBrains Mono = indicators · Pretendard = 한글. */
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500;font-display:swap;src:url("fonts/space-grotesk-500.woff2") format("woff2")}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:700;font-display:swap;src:url("fonts/space-grotesk-700.woff2") format("woff2")}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:500;font-display:swap;src:url("fonts/jetbrains-mono-500.woff2") format("woff2")}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:700;font-display:swap;src:url("fonts/jetbrains-mono-700.woff2") format("woff2")}
+@font-face{font-family:'Pretendard';font-style:normal;font-weight:45 920;font-display:swap;src:url("fonts/pretendard-variable.woff2") format("woff2")}
+
 /* 등고선 디자인 시스템 — Contour Line motif layer (system 1 · CONTOUR).
    Non-destructive overlay on top of app.css. Ports the cream/paper aesthetic,
    organic ink-green contour texture, and green→teal→blue gradient accents from
@@ -21,6 +29,11 @@
   /* type — Space Grotesk (display) / JetBrains Mono (indicators), graceful fallback */
   --c-mono:'JetBrains Mono','SFMono-Regular',ui-monospace,'Roboto Mono',monospace;
   --c-display:'Space Grotesk','Pretendard',system-ui,sans-serif;
+}
+
+/* Korean/body type → Pretendard (matches the design); Latin fallbacks after. */
+#phone, #phone input, #phone button, #phone textarea{
+  font-family:'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
 }
 
 /* App shell: cream paper with an organic ink contour field. */
