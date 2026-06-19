@@ -58,12 +58,14 @@
   background:var(--c-grad) !important; color:#fff !important; border:0 !important;
 }
 
-/* AI 맞춤 코스 hero strips: tint toward the signature spectrum + ghost contour. */
+/* AI 맞춤 코스 hero strips: keep the real photo visible, add only a faint ghost
+   contour for cohesion + a subtle bottom scrim so the badge/coordinate stay legible. */
 .reco .r .thumb{ position:relative; }
 .reco .r .thumb::after{
-  content:""; position:absolute; inset:0; z-index:1; pointer-events:none; opacity:.92;
-  background:url("contour-ghost.svg") center/cover no-repeat,
-            linear-gradient(120deg, rgba(28,138,78,.42), rgba(34,162,154,.26) 52%, rgba(46,127,214,.42));
+  content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:
+    url("contour-ghost.svg") center/cover no-repeat,
+    linear-gradient(180deg, rgba(11,30,21,0) 52%, rgba(11,30,21,.40));
 }
 .reco .r .thumb .match, .reco .r .thumb > *{ position:relative; z-index:2; }
 
