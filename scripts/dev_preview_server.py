@@ -27,7 +27,7 @@ from html import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP_DIR = os.path.join(ROOT, "app")
-BACKEND = os.environ.get("FM_BACKEND", "http://127.0.0.1:5181").rstrip("/")
+BACKEND = os.environ.get("FM_BACKEND", "https://forestmate.onrender.com").rstrip("/")
 PORT = int(os.environ.get("PORT") or os.environ.get("FM_PORT") or "8770")
 UA = "ForestMate-DevPreview/1.0"
 ALLOWED_HOST = "upload.wikimedia.org"
