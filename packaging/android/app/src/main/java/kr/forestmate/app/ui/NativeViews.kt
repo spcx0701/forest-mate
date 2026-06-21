@@ -34,36 +34,57 @@ object NativeViews {
     fun screen(context: Context, title: String, body: String): LinearLayout =
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(context, 18f), dp(context, 6f), dp(context, 18f), dp(context, 24f))
+            setPadding(dp(context, 18f), dp(context, 10f), dp(context, 18f), dp(context, 24f))
             addView(appBar(context, title, body))
         }
 
-    /** Brand app bar: pine mark + title + subtitle, on a contour-tinted strip. */
+    /** Brand app bar: pine mark + app name + location, then the active screen context. */
     fun appBar(context: Context, title: String, subtitle: String): LinearLayout =
         LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(context, 6f), 0, dp(context, 14f))
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(context, 4f), 0, dp(context, 18f))
             addView(
-                BrandMarkView(context),
-                LinearLayout.LayoutParams(dp(context, 38f), dp(context, 38f)).apply {
-                    rightMargin = dp(context, 10f)
+                LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(
+                        BrandMarkView(context),
+                        LinearLayout.LayoutParams(dp(context, 44f), dp(context, 44f)).apply {
+                            rightMargin = dp(context, 12f)
+                        },
+                    )
+                    addView(TextView(context).apply {
+                        text = "숲길동무"
+                        setTextColor(Contour.pine)
+                        textSize = 25f
+                        typeface = Contour.black()
+                    }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                    addView(TextView(context).apply {
+                        text = "📍 서울 은평구 ▾"
+                        setTextColor(Contour.sub)
+                        textSize = 12.5f
+                        typeface = Contour.bold()
+                        background = Contour.pill(context, Contour.withAlpha(Contour.card, 220), stroke = Contour.cardBorder, strokeDp = 1f)
+                        setPadding(dp(context, 10f), dp(context, 7f), dp(context, 10f), dp(context, 7f))
+                    })
                 },
             )
             addView(
                 LinearLayout(context).apply {
+                    setPadding(0, dp(context, 22f), 0, 0)
                     orientation = LinearLayout.VERTICAL
                     addView(TextView(context).apply {
                         text = title
                         setTextColor(Contour.pine)
-                        textSize = 20f
+                        textSize = 22f
                         typeface = Contour.black()
                     })
                     addView(TextView(context).apply {
                         text = subtitle
                         setTextColor(Contour.muted)
-                        textSize = 11f
-                        typeface = Contour.mono()
+                        textSize = 12.5f
+                        typeface = Contour.bold()
+                        setPadding(0, dp(context, 5f), 0, 0)
                     })
                 },
             )

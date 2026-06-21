@@ -7,8 +7,8 @@ const {
   WidthType, ShadingType, VerticalAlign, PageNumber, PageBreak,
 } = require("docx");
 
-const ASSETS = "/Users/dong9733/Documents/LYT Kit 2/forest-mate/assets";
-const OUT = "/Users/dong9733/Documents/LYT Kit 2/forest-mate/deliverables/숲길동무_기획서_제품서비스개발부문.docx";
+const ASSETS = path.join(__dirname, "assets");
+const OUT = path.join(__dirname, "deliverables", "숲길동무_기획서_제품서비스개발부문.docx");
 
 const PINE = "1B4332", MOSS = "2D6A4F", LEAF = "40916C", PALE = "D8F3DC",
       INK = "1D2B22", SUB = "6B7F72", AMBER = "B35309", RED = "C1121F",
@@ -147,7 +147,7 @@ const headTable = [
           para([t("구글: ", { bold: true }), fillBox("【플레이스토어 비공개 테스트 트랙 운영 중 — 접수 전 공개 URL 기재】")], { spacing: { after: 60 } }),
           para([t("애플: ", { bold: true }), fillBox("【TestFlight 심사 중 — 접수 전 URL 기재】")], { spacing: { after: 60 } }),
           para([t("웹(관제 데모): ", { bold: true }), fillBox("【배포 URL 기재 — 동봉 프로토타입(forest-mate/app) 호스팅 후 입력】")], { spacing: { after: 60 } }),
-          para([t("기타: 시연용 프로토타입 일체(모바일 앱 5개 화면·관제 웹)와 시연 시나리오를 본 기획서 4장에 수록", { size: 17, color: SUB })], { spacing: { after: 0 } }),
+          para([t("기타: 시연용 프로토타입 일체(모바일 앱 5개 화면·워치(Wear OS)·관제 웹)와 시연 시나리오를 본 기획서 4장에 수록", { size: 17, color: SUB })], { spacing: { after: 0 } }),
         ], { width: 7838 }),
       ]}),
     ],
@@ -161,7 +161,7 @@ const sec1 = [
   new Table({
     width: { size: CW, type: WidthType.DXA }, columnWidths: [CW],
     rows: [new TableRow({ children: [cell([
-      para([t("숲길동무", { bold: true }), t("는 산림청 등산로 공간정보, 국립산림과학원 산불위험예보·산악기상, 산사태 위험지도 등 "), t("10종의 산림 공공·빅데이터를 AI로 융합", { bold: true }), t("해 ‘맞춤 코스 추천 → 실시간 위험 경고 → 조난 자동 감지·신고 → 관제 대응’까지 산행의 전 과정을 지켜주는 모바일 앱(iOS·Android)·웹 서비스입니다.")], { spacing: { after: 100 } }),
+      para([t("숲길동무", { bold: true }), t("는 산림청 등산로 공간정보, 국립산림과학원 산불위험예보·산악기상, 산사태 위험지도 등 "), t("10종의 산림 공공·빅데이터를 AI로 융합", { bold: true }), t("해 ‘맞춤 코스 추천 → 실시간 위험 경고 → 조난 자동 감지·신고 → 관제 대응’까지 산행의 전 과정을 지켜주는 모바일 앱(iOS·Android)·워치(Wear OS)·웹 서비스입니다.")], { spacing: { after: 100 } }),
       para([t("연평균 "), t("1만 443건의 산악사고", { bold: true, color: RED }), t("와 자력 신고가 불가능한 조난 상황에서 "), t("골든타임을 단축", { bold: true }), t("하고, 월 1회 이상 산을 찾는 "), t("3,229만 국민", { bold: true }), t(" — 특히 산행 인구 비율이 가장 높은 60대 이상(91%) — 누구나 안전하고 즐거운 산행을 누리도록 돕습니다. (299자)")], { spacing: { after: 0 } }),
     ], { width: CW, fill: LIGHT })] })],
   }),
@@ -236,13 +236,27 @@ const sec4 = [
     { file: "app_my.png", label: "마이 — 산행 리포트·1일 안심보험" },
   ]),
   para([t("앱은 Flutter 단일 코드베이스로 iOS·Android에 동시 배포하며, PWA 패키징(TWA)으로 웹 설치도 지원합니다. 등산로·지도 타일·비전 모델은 산행 전 자동 다운로드되어 통신 음영지역에서도 핵심 기능이 동작합니다.", { size: 18 })], { spacing: { before: 120 } }),
-  h2("4-2. 서비스 구성 — 웹 (랜딩 + B2G 관제)"),
+  h2("4-2. 서비스 구성 — 워치(Wear OS) 안전 연동 (개발 완료 프로토타입)"),
+  new Table({
+    width: { size: CW, type: WidthType.DXA }, columnWidths: [3000, 6638],
+    rows: [new TableRow({ children: [
+      cell([img("app_watch.png", 200)], { width: 3000, vAlign: VerticalAlign.CENTER }),
+      cell([
+        para([t("스마트워치만으로 "), t("심박·GPS가 실시간 전송", { bold: true }), t("되어, 휴대폰을 꺼내지 않아도 손목에서 안전이 작동합니다. 등고선(Contour) 디자인 워치 페이스에 산행 진행률·코스·실시간 심박을 한눈에 표시합니다.", { size: 18 })], { spacing: { after: 80 } }),
+        bullet([t("심박 연동 조난 자동감지: ", { bold: true }), t("이동 정지 + 심박 이상을 결합해 실신·추락 등 자력 신고가 불가능한 상황을 손목에서 먼저 감지")]),
+        bullet([t("손목 SOS·백업 코드 페어링: ", { bold: true }), t("휴대폰을 꺼내기 어려운 순간에도 워치에서 구조 신호 전송, 기기 분리 시 6자리 백업 코드로 산행 기록과 즉시 연결")]),
+        bullet([t("오프라인 동작: ", { bold: true }), t("Wear OS 네이티브(Kotlin) — 통신 음영지역에서도 심박·고도·배터리를 수집해 복귀 시 일괄 전송")]),
+      ], { width: 6638 }),
+    ]})],
+  }),
+  caption("등고선(Contour) 디자인 워치 페이스 — 실시간 심박·GPS·산행 진행률·손목 SOS (Galaxy Watch/Wear OS 네이티브)"),
+  h2("4-3. 서비스 구성 — 웹 (랜딩 + B2G 관제)"),
   img("dashboard.png", 620),
   caption("지자체·국립공원·소방용 실시간 관제 대시보드 — 실시간 산행자 분포·이벤트 피드·AI 위험도 (개발 완료)"),
   para("실시간 산행자 분포(익명화), 구간별 AI 위험도, SOS 사건 추적, 시간대별 입산 수요예측을 제공해 관할 기관의 선제 대응을 지원합니다. 관제 화면의 시계·이벤트 피드·산행자 위치는 실시간으로 갱신됩니다."),
   img("landing.png", 540),
   caption("서비스 소개 웹 — 라이브 앱 데모 내장, 기능·데이터 출처·B2G 안내 (개발 완료)"),
-  h2("4-3. 시스템 구성도 및 핵심 AI 기술"),
+  h2("4-4. 시스템 구성도 및 핵심 AI 기술"),
   img("diagram_arch.png", 640),
   dataTable([2300, 3300, 4038],
     ["AI 엔진", "모델·기법", "입력 데이터 → 출력"],
@@ -253,7 +267,7 @@ const sec4 = [
       ["식물·독버섯 판별", "EfficientNet 경량화(온디바이스)", "사진 → 종 분류 + 독성 경고(신뢰도)"],
       ["숲해설 LLM ‘숲이’", "한국어 sLLM + RAG", "질문·위치 → 공공 지식베이스 근거 답변(4개 언어)"],
     ], { size: 18 }),
-  h2("4-4. 시연 시나리오 (발표평가 시연 순서)"),
+  h2("4-5. 시연 시나리오 (발표평가 시연 순서)"),
   dataTable([900, 2900, 5838],
     ["순서", "화면", "시연 내용"],
     [
@@ -323,7 +337,7 @@ const sec6 = [
 /* ---------- 7. 기타 ---------- */
 const sec7 = [
   h1("7. 기타 (관련 실적 및 참고 사항)"),
-  bullet([t("개발 완성도: ", { bold: true }), t("모바일 앱 5개 화면·관제 웹 대시보드 프로토타입 개발 완료(본 기획서 수록 화면은 전부 실제 구동 화면 캡처). 스토어 배포 패키징(Flutter·TWA) 진행 중 — 접수 시점에 등록 URL 기재 예정.")]),
+  bullet([t("개발 완성도: ", { bold: true }), t("모바일 앱 5개 화면·워치(Wear OS)·관제 웹 대시보드 프로토타입 개발 완료(본 기획서 수록 화면은 전부 실제 구동 화면 캡처). 스토어 배포 패키징(Flutter·TWA) 진행 중 — 접수 시점에 등록 URL 기재 예정.")]),
   bullet([t("데이터 검증: ", { bold: true }), t("공공데이터포털·산림빅데이터 거래소 데이터 10종의 획득 경로를 전수 확인, 2장 표에 URL 명기.")]),
   bullet([t("지식재산 계획: ", { bold: true }), t("‘산행 이동패턴 기반 조난위험 예측 방법’ 특허 출원 준비 중(선행기술 조사 완료).")]),
   bullet([t("팀 역량: ", { bold: true }), fillBox("【팀원 경력·수상 이력·관련 프로젝트 실적 기재】")]),

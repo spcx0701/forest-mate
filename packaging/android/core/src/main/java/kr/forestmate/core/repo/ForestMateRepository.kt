@@ -25,6 +25,9 @@ class ForestMateRepository(
     private val config: ApiConfig,
     private val transport: HttpTransport,
 ) {
+    fun health(): ApiResult<JSONObject> =
+        parse(transport.get(config.url("/healthz"))) { it }
+
     fun hikeIndex(): ApiResult<HikeIndex> =
         parse(transport.get(config.url("/index"))) { JsonParsers.hikeIndex(it) }
 
