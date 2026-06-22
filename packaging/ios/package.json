@@ -10,7 +10,7 @@
     "open": "cap open ios"
   },
   "dependencies": {
-    "@capacitor/core": "8.4.0",
+    "@capacitor/core": "8.4.1",
     "@capacitor/ios": "8.4.0",
     "@capacitor/geolocation": "8.2.0",
     "@capacitor/push-notifications": "8.1.1"
