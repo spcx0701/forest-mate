@@ -18,8 +18,8 @@ importers:
         specifier: 8.2.0
         version: 8.2.0(@capacitor/core@8.4.0)
       '@capacitor/ios':
-        specifier: 8.4.0
-        version: 8.4.0(@capacitor/core@8.4.0)
+        specifier: 8.4.1
+        version: 8.4.1(@capacitor/core@8.4.0)
       '@capacitor/push-notifications':
         specifier: 8.1.1
         version: 8.1.1(@capacitor/core@8.4.0)
@@ -43,8 +43,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
-  '@capacitor/ios@8.4.0':
-    resolution: {integrity: sha512-tnwstEdbTJ2nHAfoAwnurXgYRscWeLY+IIGdz69o24gN2Crfj9Xc0TWo8L5uFLF1LmpbUywH1IT0U1oHV8c+CA==}
+  '@capacitor/ios@8.4.1':
+    resolution: {integrity: sha512-EgcAk7NYheHMTyP3CUrA65qKs4D2UEAKgw44HI6Uk3dTw6KjLQkdLOQWvbeRncHaZ2gklfOojUoc5DlSw2lhYg==}
     peerDependencies:
       '@capacitor/core': ^8.4.0
 
@@ -434,7 +434,7 @@ snapshots:
       '@capacitor/core': 8.4.0
       '@capacitor/synapse': 1.0.4
 
-  '@capacitor/ios@8.4.0(@capacitor/core@8.4.0)':
+  '@capacitor/ios@8.4.1(@capacitor/core@8.4.0)':
     dependencies:
       '@capacitor/core': 8.4.0
 
