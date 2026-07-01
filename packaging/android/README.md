@@ -7,8 +7,8 @@
 - 패키지 ID: `kr.forestmate.app`
 - Wear OS 패키지 ID: `kr.forestmate.watch`
 - 빌드 도구: Android Gradle Plugin Kotlin native phone module + Kotlin native Wear OS module
-- 휴대폰 APK: `dist/forestmate-android-v1.3.0.apk`
-- 워치 APK: `dist/forestmate-wear-v1.3.0.apk`
+- 휴대폰 APK: `dist/forestmate-android-v1.4.2.apk`
+- 워치 APK: `dist/forestmate-wear-v1.4.2.apk`
 - 체크섬: 각 APK 옆의 `.sha256`
 
 GitHub Release workflow는 Gradle release APK를 빌드한 뒤 휴대폰 APK와 Wear OS APK만 `dist/`에 복사한다.
@@ -48,7 +48,7 @@ export BUBBLEWRAP_KEY_PASSWORD="..."
 ./gradlew --no-daemon :app:assembleRelease :wear:assembleRelease
 ```
 
-완료 후 signed release APK를 `dist/forestmate-android-v1.3.0.apk`와 `dist/forestmate-wear-v1.3.0.apk`로 복사해 함께 배포한다.
+완료 후 signed release APK를 `dist/forestmate-android-v1.4.2.apk`와 `dist/forestmate-wear-v1.4.2.apk`로 복사해 함께 배포한다.
 
 ## 3. 서명 지문 확인
 

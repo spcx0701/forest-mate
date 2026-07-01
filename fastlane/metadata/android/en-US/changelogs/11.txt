@@ -1,0 +1,4 @@
+ForestMate 1.4.2 native button reliability update.
+
+- Fixes native Android action buttons so hike, SOS, chat, account, map, and summary actions run their click handlers.
+- Adds unit coverage for the shared native button factory to prevent future clickable-button regressions.

@@ -7,9 +7,9 @@ instead of publishing the GitHub Release APK directly.
 
 - Application ID: `kr.forestmate.app`
 - Android source directory: `packaging/android`
-- Current version: `1.3.0`
-- Current version code: `8`
-- Release tag: `android-v1.3.0`
+- Current version: `1.4.2`
+- Current version code: `11`
+- Release tag: `android-v1.4.2`
 - Expected unsigned APK: `packaging/android/app/build/outputs/apk/release/app-release-unsigned.apk`
 
 ## Inclusion fit
@@ -23,10 +23,12 @@ instead of publishing the GitHub Release APK directly.
 - The build uses `google()` and `mavenCentral()` repositories.
 - No Firebase, Crashlytics, Google Play Services, AdMob, or tracking SDKs are
   included in the Android source.
-- The app should be marked `NonFreeNet` because the default native Android app
-  connects to the hosted ForestMate API service at `forestmate.onrender.com`.
-  The web app and server are source-available in this repository and can be
-  self-hosted.
+- The app should be marked `TetheredNet` because native map rendering uses
+  OpenStreetMap tile servers. The web app and FastAPI server are available in
+  this repository and can be self-hosted, so the hosted ForestMate API service
+  does not require a separate NonFreeNet declaration.
+- The current native Android interface and hiking content are Korean only; note
+  this in F-Droid metadata until English localization is available.
 
 ## Local checks
 
