@@ -30,7 +30,7 @@
 <p align="center">
   <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" align="center" height="80"></a>
   <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" align="center" height="80"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" align="center" height="54"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" align="center" height="80"></a>
   <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Get it on GitHub" src="https://tachibanagenerallaboratories.github.io/images/badges/GitHub/get-it-on-github.png" align="center" height="80"></a>
 </p>
 <p align="center">
@@ -73,7 +73,7 @@ The project ships a web app, an operations dashboard, an Android APK, and a Wear
 - **Personalization** - Includes earned badges, a hike calendar, date-based suitability planning, location/favorite alerts, and Web Push notifications.
 - **B2G monitoring dashboard** - Shows real-time KPIs, a WebSocket feed, and k-anonymized risk heatmaps for municipalities and emergency operators.
 
-Android users can download the Kotlin native `forestmate-android-vX.apk` from GitHub Releases. Galaxy Watch/Wear OS users install the Kotlin native `forestmate-wear-vX.apk` from the same Release. Web users can install the PWA path without an APK. The default Android build connects to the hosted `forestmate.onrender.com` API, so the F-Droid metadata declares the `NonFreeNet` Anti-Feature.
+Android users can download the Kotlin native `forestmate-android-vX.apk` from GitHub Releases. Galaxy Watch/Wear OS users install the Kotlin native `forestmate-wear-vX.apk` from the same Release. Web users can install the PWA path without an APK. The Android app currently provides a Korean-only interface and hiking content. It uses OpenStreetMap tile servers for map rendering, so the F-Droid metadata declares the `TetheredNet` Anti-Feature.
 
 ## B2G Monitoring Dashboard
 

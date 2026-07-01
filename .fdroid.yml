@@ -16,20 +16,21 @@ Description: |-
 
   The Android app is a Kotlin native safety companion for the published
   ForestMate API. The web client and FastAPI server source are in this
-  repository and can be self-hosted. This default build connects to the
-  hosted ForestMate API service at forestmate.onrender.com, so it is expected
-  to carry the NonFreeNet anti-feature in F-Droid metadata.
+  repository and can be self-hosted. Map rendering uses OpenStreetMap tile
+  servers, so the F-Droid metadata should declare the TetheredNet anti-feature.
+
+  The native Android interface and hiking content are currently Korean only.
 
   The Android build does not include advertising SDKs, Firebase,
   Crashlytics, Google Play Services, or proprietary tracking libraries.
 AntiFeatures:
-  - NonFreeNet
+  - TetheredNet
 RepoType: git
 Repo: https://github.com/spcx0701/forest-mate.git
 Builds:
-  - versionName: '1.3.0'
-    versionCode: 8
-    commit: android-v1.3.0
+  - versionName: '1.4.2'
+    versionCode: 11
+    commit: android-v1.4.2
     subdir: packaging/android
     gradle:
       - yes
@@ -39,5 +40,5 @@ Builds:
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^android-v[0-9]+\.[0-9]+\.[0-9]+$
 UpdateCheckData: 'packaging/android/app/build.gradle|versionCode\s+(\d+)|.|versionName\s+"([^"]+)"'
-CurrentVersion: '1.3.0'
-CurrentVersionCode: 8
+CurrentVersion: '1.4.2'
+CurrentVersionCode: 11
