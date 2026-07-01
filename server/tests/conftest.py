@@ -16,6 +16,10 @@ os.environ["ANTHROPIC_API_KEY"] = ""    # 규칙 엔진 강제
 os.environ["FORESTMATE_SKIP_CATALOG"] = "1"  # 베이크 카탈로그 적재 생략(테스트 자체 시드)
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "no_db: skip the database fixture for file-only tests")
+
+
 @pytest.fixture(scope="session")
 def client():
     from fastapi.testclient import TestClient
@@ -35,7 +39,11 @@ def client():
 
 
 @pytest.fixture(autouse=True)
-def clean_db():
+def clean_db(request):
+    if request.node.get_closest_marker("no_db"):
+        yield
+        return
+
     from server import models  # noqa: F401
     from server.db import Base, engine
 
