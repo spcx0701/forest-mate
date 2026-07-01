@@ -77,15 +77,15 @@ def test_readme_variants_keep_shared_badges_in_sync() -> None:
     assert _img_attrs(korean_blocks[3]) == _img_attrs(english_blocks[3])
 
 
-def test_readme_store_badges_share_one_display_height() -> None:
+def test_readme_store_badges_use_compact_row_height() -> None:
     for path in (README_KO, README_EN):
         store_badges = _store_badges(path)
-        assert {badge.get("height") for badge in store_badges} == {"80"}
+        assert {badge.get("height") for badge in store_badges} == {"64"}
 
 
-def test_homepage_store_badges_do_not_shrink_obtainium() -> None:
+def test_homepage_store_badges_use_compact_row_height() -> None:
     home = HOME.read_text(encoding="utf-8")
 
-    assert ".store-badge img{height:80px;" in home
+    assert ".store-badge img{height:64px;" in home
     assert "store-badge--obtainium" not in home
     assert "height:54px" not in home
