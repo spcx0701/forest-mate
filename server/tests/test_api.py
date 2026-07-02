@@ -36,6 +36,38 @@ def test_security_headers_present(client, path):
     assert "*" not in csp
 
 
+def test_root_serves_landing_page_before_static_app(client):
+    res = client.get("/")
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("text/html")
+    assert "산림 공공데이터·AI 산행 안전 플랫폼" in res.text
+    assert 'id="download"' in res.text
+    assert "AI 산행 안전 동반자" not in res.text
+
+
+@pytest.mark.no_db
+def test_root_falls_back_to_index_when_landing_page_is_missing(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from server import main
+
+    app_dir = tmp_path / "app"
+    app_dir.mkdir()
+    (app_dir / "index.html").write_text("<!doctype html><title>web app</title>", encoding="utf-8")
+
+    main._inline_csp_hashes.cache_clear()
+    monkeypatch.setattr(main, "APP_DIR", app_dir)
+    try:
+        with TestClient(main.create_app()) as local_client:
+            res = local_client.get("/")
+    finally:
+        main._inline_csp_hashes.cache_clear()
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("text/html")
+    assert "<title>web app</title>" in res.text
+
+
 def test_csp_keeps_wikipedia_thumbnail_hosts_out_of_browser(client):
     res = client.get("/index.html")
     directives = _csp_directives(res.headers["content-security-policy"])
