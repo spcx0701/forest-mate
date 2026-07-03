@@ -1,14 +1,14 @@
 /* 숲길동무 — 2026 산림 공공데이터·AI 활용 창업경진대회 2차 발표자료 (15장) */
 const pptxgen = require("pptxgenjs");
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const React = require("react");
 const RDS = require("react-dom/server");
 const sharp = require("sharp");
 const FA = require("react-icons/fa");
 
-const ASSETS = "/Users/dong9733/Documents/LYT Kit 2/forest-mate/assets";
-const OUT = "/Users/dong9733/Documents/LYT Kit 2/forest-mate/deliverables/숲길동무_발표자료.pptx";
+const ASSETS = path.join(__dirname, "assets");
+const OUT = path.join(__dirname, "deliverables", "숲길동무_발표자료.pptx");
 
 const PINE = "1B4332", MOSS = "2D6A4F", LEAF = "40916C", MINT = "74C69D",
       PALE = "D8F3DC", LIGHT = "F2F7F1", INK = "1D2B22", SUB = "6B7F72",
@@ -75,7 +75,7 @@ async function icon(Comp, color, size = 256) {
       s.addText(`숲길동무 ForestMate — 2026 산림 공공데이터·AI 활용 창업경진대회`, {
         x: 0.6, y: H - 0.42, w: 8, h: 0.3, fontSize: 9, fontFace: F,
         color: dark ? MINT : SUB, align: "left" });
-      s.addText(String(pageNo), { x: W - 1.0, y: H - 0.42, w: 0.4, h: 0.3, fontSize: 10, fontFace: F, color: dark ? MINT : SUB, align: "right" });
+      s.addText(String(pageNo), { x: W - 1, y: H - 0.42, w: 0.4, h: 0.3, fontSize: 10, fontFace: F, color: dark ? MINT : SUB, align: "right" });
     }
     return s;
   }
@@ -86,7 +86,7 @@ async function icon(Comp, color, size = 256) {
   function card(s, x, y, w, h, fill = WHITE) {
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, fill: { color: fill }, rectRadius: 0.09, shadow: mkShadow(), line: { color: "E3EAE4", width: 0.75 } });
   }
-  function chip(s, x, y, w, text, fill = PALE, color = PINE, fontSize = 10.5) {
+  function chip(s, x, y, w, text, fill = PALE, color = PINE, fontSize = 10.5) { // NOSONAR
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h: 0.34, fill: { color: fill }, rectRadius: 0.17, line: { type: "none" } });
     s.addText(text, { x, y: y - 0.012, w, h: 0.36, fontSize, bold: true, fontFace: F, color, align: "center", valign: "middle", margin: 0 });
   }
@@ -109,8 +109,8 @@ async function icon(Comp, color, size = 256) {
     const s = newSlide(true);
     // right phones
     const ph = 5.9;
-    const w2 = imgW("app_trail.png", 5.0);
-    s.addImage({ path: px("app_trail.png"), x: 10.55, y: 1.35, w: w2, h: 5.0, transparency: 12 });
+    const w2 = imgW("app_trail.png", 5);
+    s.addImage({ path: px("app_trail.png"), x: 10.55, y: 1.35, w: w2, h: 5, transparency: 12 });
     phone(s, "app_home.png", 8.45, 0.95, ph);
     s.addText("「2026년 산림 공공데이터·AI 활용 창업경진대회」  제품 및 서비스 개발 부문", {
       x: 0.75, y: 0.95, w: 7.4, h: 0.4, fontSize: 14, fontFace: F, color: MINT, bold: true, margin: 0 });
@@ -121,12 +121,12 @@ async function icon(Comp, color, size = 256) {
       { text: "맞춤 추천 → 위험 경고 → 조난 자동 감지 → 관제 대응,\n", options: { color: "CFE7D6" } },
       { text: "산행의 전 과정을 하나의 데이터 파이프라인으로 지킵니다.", options: { color: "CFE7D6" } },
     ], { x: 0.75, y: 4.05, w: 7.2, h: 0.85, fontSize: 14.5, fontFace: F, margin: 0, lineSpacingMultiple: 1.25 });
-    chip(s, 0.75, 5.30, 2.45, "산림 공공데이터 10종 융합", "FFFFFF", PINE, 11);
-    chip(s, 3.35, 5.30, 1.9, "AI 엔진 5종 탑재", "FFFFFF", PINE, 11);
-    chip(s, 5.40, 5.30, 2.5, "iOS·Android·웹 동시 지원", "FFFFFF", PINE, 11);
+    chip(s, 0.75, 5.3, 2.45, "산림 공공데이터 10종 융합", "FFFFFF", PINE, 11);
+    chip(s, 3.35, 5.3, 1.9, "AI 엔진 5종 탑재", "FFFFFF", PINE, 11);
+    chip(s, 5.4, 5.3, 2.5, "iOS·Android·웹 동시 지원", "FFFFFF", PINE, 11);
     s.addText([
-      { text: "팀명  ", options: { color: MINT, bold: true } },
-      { text: "【팀명 기재】", options: { color: WHITE } },
+      { text: "참가자  ", options: { color: MINT, bold: true } },
+      { text: "이동현", options: { color: WHITE } },
       { text: "      2026. 6.", options: { color: "9DBFA9" } },
     ], { x: 0.75, y: 6.35, w: 7, h: 0.4, fontSize: 13, fontFace: F, margin: 0 });
   }
@@ -140,17 +140,17 @@ async function icon(Comp, color, size = 256) {
     iconCircle(s, I.warn, 0.95, 2.12, 0.66, "FDECEC");
     s.addText("연평균 산악사고 구조활동", { x: 0.95, y: 2.95, w: 3.5, h: 0.35, fontSize: 13.5, bold: true, fontFace: F, color: SUB, margin: 0 });
     s.addText([{ text: "10,443", options: { fontSize: 54, bold: true, color: RED } }, { text: " 건", options: { fontSize: 20, bold: true, color: INK } }],
-      { x: 0.92, y: 3.30, w: 3.6, h: 0.95, fontFace: F, margin: 0 });
+      { x: 0.92, y: 3.3, w: 3.6, h: 0.95, fontFace: F, margin: 0 });
     s.addText("최근 3년 누계 31,330건\n사망 325명 · 부상 6,348명", { x: 0.95, y: 4.42, w: 3.5, h: 0.75, fontSize: 13, fontFace: F, color: INK, lineSpacingMultiple: 1.3, margin: 0 });
     chip(s, 0.95, 5.55, 2.9, "인명피해 11~15시 낮 시간 집중", "FDECEC", "A4161A");
     // middle doughnut (PNG)
     card(s, 4.95, 1.78, 3.75, 4.7);
-    s.addText("인명피해의 주말 집중", { x: 5.2, y: 2.0, w: 3.2, h: 0.35, fontSize: 14, bold: true, fontFace: F, color: INK, margin: 0 });
+    s.addText("인명피해의 주말 집중", { x: 5.2, y: 2, w: 3.2, h: 0.35, fontSize: 14, bold: true, fontFace: F, color: INK, margin: 0 });
     s.addImage({ path: px("donut_weekend.png"), x: 5.44, y: 2.55, w: 2.78, h: imgH("donut_weekend.png", 2.78) });
     s.addText("등산객이 몰리는 주말, 구조 수요도 함께 폭증", { x: 5.2, y: 5.65, w: 3.3, h: 0.6, fontSize: 11.5, fontFace: F, color: SUB, margin: 0 });
     // right bar (PNG)
     card(s, 9.05, 1.78, 3.7, 4.7);
-    s.addText("최근 3년 인명피해 합계", { x: 9.3, y: 2.0, w: 3.2, h: 0.35, fontSize: 14, bold: true, fontFace: F, color: INK, margin: 0 });
+    s.addText("최근 3년 인명피해 합계", { x: 9.3, y: 2, w: 3.2, h: 0.35, fontSize: 14, bold: true, fontFace: F, color: INK, margin: 0 });
     s.addImage({ path: px("bar_casualty.png"), x: 9.32, y: 2.65, w: 3.18, h: imgH("bar_casualty.png", 3.18) });
     s.addText("‘신고조차 못 하는 조난’이 가장 치명적 — 실신·추락 시 골든타임은 신고 없이 흘러갑니다.", {
       x: 9.3, y: 5.55, w: 3.25, h: 0.8, fontSize: 11.5, fontFace: F, color: "A4161A", bold: true, margin: 0 });
@@ -191,11 +191,11 @@ async function icon(Comp, color, size = 256) {
     steps.forEach(([ic, step, t1, t2, circ], i) => {
       const x = 0.6 + i * 3.235, w = 2.95;
       card(s, x, 1.95, w, 3.5);
-      iconCircle(s, ic, x + 0.28, 2.30, 0.78, circ);
-      s.addText(`STEP ${i + 1} — ${step}`, { x: x + 0.28, y: 3.30, w: w - 0.5, h: 0.3, fontSize: 11, bold: true, fontFace: F, color: LEAF, charSpacing: 1.5, margin: 0 });
+      iconCircle(s, ic, x + 0.28, 2.3, 0.78, circ);
+      s.addText(`STEP ${i + 1} — ${step}`, { x: x + 0.28, y: 3.3, w: w - 0.5, h: 0.3, fontSize: 11, bold: true, fontFace: F, color: LEAF, charSpacing: 1.5, margin: 0 });
       s.addText(t1, { x: x + 0.28, y: 3.62, w: w - 0.5, h: 0.42, fontSize: 16.5, bold: true, fontFace: F, color: INK, margin: 0 });
       s.addText(t2, { x: x + 0.28, y: 4.14, w: w - 0.52, h: 1.1, fontSize: 11.5, fontFace: F, color: SUB, lineSpacingMultiple: 1.25, margin: 0 });
-      if (i < 3) s.addText("→", { x: x + w + 0.0, y: 3.35, w: 0.32, h: 0.5, fontSize: 20, bold: true, color: LEAF, align: "center", fontFace: F, margin: 0 });
+      if (i < 3) s.addText("→", { x: x + w + 0, y: 3.35, w: 0.32, h: 0.5, fontSize: 20, bold: true, color: LEAF, align: "center", fontFace: F, margin: 0 });
     });
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.6, y: 5.85, w: 12.13, h: 0.92, fill: { color: PINE }, rectRadius: 0.09 });
     s.addText([
@@ -228,10 +228,10 @@ async function icon(Comp, color, size = 256) {
       const forest = i < 7;
       card(s, x, y, w, h, forest ? WHITE : "F4F7FA");
       s.addShape(pres.shapes.OVAL, { x: x + 0.22, y: y + 0.18, w: 0.13, h: 0.13, fill: { color: forest ? LEAF : SKY }, line: { type: "none" } });
-      s.addText(forest ? "산림 데이터" : "융복합(타 분야)", { x: x + 0.43, y: y + 0.10, w: w - 0.5, h: 0.28, fontSize: 8.5, bold: true, fontFace: F, color: forest ? LEAF : SKY, margin: 0 });
-      s.addText(t1, { x: x + 0.2, y: y + 0.40, w: w - 0.4, h: 0.52, fontSize: 12, bold: true, fontFace: F, color: INK, margin: 0 });
+      s.addText(forest ? "산림 데이터" : "융복합(타 분야)", { x: x + 0.43, y: y + 0.1, w: w - 0.5, h: 0.28, fontSize: 8.5, bold: true, fontFace: F, color: forest ? LEAF : SKY, margin: 0 });
+      s.addText(t1, { x: x + 0.2, y: y + 0.4, w: w - 0.4, h: 0.52, fontSize: 12, bold: true, fontFace: F, color: INK, margin: 0 });
       s.addText(org, { x: x + 0.2, y: y + 0.92, w: w - 0.4, h: 0.3, fontSize: 9, fontFace: F, color: SUB, margin: 0 });
-      s.addText(use, { x: x + 0.2, y: y + 1.20, w: w - 0.4, h: 0.3, fontSize: 9.5, bold: true, fontFace: F, color: MOSS, margin: 0 });
+      s.addText(use, { x: x + 0.2, y: y + 1.2, w: w - 0.4, h: 0.3, fontSize: 9.5, bold: true, fontFace: F, color: MOSS, margin: 0 });
     });
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.6, y: 5.78, w: 12.13, h: 0.95, fill: { color: LIGHT }, rectRadius: 0.09, line: { color: "D7E3D9", width: 0.75 } });
     s.addText([
@@ -241,18 +241,18 @@ async function icon(Comp, color, size = 256) {
   }
 
   /* ---------------- S6~S8 핵심 기능 (폰 목업) ---------------- */
-  function featureSlide(no, kicker, title, file, phoneLeft, blocks, chips, srcLine) {
+  function featureSlide(no, kicker, title, file, phoneLeft, blocks, chips, srcLine) { // NOSONAR
     const s = newSlide();
     kickTitle(s, kicker, title);
-    const ph = 5.0, pw = imgW(file, ph);
+    const ph = 5, pw = imgW(file, ph);
     const phX = phoneLeft ? 0.85 : W - 0.85 - pw;
     phone(s, file, phX, 1.85, ph);
     const tx = phoneLeft ? 0.85 + pw + 0.55 : 0.65, tw = W - tx - (phoneLeft ? 0.6 : pw + 1.6);
-    let y = 2.0;
+    let y = 2;
     blocks.forEach(([ic, t1, t2]) => {
       iconCircle(s, ic, tx, y + 0.04, 0.56);
       s.addText(t1, { x: tx + 0.78, y, w: tw - 0.78, h: 0.38, fontSize: 14.5, bold: true, fontFace: F, color: INK, margin: 0 });
-      s.addText(t2, { x: tx + 0.78, y: y + 0.40, w: tw - 0.78, h: 0.62, fontSize: 11.5, fontFace: F, color: SUB, lineSpacingMultiple: 1.2, margin: 0 });
+      s.addText(t2, { x: tx + 0.78, y: y + 0.4, w: tw - 0.78, h: 0.62, fontSize: 11.5, fontFace: F, color: SUB, lineSpacingMultiple: 1.2, margin: 0 });
       y += 1.18;
     });
     let cx = tx;
@@ -297,7 +297,6 @@ async function icon(Comp, color, size = 256) {
     kickTitle(s, "FEATURE 04 — 대응", "신고할 수 없는 순간, 시스템이 먼저 움직입니다");
     const ph = 4.95, pw = phone(s, "app_sos.png", 0.85, 1.82, ph);
     const tx = 0.85 + pw + 0.5;
-    const gw = imgW("diagram_golden.png", 2.1) > 9 ? 8.9 : imgW("diagram_golden.png", 2.1);
     s.addImage({ path: px("diagram_golden.png"), x: tx, y: 1.95, w: 8.9, h: imgH("diagram_golden.png", 8.9) });
     const yb = 1.95 + imgH("diagram_golden.png", 8.9) + 0.25;
     const cells = [
@@ -313,6 +312,35 @@ async function icon(Comp, color, size = 256) {
     });
   }
 
+  /* ---------------- S9.5 워치(Wear OS) ---------------- */
+  {
+    const s = newSlide();
+    kickTitle(s, "WEARABLE — 워치(Wear OS)", "휴대폰을 꺼내지 않아도, 손목에서 안전이 작동합니다");
+    const wh = 4.6, ww = imgW("app_watch.png", wh);
+    s.addImage({ path: px("app_watch.png"), x: 1.0, y: 1.95, w: ww, h: wh });
+    const tx = 1.0 + ww + 0.6, tw = W - tx - 0.6;
+    const blocks = [
+      [I.heart, "심박 연동 조난 자동감지", "이동 정지 + 심박 이상을 결합 — 실신·추락 등 자력 신고가 불가능한 상황을 손목에서 먼저 감지해 보호자·119로 전파"],
+      [I.sosR, "손목 원터치 SOS", "휴대폰을 꺼내기 어려운 순간에도 워치에서 바로 구조 신호 · 기기 분리 시 6자리 백업 코드로 산행 기록과 즉시 연결"],
+      [I.shieldG, "오프라인 수집·일괄 전송", "Wear OS 네이티브(Kotlin) — 통신 음영지역에서도 심박·고도·배터리를 수집해 복귀 시 자동 전송"],
+    ];
+    let y = 2.0;
+    blocks.forEach(([ic, t1, t2]) => {
+      iconCircle(s, ic, tx, y + 0.04, 0.58);
+      s.addText(t1, { x: tx + 0.8, y, w: tw - 0.8, h: 0.4, fontSize: 15.5, bold: true, fontFace: F, color: INK, margin: 0 });
+      s.addText(t2, { x: tx + 0.8, y: y + 0.42, w: tw - 0.8, h: 0.78, fontSize: 12, fontFace: F, color: SUB, lineSpacingMultiple: 1.22, margin: 0 });
+      y += 1.25;
+    });
+    let cx = tx;
+    [["Galaxy Watch · Wear OS", 2.25, PALE, PINE], ["등고선 워치페이스", 1.8, PALE, PINE], ["산행지수·코스·심박", 1.95, PALE, PINE]]
+      .forEach(([label, wch, fill, color]) => { chip(s, cx, y + 0.03, wch, label, fill, color); cx += wch + 0.18; });
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: tx, y: y + 0.6, w: tw, h: 0.9, fill: { color: PINE }, rectRadius: 0.09 });
+    s.addText([
+      { text: "휴대폰 · 워치 · 웹 · 관제", options: { bold: true, color: MINT } },
+      { text: "  —  하나의 안전 데이터 파이프라인으로 연결됩니다", options: { color: WHITE } },
+    ], { x: tx + 0.25, y: y + 0.6, w: tw - 0.5, h: 0.9, fontSize: 14, fontFace: F, valign: "middle", margin: 0 });
+  }
+
   /* ---------------- S10 관제 ---------------- */
   {
     const s = newSlide();
@@ -326,7 +354,7 @@ async function icon(Comp, color, size = 256) {
       [I.warnW, "SOS·조난의심 사건 추적", "구조거점 매칭, 헬기·구조대 동선 한 화면 관제"],
       [I.chart, "AI 수요예측 리포트", "시간대별 입산 예측 — 안전요원·시설 배치 근거"],
     ];
-    let y = 2.0;
+    let y = 2;
     rows.forEach(([ic, t1, t2], i) => {
       iconCircle(s, ic, tx, y, 0.56, i === 1 ? RED : PALE);
       s.addText(t1, { x: tx + 0.74, y: y - 0.03, w: tw - 0.74, h: 0.4, fontSize: 13.5, bold: true, fontFace: F, color: INK, margin: 0 });
@@ -344,8 +372,8 @@ async function icon(Comp, color, size = 256) {
   {
     const s = newSlide();
     kickTitle(s, "TECHNOLOGY", "검증된 스택 위의 AI 5종 엔진");
-    const aw = 8.0, ah = imgH("diagram_arch.png", aw);
-    s.addImage({ path: px("diagram_arch.png"), x: 0.6, y: 2.0, w: aw, h: ah });
+    const aw = 8, ah = imgH("diagram_arch.png", aw);
+    s.addImage({ path: px("diagram_arch.png"), x: 0.6, y: 2, w: aw, h: ah });
     const tx = 8.95, tw = 3.8;
     const ai = [
       ["코스 추천", "하이브리드 필터링 + 체력 프로파일"],
@@ -359,7 +387,7 @@ async function icon(Comp, color, size = 256) {
       card(s, tx, y, tw, 0.8);
       s.addText(String(i + 1), { x: tx + 0.16, y: y + 0.17, w: 0.46, h: 0.46, fontSize: 15, bold: true, color: WHITE, align: "center", valign: "middle", fontFace: F, margin: 0,
         fill: { color: MOSS }, shape: pres.shapes.OVAL });
-      s.addText(t1, { x: tx + 0.78, y: y + 0.10, w: tw - 0.9, h: 0.32, fontSize: 12.5, bold: true, fontFace: F, color: INK, margin: 0 });
+      s.addText(t1, { x: tx + 0.78, y: y + 0.1, w: tw - 0.9, h: 0.32, fontSize: 12.5, bold: true, fontFace: F, color: INK, margin: 0 });
       s.addText(t2, { x: tx + 0.78, y: y + 0.42, w: tw - 0.9, h: 0.3, fontSize: 9.5, fontFace: F, color: SUB, margin: 0 });
     });
     s.addText("Flutter(iOS·Android 단일 코드)  ·  React 관제 웹  ·  FastAPI  ·  PostGIS  ·  Airflow ETL  ·  AWS EKS  ·  TFLite 온디바이스", {
@@ -377,7 +405,12 @@ async function icon(Comp, color, size = 256) {
       { text: "국립공원공단 앱", options: { fill: { color: PINE }, color: WHITE, bold: true, align: "center", valign: "middle" } },
       { text: "숲길동무", options: { fill: { color: AMBER }, color: WHITE, bold: true, align: "center", valign: "middle" } },
     ];
-    const mk = (txt, hot = false, dim = false) => ({ text: txt, options: { align: "center", valign: "middle", color: hot ? PINE : dim ? "9AA8A0" : INK, bold: hot, fill: hot ? { color: PALE } : undefined } });
+    const mk = (txt, hot = false, dim = false) => {
+      let color = INK;
+      if (hot) color = PINE;
+      else if (dim) color = "9AA8A0";
+      return { text: txt, options: { align: "center", valign: "middle", color, bold: hot, fill: hot ? { color: PALE } : undefined } };
+    };
     const rows = [
       [mk("핵심 가치"), mk("운동 기록·배지", false, true), mk("GPS 트랙·커뮤니티", false, true), mk("공원 정보 안내", false, true), mk("산행 전 과정 안전", true)],
       [mk("공공데이터 활용"), mk("등산로 일부", false, true), mk("지도 위주", false, true), mk("자체 정보", false, true), mk("10종 실시간 융합", true)],
@@ -394,7 +427,7 @@ async function icon(Comp, color, size = 256) {
     s.addText([
       { text: "독창성 한 줄 — ", options: { bold: true, color: AMBERD } },
       { text: "예방→감시→대응→관제를 하나의 공공데이터 파이프라인으로 잇는 국내 유일 ‘안전 풀체인’. 조난을 ‘신고받는’ 것이 아니라 ‘감지하는’ 첫 서비스.", options: { color: INK } },
-    ], { x: 0.62, y: 6.35, w: 12.0, h: 0.55, fontSize: 13, fontFace: F, margin: 0 });
+    ], { x: 0.62, y: 6.35, w: 12, h: 0.55, fontSize: 13, fontFace: F, margin: 0 });
   }
 
   /* ---------------- S13 비즈니스 ---------------- */
@@ -409,14 +442,14 @@ async function icon(Comp, color, size = 256) {
     ];
     model.forEach(([ic, t1, t2, circ], i) => {
       const col = i % 2, row = Math.floor(i / 2);
-      const x = 0.6 + col * 3.1, y = 2.0 + row * 2.2, w = 2.92, h = 2.0;
+      const x = 0.6 + col * 3.1, y = 2 + row * 2.2, w = 2.92, h = 2;
       card(s, x, y, w, h);
       iconCircle(s, ic, x + 0.24, y + 0.24, 0.62, circ);
-      s.addText(t1, { x: x + 0.24, y: y + 1.0, w: w - 0.48, h: 0.38, fontSize: 13.5, bold: true, fontFace: F, color: INK, margin: 0 });
-      s.addText(t2, { x: x + 0.24, y: y + 1.40, w: w - 0.48, h: 0.55, fontSize: 10.5, fontFace: F, color: SUB, lineSpacingMultiple: 1.18, margin: 0 });
+      s.addText(t1, { x: x + 0.24, y: y + 1, w: w - 0.48, h: 0.38, fontSize: 13.5, bold: true, fontFace: F, color: INK, margin: 0 });
+      s.addText(t2, { x: x + 0.24, y: y + 1.4, w: w - 0.48, h: 0.55, fontSize: 10.5, fontFace: F, color: SUB, lineSpacingMultiple: 1.18, margin: 0 });
     });
     // revenue chart (PNG)
-    card(s, 7.0, 1.95, 5.73, 4.55);
+    card(s, 7, 1.95, 5.73, 4.55);
     s.addImage({ path: px("chart_revenue.png"), x: 7.25, y: 2.2, w: 5.25, h: imgH("chart_revenue.png", 5.25) });
     const tags = [["합계 4억 → 18.5억 → 50억", 2.6, PINE, WHITE], ["MAU 8만 → 35만 → 90만", 2.4, AMBER, WHITE]];
     let cx = 7.3;
@@ -440,7 +473,7 @@ async function icon(Comp, color, size = 256) {
       s.addText(t1, { x: x + 1.1, y: 2.12, w: w - 1.25, h: 0.4, fontSize: 14.5, bold: true, fontFace: F, color: INK, margin: 0 });
       s.addText(t2, { x: x + 1.1, y: 2.54, w: w - 1.25, h: 0.35, fontSize: 10.5, fontFace: F, color: SUB, margin: 0 });
     });
-    const rw = 8.0;
+    const rw = 8;
     s.addImage({ path: px("roadmap.png"), x: 0.6, y: 3.6, w: rw, h: imgH("roadmap.png", rw) });
     const tx = 8.95, tw = 3.8;
     const quals = [
@@ -467,10 +500,10 @@ async function icon(Comp, color, size = 256) {
     });
     s.addText([
       { text: "감사합니다  ", options: { bold: true, color: WHITE, fontSize: 20 } },
-      { text: "  숲길동무 ForestMate — 팀 【팀명 기재】", options: { color: MINT, fontSize: 13 } },
+      { text: "  숲길동무 ForestMate — 참가자 이동현", options: { color: MINT, fontSize: 13 } },
     ], { x: 7.6, y: 6.55, w: 5.3, h: 0.5, fontFace: F, align: "right", margin: 0 });
   }
 
   await pres.writeFile({ fileName: OUT });
   console.log("WROTE", OUT);
-})().catch((e) => { console.error(e); process.exit(1); });
+})().catch((e) => { console.error(e); process.exit(1); }); // NOSONAR

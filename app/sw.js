@@ -1,44 +1,46 @@
 /* 숲길동무 오프라인 서비스워커 — 음영지역 대비 전체 자산 캐시 (네트워크 우선) */
-const CACHE = "forestmate-v18";
+const CACHE = "forestmate-v38";
 const ASSETS = [
-  "./index.html", "./app.css?v=20260617-ftue-social-center-leaflet-map", "./app.js?v=20260617-server-connection-leaflet-map", "./condition-details.js?v=20260617-leaflet-map", "./data.js",
-  "./dashboard.html", "./home.html",
+  "./index.html", "./vendor/leaflet/leaflet.css?v=20260618-local-leaflet", "./vendor/leaflet/leaflet.js?v=20260618-local-leaflet",
+  "./vendor/leaflet/images/marker-icon.png", "./vendor/leaflet/images/marker-icon-2x.png", "./vendor/leaflet/images/marker-shadow.png", "./vendor/leaflet/images/layers.png", "./vendor/leaflet/images/layers-2x.png",
+  "./app.css?v=20260618-modal-bounce", "./contour.css?v=20260619-contour-fonts", "./contour-ink.svg", "./contour-ghost.svg", "./fonts/space-grotesk-500.woff2", "./fonts/space-grotesk-700.woff2", "./fonts/jetbrains-mono-500.woff2", "./fonts/jetbrains-mono-700.woff2", "./fonts/pretendard-variable.woff2", "./app.js?v=20260618-local-leaflet", "./condition-details.js?v=20260617-leaflet-map", "./hero-images.js?v=20260618-hero-proxy", "./data.js",
+  "./dashboard.html", "./home.html", "./home.i18n.js?v=20260618-civic-badges",
   "./manifest.json", "./icon-192.png", "./icon-512.png",
 ];
 
-self.addEventListener("install", (e) => {
+globalThis.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
-  self.skipWaiting();
+  globalThis.skipWaiting();
 });
 
-self.addEventListener("activate", (e) => {
+globalThis.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    ).then(() => globalThis.clients.claim())
   );
 });
 
 /* Web Push 수신 → 알림 표시 */
-self.addEventListener("push", (e) => {
+globalThis.addEventListener("push", (e) => {
   let d = {};
-  try { d = e.data.json(); } catch { d = { body: e.data && e.data.text() }; }
-  e.waitUntil(self.registration.showNotification(d.title || "숲길동무", {
+  try { d = e.data.json(); } catch { d = { body: e.data?.text() }; }
+  e.waitUntil(globalThis.registration.showNotification(d.title || "숲길동무", {
     body: d.body || "", icon: "./icon-192.png", badge: "./icon-192.png",
     data: { url: d.url || "/" }, vibrate: [80, 40, 80],
   }));
 });
-self.addEventListener("notificationclick", (e) => {
+globalThis.addEventListener("notificationclick", (e) => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || "/";
-  e.waitUntil(clients.matchAll({ type: "window" }).then((ws) => {
+  const url = e.notification.data?.url || "/";
+  e.waitUntil(globalThis.clients.matchAll({ type: "window" }).then((ws) => {
     for (const w of ws) { if ("focus" in w) return w.focus(); }
-    return clients.openWindow(url);
+    return globalThis.clients.openWindow(url);
   }));
 });
 
 /* 네트워크 연결 시 항상 최신 / 음영지역에서는 캐시 폴백 */
-self.addEventListener("fetch", (e) => {
+globalThis.addEventListener("fetch", (e) => {
   e.respondWith(
     fetch(e.request)
       .then((res) => {

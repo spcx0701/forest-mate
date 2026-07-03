@@ -1,4 +1,5 @@
 """공공데이터 어댑터 공통 — TTL 캐시 + 타임아웃 + 폴백 신호 + 키 정규화."""
+import asyncio
 import re
 import time
 from typing import Any
@@ -37,7 +38,7 @@ def service_key() -> str:
 
 
 async def fetch_json(url: str, params: dict, cache_key: str | None = None,
-                     timeout: float | None = None) -> Any:
+                     request_timeout_s: float | None = None) -> Any:
     settings = get_settings()
     key = cache_key or f"{url}|{sorted(params.items())!r}"
     now = time.monotonic()
@@ -48,8 +49,9 @@ async def fetch_json(url: str, params: dict, cache_key: str | None = None,
 
     body = ""
     try:
-        async with httpx.AsyncClient(timeout=timeout or settings.adapter_timeout_s) as client:
-            res = await client.get(url, params=params)
+        async with asyncio.timeout(request_timeout_s or settings.adapter_timeout_s):
+            async with httpx.AsyncClient(timeout=None) as client:
+                res = await client.get(url, params=params)
         body = res.text
         res.raise_for_status()
         data = res.json()  # data.go.kr는 키 오류 시 200+XML을 주기도 함 → 여기서 폴백
@@ -63,7 +65,7 @@ async def fetch_json(url: str, params: dict, cache_key: str | None = None,
 
 
 async def fetch_text(url: str, params: dict, cache_key: str | None = None,
-                     timeout: float | None = None) -> str:
+                     request_timeout_s: float | None = None) -> str:
     """XML만 제공하는 서비스(산림청 산정보 등)용 — 원문 텍스트 반환."""
     settings = get_settings()
     key = cache_key or f"text|{url}|{sorted(params.items())!r}"
@@ -75,8 +77,9 @@ async def fetch_text(url: str, params: dict, cache_key: str | None = None,
 
     body = ""
     try:
-        async with httpx.AsyncClient(timeout=timeout or settings.adapter_timeout_s) as client:
-            res = await client.get(url, params=params)
+        async with asyncio.timeout(request_timeout_s or settings.adapter_timeout_s):
+            async with httpx.AsyncClient(timeout=None) as client:
+                res = await client.get(url, params=params)
         body = res.text
         res.raise_for_status()
     except Exception as exc:

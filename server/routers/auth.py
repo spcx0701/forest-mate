@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import secrets
 from datetime import timedelta
+from typing import Annotated
 from urllib.parse import urlencode
 
 import httpx
@@ -32,6 +33,9 @@ from ..schemas import (AuthLoginIn, AuthMeOut, AuthOut, AuthRegisterIn,
                        AuthUserOut, ProfileIn)
 
 router = APIRouter()
+ACCOUNT_LOGIN_REQUIRED = "account login required"
+UNKNOWN_OAUTH_PROVIDER = "unknown oauth provider"
+OAUTH_REDIRECT_PATHS = frozenset({"/index.html", "/home.html"})
 
 OAUTH_PROVIDERS = {
     "google": {
@@ -63,8 +67,18 @@ def _provider_credentials(provider: str) -> tuple[str, str]:
         "naver": (settings.naver_client_id, settings.naver_client_secret),
     }
     if provider not in pairs:
-        raise HTTPException(404, "unknown oauth provider")
+        raise ValueError(UNKNOWN_OAUTH_PROVIDER)
     return pairs[provider]
+
+
+def _provider_config(provider: str) -> dict[str, str]:
+    if provider == "google":
+        return OAUTH_PROVIDERS["google"]
+    if provider == "kakao":
+        return OAUTH_PROVIDERS["kakao"]
+    if provider == "naver":
+        return OAUTH_PROVIDERS["naver"]
+    raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
 
 
 def _provider_configured(provider: str) -> bool:
@@ -74,9 +88,11 @@ def _provider_configured(provider: str) -> bool:
     return bool(client_id and client_secret)
 
 
-def _callback_url(request: Request, provider: str) -> str:
+def _callback_url(provider: str) -> str:
     settings = get_settings()
-    base = settings.public_base_url.rstrip("/") if settings.public_base_url else str(request.base_url).rstrip("/")
+    if not settings.public_base_url:
+        raise HTTPException(503, "PUBLIC_BASE_URL is required for OAuth")
+    base = settings.public_base_url.rstrip("/")
     return f"{base}/api/v1/auth/oauth/{provider}/callback"
 
 
@@ -138,8 +154,53 @@ def _create_user(db: Session, *, email: str | None, profile: ProfileIn | dict,
     return user
 
 
+def _safe_oauth_redirect_path(path: str | None) -> str:
+    return path if path in OAUTH_REDIRECT_PATHS else "/index.html"
+
+
 def _oauth_error(error: str) -> RedirectResponse:
-    return RedirectResponse(f"/index.html#auth_error={error}", status_code=302)
+    if error == "access_denied":
+        return RedirectResponse("/index.html#auth_error=access_denied", status_code=302)
+    if error == "invalid_oauth_callback":
+        return RedirectResponse("/index.html#auth_error=invalid_oauth_callback", status_code=302)
+    return RedirectResponse("/index.html#auth_error=oauth_failed", status_code=302)
+
+
+def _oauth_authorization_redirect(provider: str, client_id: str, redirect_uri: str, state: str) -> RedirectResponse:
+    if provider == "google":
+        query = urlencode({
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "state": state,
+            "scope": "openid email profile",
+        })
+        return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{query}", status_code=302)
+    if provider == "kakao":
+        query = urlencode({
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "state": state,
+            "scope": "profile_nickname account_email",
+        })
+        return RedirectResponse(f"https://kauth.kakao.com/oauth/authorize?{query}", status_code=302)
+    if provider == "naver":
+        query = urlencode({
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "state": state,
+        })
+        return RedirectResponse(f"https://nid.naver.com/oauth2.0/authorize?{query}", status_code=302)
+    raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
+
+
+def _oauth_success_redirect(path: str | None, token: str) -> RedirectResponse:
+    fragment = urlencode({"auth_token": token})
+    if path == "/home.html":
+        return RedirectResponse(f"/home.html#{fragment}", status_code=302)
+    return RedirectResponse(f"/index.html#{fragment}", status_code=302)
 
 
 @router.get("/auth/providers")
@@ -150,8 +211,9 @@ async def auth_providers():
     }
 
 
-@router.post("/auth/register", response_model=AuthOut, status_code=201)
-async def register(body: AuthRegisterIn, request: Request, db: Session = Depends(get_db)):
+@router.post("/auth/register", response_model=AuthOut, status_code=201,
+             responses={409: {"description": "Email already registered"}})
+async def register(body: AuthRegisterIn, request: Request, db: Annotated[Session, Depends(get_db)]):
     email = validate_email(body.email)
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "email already registered")
@@ -167,8 +229,9 @@ async def register(body: AuthRegisterIn, request: Request, db: Session = Depends
     return response
 
 
-@router.post("/auth/login", response_model=AuthOut)
-async def login(body: AuthLoginIn, request: Request, db: Session = Depends(get_db)):
+@router.post("/auth/login", response_model=AuthOut,
+             responses={401: {"description": "Invalid email, password, or account"}})
+async def login(body: AuthLoginIn, request: Request, db: Annotated[Session, Depends(get_db)]):
     email = validate_email(body.email)
     identity = db.scalar(select(AuthIdentity).where(
         AuthIdentity.provider == "password", AuthIdentity.provider_user_id == email
@@ -187,69 +250,69 @@ async def login(body: AuthLoginIn, request: Request, db: Session = Depends(get_d
     return response
 
 
-@router.get("/auth/me", response_model=AuthMeOut)
-async def me(ctx: AuthContext = Depends(get_auth_context), db: Session = Depends(get_db)):
+@router.get("/auth/me", response_model=AuthMeOut,
+            responses={401: {"description": "Account login required"}})
+async def me(ctx: Annotated[AuthContext, Depends(get_auth_context)],
+             db: Annotated[Session, Depends(get_db)]):
     if not ctx.user or not ctx.account_session:
-        raise HTTPException(401, "account login required")
+        raise HTTPException(401, ACCOUNT_LOGIN_REQUIRED)
     response = AuthMeOut(user=_user_out(db, ctx.user), device_token=_sync_linked_device(db, ctx.user))
     db.commit()
     return response
 
 
-@router.patch("/auth/me/profile", response_model=AuthMeOut)
-async def update_profile(body: ProfileIn, ctx: AuthContext = Depends(get_auth_context),
-                         db: Session = Depends(get_db)):
+@router.patch("/auth/me/profile", response_model=AuthMeOut,
+              responses={401: {"description": "Account login required"}})
+async def update_profile(body: ProfileIn, ctx: Annotated[AuthContext, Depends(get_auth_context)],
+                         db: Annotated[Session, Depends(get_db)]):
     if not ctx.user or not ctx.account_session:
-        raise HTTPException(401, "account login required")
+        raise HTTPException(401, ACCOUNT_LOGIN_REQUIRED)
     _sync_profile(ctx.user, body)
     response = AuthMeOut(user=_user_out(db, ctx.user), device_token=_sync_linked_device(db, ctx.user))
     db.commit()
     return response
 
 
-@router.post("/auth/logout")
-async def logout(ctx: AuthContext = Depends(get_auth_context), db: Session = Depends(get_db)):
+@router.post("/auth/logout", responses={401: {"description": "Account login required"}})
+async def logout(ctx: Annotated[AuthContext, Depends(get_auth_context)],
+                 db: Annotated[Session, Depends(get_db)]):
     if not ctx.account_session:
-        raise HTTPException(401, "account login required")
+        raise HTTPException(401, ACCOUNT_LOGIN_REQUIRED)
     ctx.account_session.revoked_at = utcnow()
     db.commit()
     return {"ok": True}
 
 
-@router.get("/auth/oauth/{provider}/start")
-async def oauth_start(provider: str, request: Request, db: Session = Depends(get_db),
+@router.get("/auth/oauth/{provider}/start",
+            responses={
+                404: {"description": "Unknown OAuth provider"},
+                503: {"description": "OAuth provider is not configured"},
+            })
+async def oauth_start(provider: str, db: Annotated[Session, Depends(get_db)],
                       device_token: str = "", name: str = "산친구", fit: int = 2,
                       knee: bool = False, heart: bool = False,
-                      redirect_path: str = Query("/index.html")):
+                      redirect_path: Annotated[str, Query()] = "/index.html"):
     if provider not in OAUTH_PROVIDERS:
-        raise HTTPException(404, "unknown oauth provider")
+        raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
     if not _provider_configured(provider):
         raise HTTPException(503, f"{provider} login is not configured")
     client_id, _ = _provider_credentials(provider)
+    redirect_uri = _callback_url(provider)
     state = secrets.token_urlsafe(32)
     profile = {"name": name[:16] or "산친구", "fit": fit, "knee": knee, "heart": heart}
     db.add(OAuthState(
         state_hash=token_hash(state), provider=provider, device_token=device_token[:128],
         profile_json=json.dumps(profile, ensure_ascii=False),
-        redirect_path=redirect_path if redirect_path.startswith("/") else "/index.html",
+        redirect_path=_safe_oauth_redirect_path(redirect_path),
         expires_at=utcnow() + timedelta(minutes=get_settings().auth_state_ttl_minutes),
     ))
     db.commit()
-    cfg = OAUTH_PROVIDERS[provider]
-    params = {
-        "response_type": "code",
-        "client_id": client_id,
-        "redirect_uri": _callback_url(request, provider),
-        "state": state,
-    }
-    if cfg["scope"]:
-        params["scope"] = cfg["scope"]
-    return RedirectResponse(f"{cfg['authorize_url']}?{urlencode(params)}", status_code=302)
+    return _oauth_authorization_redirect(provider, client_id, redirect_uri, state)
 
 
 async def fetch_oauth_profile(provider: str, code: str, redirect_uri: str) -> dict:
     client_id, client_secret = _provider_credentials(provider)
-    cfg = OAUTH_PROVIDERS[provider]
+    cfg = _provider_config(provider)
     data = {
         "grant_type": "authorization_code",
         "client_id": client_id,
@@ -338,25 +401,31 @@ def _social_user(db: Session, provider: str, profile: dict, requested_profile: d
     return user
 
 
-@router.get("/auth/oauth/{provider}/callback")
-async def oauth_callback(provider: str, request: Request, db: Session = Depends(get_db),
+@router.get("/auth/oauth/{provider}/callback",
+            responses={
+                404: {"description": "Unknown OAuth provider"},
+                401: {"description": "Invalid or expired OAuth state"},
+                502: {"description": "OAuth token is missing"},
+            })
+async def oauth_callback(provider: str, request: Request, db: Annotated[Session, Depends(get_db)],
                          code: str = "", state: str = "", error: str = ""):
     if error:
         return _oauth_error(error)
-    if provider not in OAUTH_PROVIDERS or not code or not state:
+    if provider not in OAUTH_PROVIDERS:
+        raise HTTPException(404, UNKNOWN_OAUTH_PROVIDER)
+    if not code or not state:
         return _oauth_error("invalid_oauth_callback")
     try:
         saved = _consume_oauth_state(db, provider, state)
         requested_profile = json.loads(saved.profile_json or "{}")
-        profile = await fetch_oauth_profile(provider, code, _callback_url(request, provider))
+        profile = await fetch_oauth_profile(provider, code, _callback_url(provider))
         user = _social_user(db, provider, profile, requested_profile)
         link_device_token_to_user(db, user, saved.device_token)
         token, _ = create_session(db, user, request.headers.get("user-agent", ""),
                                   request.client.host if request.client else "")
         _sync_linked_device(db, user)
         db.commit()
-        fragment = urlencode({"auth_token": token, "provider": provider})
-        return RedirectResponse(f"{saved.redirect_path}#{fragment}", status_code=302)
+        return _oauth_success_redirect(saved.redirect_path, token)
     except HTTPException:
         raise
     except Exception:  # noqa: BLE001

@@ -37,13 +37,14 @@ def test_answer_uses_llm_when_enabled(monkeypatch):
     seen = {}
 
     async def fake_ask_llm(message, lang, context):
+        await asyncio.sleep(0)
         seen.update(message=message, lang=lang, context=context)
         return "LLM reply"
 
     monkeypatch.setattr(chat, "get_settings", lambda: SimpleNamespace(llm_enabled=True))
     monkeypatch.setattr(llm, "ask_llm", fake_ask_llm)
 
-    res = _run(chat.answer("질문", "ko", "eunpyeong", "bukhansan", 0.5, _cond()))
+    res = _run(chat.answer("질문", "ko", "bukhansan", 0.5, _cond()))
     assert res["engine"] == "claude"
     assert res["intent"] == "llm"
     assert "위험구간:" in seen["context"]
@@ -54,6 +55,7 @@ def test_llm_adapter_builds_cached_client(monkeypatch):
 
     class FakeMessages:
         async def create(self, **kwargs):
+            await asyncio.sleep(0)
             created.append(kwargs)
             return SimpleNamespace(content=[
                 SimpleNamespace(type="tool_use", text="ignored"),

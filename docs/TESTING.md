@@ -7,7 +7,7 @@ services. Snapshot data and mocked adapters are preferred for repeatable CI.
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pip install --require-hashes -r requirements-dev.lock
 .venv/bin/python -m pytest server/tests -q
 ```
 

@@ -45,5 +45,5 @@ async def fetch_mountains(page: int = 1, rows: int = 100, search: str = "") -> t
         "pageNo": page, "numOfRows": rows, "searchWrd": search,
     }
     xml_text = await fetch_text(MNT_INFO_URL, params,
-                                cache_key=f"mnt:{search}:{page}:{rows}", timeout=_TIMEOUT)
+                                cache_key=f"mnt:{search}:{page}:{rows}", request_timeout_s=_TIMEOUT)
     return _parse(xml_text)

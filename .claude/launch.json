@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "forestmate-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["scripts/dev_preview_server.py"],
+      "port": 8770,
+      "autoPort": true
+    }
+  ]
+}

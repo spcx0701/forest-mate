@@ -2,9 +2,13 @@
 import asyncio
 import json
 import math
+from html import escape as html_escape
 from pathlib import Path
+from typing import Annotated
+from urllib.parse import quote, urlparse
 
-from fastapi import APIRouter, Depends, HTTPException
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -20,6 +24,141 @@ from ..services.scoring import fused_risk, hike_index, recommend
 
 router = APIRouter()
 
+_HERO_ALLOWED_HOST = "upload.wikimedia.org"
+_HERO_ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+_HERO_CACHE: dict[str, tuple[bytes, str]] = {}
+_HERO_CACHE_MAX_ENTRIES = 128
+_HERO_MAX_BYTES = 2_000_000
+_HERO_TIMEOUT = httpx.Timeout(4.0, connect=2.0)
+_HERO_REMOTE_CACHE_CONTROL = "public, max-age=86400"
+_HERO_FALLBACK_CACHE_CONTROL = "public, max-age=3600"
+_HERO_USER_AGENT = "ForestMate/1.0 (https://github.com/pinehill99/forest-mate)"
+
+
+def _normalize_hero_name(name: str) -> str:
+    normalized = " ".join(str(name or "").split()).split(" ")[0]
+    return normalized[:80] or "산"
+
+
+def _is_allowed_hero_image_url(url: str) -> bool:
+    parsed = urlparse(url or "")
+    return (
+        parsed.scheme == "https"
+        and parsed.netloc == _HERO_ALLOWED_HOST
+        and parsed.path.startswith("/wikipedia/")
+    )
+
+
+def _fallback_hero_svg(name: str, height: int = 0) -> bytes:
+    h = max(0, min(int(height or 0), 9999))
+    title = html_escape(name or "산")
+    top = "#52B788"
+    if h >= 1200:
+        top = "#2D6A4F"
+    elif h >= 600:
+        top = "#40916C"
+    sky = "#A8C7B5" if h >= 1200 else "#CDE7D4"
+    label = f"{title} · {h}m" if h else title
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{sky}"/><stop offset="1" stop-color="#EAF4EC"/></linearGradient></defs>
+<rect width="600" height="300" fill="url(#g)"/>
+<polygon points="0,300 150,150 260,220 380,90 500,210 600,150 600,300" fill="{top}" opacity="0.9"/>
+<polygon points="320,300 460,120 600,260 600,300" fill="{top}"/>
+<text x="24" y="280" font-family="sans-serif" font-size="22" font-weight="800" fill="#1B4332">{label}</text>
+</svg>"""
+    return svg.encode("utf-8")
+
+
+async def _fetch_wikipedia_thumbnail_url(name: str) -> str | None:
+    page_name = quote(_normalize_hero_name(name), safe="")
+    url = f"https://ko.wikipedia.org/api/rest_v1/page/summary/{page_name}"
+    try:
+        async with httpx.AsyncClient(timeout=_HERO_TIMEOUT, follow_redirects=False) as client:
+            response = await client.get(
+                url,
+                headers={"accept": "application/json", "user-agent": _HERO_USER_AGENT},
+            )
+        if response.status_code != 200:
+            return None
+        data = response.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+
+    source = data.get("thumbnail", {}).get("source")
+    if isinstance(source, str) and _is_allowed_hero_image_url(source):
+        return source
+    return None
+
+
+async def _fetch_allowed_hero_image(url: str) -> tuple[bytes, str] | None:
+    if not _is_allowed_hero_image_url(url):
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=_HERO_TIMEOUT, follow_redirects=True) as client:
+            headers = {
+                "accept": "image/webp,image/png,image/jpeg",
+                "user-agent": _HERO_USER_AGENT,
+            }
+            async with client.stream("GET", url, headers=headers) as response:
+                if response.status_code != 200:
+                    return None
+                if not _is_allowed_hero_image_url(str(response.url)):
+                    return None
+                content_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+                if content_type not in _HERO_ALLOWED_CONTENT_TYPES:
+                    return None
+                content_length = response.headers.get("content-length")
+                if content_length and int(content_length) > _HERO_MAX_BYTES:
+                    return None
+                chunks: list[bytes] = []
+                total = 0
+                async for chunk in response.aiter_bytes():
+                    total += len(chunk)
+                    if total > _HERO_MAX_BYTES:
+                        return None
+                    chunks.append(chunk)
+    except (httpx.HTTPError, ValueError):
+        return None
+    return b"".join(chunks), content_type
+
+
+def _cache_hero_image(key: str, payload: bytes, media_type: str) -> None:
+    if len(_HERO_CACHE) >= _HERO_CACHE_MAX_ENTRIES:
+        _HERO_CACHE.pop(next(iter(_HERO_CACHE)))
+    _HERO_CACHE[key] = (payload, media_type)
+
+
+@router.get("/mountain-hero")
+async def mountain_hero(name: str = "산", height: int = 0):
+    normalized_name = _normalize_hero_name(name)
+    normalized_height = max(0, min(int(height or 0), 9999))
+    cache_key = f"{normalized_name}:{normalized_height}"
+    if cached := _HERO_CACHE.get(cache_key):
+        payload, media_type = cached
+        return Response(
+            content=payload,
+            media_type=media_type,
+            headers={"Cache-Control": _HERO_REMOTE_CACHE_CONTROL},
+        )
+
+    thumbnail_url = await _fetch_wikipedia_thumbnail_url(normalized_name)
+    if thumbnail_url:
+        image = await _fetch_allowed_hero_image(thumbnail_url)
+        if image:
+            payload, media_type = image
+            _cache_hero_image(cache_key, payload, media_type)
+            return Response(
+                content=payload,
+                media_type=media_type,
+                headers={"Cache-Control": _HERO_REMOTE_CACHE_CONTROL},
+            )
+
+    return Response(
+        content=_fallback_hero_svg(normalized_name, normalized_height),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": _HERO_FALLBACK_CACHE_CONTROL},
+    )
+
 
 @router.get("/healthz")
 async def healthz():
@@ -34,8 +173,8 @@ async def regions():
 
 
 @router.get("/mountains")
-async def mountains(q: str = "", sido: str = "", page: int = 1, size: int = 30,
-                    db: Session = Depends(get_db)):
+async def mountains(db: Annotated[Session, Depends(get_db)],
+                    q: str = "", sido: str = "", page: int = 1, size: int = 30):
     """전국 산 검색 — 산림청 산정보 ETL 적재분(Mountain). 이름·시도로 필터."""
     size = max(1, min(size, 100))
     stmt = select(Mountain)
@@ -66,8 +205,8 @@ def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 @router.get("/mountains/nearby")
-async def mountains_nearby(lat: float, lon: float, radius: float = 30, limit: int = 20,
-                           db: Session = Depends(get_db)):
+async def mountains_nearby(lat: float, lon: float, db: Annotated[Session, Depends(get_db)],
+                           radius: float = 30, limit: int = 20):
     """현재 위치(GPS) 주변 산 — 좌표 보유 산 중 거리순. radius km 이내."""
     rows = db.execute(
         select(Mountain).where(Mountain.lat.is_not(None))
@@ -89,7 +228,7 @@ async def mountains_nearby(lat: float, lon: float, radius: float = 30, limit: in
 
 
 @router.get("/mountains/sido")
-async def mountains_by_sido(db: Session = Depends(get_db)):
+async def mountains_by_sido(db: Annotated[Session, Depends(get_db)]):
     """시·도별 산 개수(전국 분포 표출용)."""
     rows = db.execute(
         select(Mountain.sido, func.count()).group_by(Mountain.sido).order_by(func.count().desc())
@@ -97,8 +236,9 @@ async def mountains_by_sido(db: Session = Depends(get_db)):
     return [{"sido": s or "(미상)", "count": n} for s, n in rows]
 
 
-@router.get("/mountains/{list_no}/index")
-async def mountain_index(list_no: str, db: Session = Depends(get_db)):
+@router.get("/mountains/{list_no}/index",
+            responses={404: {"description": "Mountain not found"}})
+async def mountain_index(list_no: str, db: Annotated[Session, Depends(get_db)]):
     """선택한 산의 산행지수 — 실측 좌표가 있으면 정밀 격자·시군구로 계산."""
     m = db.get(Mountain, list_no)
     if not m:
@@ -117,7 +257,7 @@ async def mountain_index(list_no: str, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/index")
+@router.get("/index", responses={404: {"description": "Unknown region"}})
 async def index(region: str = "eunpyeong"):
     try:
         cond = await get_region_conditions(region)
@@ -128,7 +268,7 @@ async def index(region: str = "eunpyeong"):
 
 
 @router.get("/forecast")
-async def forecast(lat: float, lon: float, db: Session = Depends(get_db)):
+async def forecast(lat: float, lon: float, db: Annotated[Session, Depends(get_db)]):
     """산행 일정용 일자별 예보 — 날씨·산불 적합도(현 위치 최근접 산의 시군구로 산불)."""
     from datetime import datetime, timedelta
 
@@ -145,7 +285,13 @@ async def forecast(lat: float, lon: float, db: Session = Depends(get_db)):
         dt = datetime.strptime(d["date"], "%Y%m%d")
         # 적합도 = 날씨점수·산불점수 결합
         score = int(d["score"] * 0.6 + fire["score"] * 0.4)
-        out.append({"date": d["date"], "label": "오늘" if i == 0 else "내일" if i == 1 else f"{dt.month}/{dt.day}",
+        if i == 0:
+            label = "오늘"
+        elif i == 1:
+            label = "내일"
+        else:
+            label = f"{dt.month}/{dt.day}"
+        out.append({"date": d["date"], "label": label,
                     "dow": dows[dt.weekday()], "temp": d["temp"], "rain_prob": d["rain_prob"],
                     "fire": fire["level"], "score": score})
     return {"days": out}
@@ -164,12 +310,12 @@ async def mountain_trails(list_no: str):
 
 
 @router.get("/index/gps")
-async def index_gps(lat: float, lon: float, db: Session = Depends(get_db)):
+async def index_gps(lat: float, lon: float, db: Annotated[Session, Depends(get_db)]):
     """현재 위치(GPS) 산행지수 — 정밀 날씨격자 + 최근접 산의 시군구로 산불."""
     rows = db.execute(select(Mountain).where(Mountain.lat.is_not(None))).scalars().all()
     sgg, nearest_name = "", ""
     if rows:
-        d, nm = min(((_haversine(lat, lon, m.lat, m.lon), m) for m in rows), key=lambda x: x[0])
+        _, nm = min(((_haversine(lat, lon, m.lat, m.lon), m) for m in rows), key=lambda x: x[0])
         sgg, nearest_name = nm.sgg, nm.name
     cond = await conditions_for_region(region_for_coords(lat, lon, sgg))
     idx = hike_index(cond)
@@ -181,7 +327,8 @@ async def courses():
     return COURSES
 
 
-@router.get("/courses/{course_id}")
+@router.get("/courses/{course_id}",
+            responses={404: {"description": "Course not found"}})
 async def course_detail(course_id: str):
     course = next((c for c in COURSES if c["id"] == course_id), None)
     if not course:
@@ -204,11 +351,11 @@ async def recommend_courses(fit: int = 2, knee: bool = False, heart: bool = Fals
 @router.post("/chat")
 async def chat(body: ChatIn):
     cond = await get_region_conditions(body.region_id)
-    return await chat_service.answer(body.message, body.lang, body.region_id,
-                                     body.course_id, body.progress, cond)
+    return await chat_service.answer(body.message, body.lang, body.course_id, body.progress, cond)
 
 
-@router.post("/species/identify")
+@router.post("/species/identify",
+             responses={404: {"description": "Unknown sample"}})
 async def identify(body: SpeciesIn):
     """운영: multipart 이미지 → 온디바이스 1차 + 서버 비전 모델 2차 검증.
     데모 빌드는 샘플 ID로 도감 스냅샷을 반환한다(스키마 동일)."""

@@ -1,0 +1,6 @@
+ForestMate 1.4.1 native Contour polish.
+
+- Adds the full condition detail sheet to the native Android app: tap a hike-index tile for the hike-index gauge, evidence feed, 6-axis risk radar, signal cards, pre-departure guide, and sources.
+- Rebuilds the bottom navigation natively with the raised SOS button.
+- Improves network reliability with request timeouts and a health check.
+- Aligns the home, trail, AI, and profile screens with the Contour design.

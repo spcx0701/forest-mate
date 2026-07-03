@@ -19,8 +19,6 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <a href="https://api.reuse.software/info/github.com/spcx0701/forest-mate"><img alt="REUSE status" src="https://api.reuse.software/badge/github.com/spcx0701/forest-mate"></a>
   <a href="https://forestmate.onrender.com/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Android APK" src="https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white"></a>
-  <a href="packaging/fdroid/README.md"><img alt="F-Droid candidate" src="https://img.shields.io/badge/F--Droid-candidate-1976D2?logo=fdroid&logoColor=white"></a>
   <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-5A0FC8?logo=pwa&logoColor=white">
   <img alt="No tracking SDK" src="https://img.shields.io/badge/no_tracking_SDK-verified-0B7A75">
 </p>
@@ -30,9 +28,14 @@
 </p>
 
 <p align="center">
-  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="56"></a>
-  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="56"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" height="56"></a>
+  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" align="center" height="64"></a>
+  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" align="center" height="64"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" align="center" height="64"></a>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Get it on GitHub" src="https://tachibanagenerallaboratories.github.io/images/badges/GitHub/get-it-on-github.png" align="center" height="64"></a>
+</p>
+<p align="center">
+  <strong>Galaxy Watch / Wear OS</strong><br>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Download Wear OS APK" src="https://img.shields.io/badge/Wear%20OS%20APK-forestmate--wear--vX.apk-2D6A4F?logo=wearos&logoColor=white" align="center"></a>
 </p>
 <p align="center">
   <a href="README.md">Korean</a> &middot; <strong>English</strong>
@@ -44,11 +47,9 @@
   &middot;
   <a href="https://forestmate.onrender.com/dashboard.html"><strong>Dashboard</strong></a>
   &middot;
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>Android APK</strong></a>
+  <a href="https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408"><strong>Public Data Use Case</strong></a>
   &middot;
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>GitHub Release</strong></a>
-  &middot;
-  <a href="packaging/fdroid/README.md"><strong>F-Droid Candidate</strong></a>
+  <a href="https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK"><strong>Civic Tech Guide</strong></a>
 </p>
 
 <p align="center">
@@ -57,9 +58,9 @@
 
 ForestMate is a hiking safety service that connects **pre-hike route choice -> on-trail risk detection and SOS -> B2G monitoring** with forest public data and AI-assisted safety logic. In low-connectivity areas, it falls back to a local engine so the core safety experience keeps working.
 
-The project ships a web app, an operations dashboard, and an Android APK. With the backend connected, `/api/v1` serves live public data and hiking records. In static hosting environments, the app falls back to local data and rule-based logic so the main screens remain usable.
+The project ships a web app, an operations dashboard, an Android APK, and a Wear OS APK. With the backend connected, `/api/v1` serves live public data and hiking records. In static hosting environments, the app falls back to local data and rule-based logic so the main screens remain usable.
 
-> Submission package for the 2026 Forest Public Data and AI Startup Competition, Product and Service Development track.
+> Submission package for the 2026 Forest Public Data and AI Startup Competition, Product and Service Development track. Listed as a [public-data use case on data.go.kr](https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408) and on [Civic Tech Guide](https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK).
 
 ## Key Features
 
@@ -67,11 +68,12 @@ The project ships a web app, an operations dashboard, and an Android APK. With t
 - **Real-time hiking index** - Combines Korea Meteorological Administration short-term forecasts, the National Institute of Forest Science forest-fire danger forecast API, landslide risk, and sunset timing for mountain-specific risk scoring.
 - **Real trail maps** - Displays Korea Forest Service trail geometry for roughly 2,200 mountains and 50,000 trail segments with difficulty-colored Leaflet routes and navigation links to trailheads.
 - **GPS hike tracking** - Records real `watchPosition` movement, distance, and route instead of simulating progress. Prolonged immobility plus abnormal heart-rate signals can trigger automatic distress detection and notify guardians or emergency services.
+- **Galaxy Watch companion app** - Shows a native Wear OS hiking view with map-like route guidance, heart rate, GPS, compass, battery, and risk overlays while syncing sensor samples into the server record.
 - **AI companion** - Provides rule-engine and LLM/RAG intent responses, plus plant and mushroom identification demos.
 - **Personalization** - Includes earned badges, a hike calendar, date-based suitability planning, location/favorite alerts, and Web Push notifications.
 - **B2G monitoring dashboard** - Shows real-time KPIs, a WebSocket feed, and k-anonymized risk heatmaps for municipalities and emergency operators.
 
-Android users can download the APK from GitHub Releases. The repository also includes source-build metadata for F-Droid submission. The current Android TWA opens the hosted `forestmate.onrender.com` service, so the F-Droid metadata declares the `NonFreeNet` Anti-Feature.
+Android users can download the Kotlin native `forestmate-android-vX.apk` from GitHub Releases. Galaxy Watch/Wear OS users install the Kotlin native `forestmate-wear-vX.apk` from the same Release. Web users can install the PWA path without an APK. The default Android build connects to the hosted `forestmate.onrender.com` API, so the F-Droid metadata declares the `NonFreeNet` Anti-Feature.
 
 ## B2G Monitoring Dashboard
 
@@ -98,6 +100,7 @@ ForestMate includes a real-time monitoring web dashboard for municipalities and 
 - **Backend** FastAPI, SQLAlchemy (SQLite/PostgreSQL), Pydantic, pytest, WebSocket
 - **Frontend** PWA with service worker, offline support, Web Push, vanilla JS, and Leaflet maps
 - **Data and AI** Korea public data APIs, Korea Forest Service data, VWorld geocoding, Claude LLM/RAG
+- **Android** Kotlin native phone APK and Kotlin native Wear OS companion
 - **Infrastructure** Docker, Render, GitHub Actions CI
 
 ## Architecture
@@ -121,7 +124,7 @@ forest-mate/
 |   |-- app.js            #   API client + fallback-aware app logic
 |   `-- data.js, sw.js    #   local fallback data and offline service worker
 |-- deploy                # Dockerfile, docker-compose.yml, render.yaml, .env.example
-|-- packaging/            # Android TWA/APK and iOS Capacitor packaging
+|-- packaging/            # Android Kotlin phone APK, Kotlin Wear OS APK, and iOS Capacitor packaging
 |-- deliverables/         # proposal DOCX and presentation PPTX
 |-- legal/                # privacy policy and terms
 `-- store/                # store listing metadata and submission runbook
@@ -133,7 +136,7 @@ forest-mate/
 
 ```bash
 cd forest-mate
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements.lock
 .venv/bin/uvicorn server.main:app --port 5181
 ```
 

@@ -5,12 +5,14 @@
 지역의 (nx, ny)는 기상청 단기예보 격자 좌표, (sgg)는 산불위험예보 시군구 코드.
 """
 
+FIRE_SNAPSHOT_SOURCE = "국립산림과학원 산불위험예보(스냅샷)"
+
 REGIONS: dict[str, dict] = {
     "eunpyeong": {
         "name": "서울 은평구", "nx": 59, "ny": 127, "sgg": "11380",
         "sunset_at": "19:52",
         "snapshot": {  # 키가 없을 때 쓰는 폴백 (실 API와 동일 스키마)
-            "fire": {"level": "낮음", "score": 92, "src": "국립산림과학원 산불위험예보(스냅샷)"},
+            "fire": {"level": "낮음", "score": 92, "src": FIRE_SNAPSHOT_SOURCE},
             "landslide": {"grade": 5, "label": "안전", "score": 95},
             "weather": {"temp": 18.0, "wind": 4.2, "rain_prob": 10, "label": "맑음",
                         "score": 88, "station": "북한산 관측소"},
@@ -21,7 +23,7 @@ REGIONS: dict[str, dict] = {
         "name": "서울 종로구", "nx": 60, "ny": 127, "sgg": "11110",
         "sunset_at": "19:52",
         "snapshot": {
-            "fire": {"level": "낮음", "score": 90, "src": "국립산림과학원 산불위험예보(스냅샷)"},
+            "fire": {"level": "낮음", "score": 90, "src": FIRE_SNAPSHOT_SOURCE},
             "landslide": {"grade": 4, "label": "양호", "score": 84},
             "weather": {"temp": 19.0, "wind": 3.1, "rain_prob": 20, "label": "구름 조금",
                         "score": 80, "station": "인왕산 관측소"},
@@ -32,7 +34,7 @@ REGIONS: dict[str, dict] = {
         "name": "경기 구리시", "nx": 62, "ny": 127, "sgg": "41310",
         "sunset_at": "19:51",
         "snapshot": {
-            "fire": {"level": "보통", "score": 71, "src": "국립산림과학원 산불위험예보(스냅샷)"},
+            "fire": {"level": "보통", "score": 71, "src": FIRE_SNAPSHOT_SOURCE},
             "landslide": {"grade": 4, "label": "양호", "score": 82},
             "weather": {"temp": 20.0, "wind": 6.8, "rain_prob": 30, "label": "흐림",
                         "score": 64, "station": "아차산 인근 AWS"},

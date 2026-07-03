@@ -7,6 +7,7 @@
 계약(필드명)은 발급 후 응답 샘플로 1회 검증할 것 — 변경 시 이 모듈만 수정하면 된다.
 모든 함수는 동일 스키마를 반환하므로 서비스 레이어는 출처를 신경 쓰지 않는다.
 """
+import asyncio
 from datetime import datetime, timedelta
 
 from ..config import get_settings
@@ -136,7 +137,14 @@ async def get_fire_risk(region: dict) -> dict:
                 risk = int(float(v))
                 break
         score = max(0, 100 - risk)
-        level = "낮음" if risk < 51 else "보통" if risk < 66 else "높음" if risk < 86 else "매우 높음"
+        if risk < 51:
+            level = "낮음"
+        elif risk < 66:
+            level = "보통"
+        elif risk < 86:
+            level = "높음"
+        else:
+            level = "매우 높음"
         return {"level": level, "score": score,
                 "src": "국립산림과학원 산불위험예보", "source": "live"}
     except (AdapterError, KeyError, TypeError, ValueError):
@@ -146,6 +154,7 @@ async def get_fire_risk(region: dict) -> dict:
 async def get_landslide(region: dict) -> dict:
     """산사태 위험등급 — 산사태정보시스템은 공간 레이어(WMS/SHP) 제공이라
     운영에서는 ETL로 구간별 등급을 사전 적재한다. 여기서는 적재 결과 스냅샷."""
+    await asyncio.sleep(0)
     return {**region["snapshot"]["landslide"], "source": "etl"}
 
 

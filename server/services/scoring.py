@@ -12,9 +12,12 @@ def hike_index(cond: dict) -> dict:
         + cond["weather"]["score"] * 0.25
         + cond["sunset_score"] * 0.20
     )
-    label = ("좋음 — 산행하기 좋은 날" if score >= 80
-             else "보통 — 기상 변화에 유의" if score >= 60
-             else "주의 — 무리한 산행은 피하세요")
+    if score >= 80:
+        label = "좋음 — 산행하기 좋은 날"
+    elif score >= 60:
+        label = "보통 — 기상 변화에 유의"
+    else:
+        label = "주의 — 무리한 산행은 피하세요"
     return {"score": score, "label": label}
 
 
@@ -59,6 +62,11 @@ def fused_risk(course: dict, rain_prob: int, wind: float) -> list[dict]:
         base = 70 if "사고다발" in hz["grade"] or "1등급" in hz["grade"] else 50
         score = base + (10 if rain_prob >= 30 else 0) + (8 if wind >= 8 else 0)
         score = min(99, score)
-        out.append({**hz, "risk": score,
-                    "action": "진입 경고" if score >= 75 else "우회 권고" if score >= 60 else "주의"})
+        if score >= 75:
+            action = "진입 경고"
+        elif score >= 60:
+            action = "우회 권고"
+        else:
+            action = "주의"
+        out.append({**hz, "risk": score, "action": action})
     return sorted(out, key=lambda x: -x["risk"])

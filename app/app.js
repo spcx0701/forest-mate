@@ -22,6 +22,14 @@ function normalizeApiBase(raw) {
   } catch {}
   return fallback;
 }
+function safeApiPath(path) {
+  const value = String(path || "");
+  const cleanPath = value.startsWith("/") ? value : `/${value}`;
+  if (cleanPath.startsWith("//") || !/^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(cleanPath)) {
+    throw new Error("Invalid API path");
+  }
+  return cleanPath;
+}
 function sanitizeProfile(profile) {
   const value = profile && typeof profile === "object" ? profile : {};
   return {
@@ -46,18 +54,18 @@ function sanitizeState(state) {
     profile: sanitizeProfile(value.profile),
     account: sanitizeAccount(value.account),
     settings: {
-      offRoute: Boolean(value.settings && value.settings.offRoute),
-      family: Boolean(value.settings && value.settings.family),
+      offRoute: Boolean(value.settings?.offRoute),
+      family: Boolean(value.settings?.family),
     },
     lang: ["ko", "en", "zh", "ja"].includes(value.lang) ? value.lang : DEFAULTS.lang,
     region: safeText(value.region, DEFAULTS.region),
     aiCount: clampNumber(value.aiCount, 0, 100000, 0),
     hikesDone: clampNumber(value.hikesDone, 0, 100000, 0),
     june: {
-      cnt: clampNumber(value.june && value.june.cnt, 0, 100000, 0),
-      km: clampNumber(value.june && value.june.km, 0, 1000000, 0),
-      kcal: clampNumber(value.june && value.june.kcal, 0, 100000000, 0),
-      co2: clampNumber(value.june && value.june.co2, 0, 1000000, 0),
+      cnt: clampNumber(value.june?.cnt, 0, 100000, 0),
+      km: clampNumber(value.june?.km, 0, 1000000, 0),
+      kcal: clampNumber(value.june?.kcal, 0, 100000000, 0),
+      co2: clampNumber(value.june?.co2, 0, 1000000, 0),
     },
     installAt: clampNumber(value.installAt, 0, Date.now(), null),
     insurance: value.insurance ? safeText(value.insurance) : null,
@@ -80,17 +88,23 @@ const DEFAULTS = {
   insurance: null,
 };
 let S;
-try { S = Object.assign({}, DEFAULTS, sanitizeState(JSON.parse(localStorage.getItem("fm_state") || "{}"))); }
+try { S = { ...DEFAULTS, ...sanitizeState(JSON.parse(localStorage.getItem("fm_state") || "{}")) }; }
 catch { S = { ...DEFAULTS }; }
-S.profile = Object.assign({}, DEFAULTS.profile, S.profile);
-S.settings = Object.assign({}, DEFAULTS.settings, S.settings);
-S.june = Object.assign({}, DEFAULTS.june, S.june);
-const save = () => { try { localStorage.setItem("fm_state", JSON.stringify(sanitizeState(S))); } catch {} };
+S.profile = { ...DEFAULTS.profile, ...S.profile };
+S.settings = { ...DEFAULTS.settings, ...S.settings };
+S.june = { ...DEFAULTS.june, ...S.june };
+const save = () => {
+  try {
+    const serialized = JSON.stringify(sanitizeState(S));
+    localStorage.setItem("fm_state", serialized); // NOSONAR: sanitizeState normalizes persisted browser state.
+  } catch {}
+};
 if (!S.installAt) { S.installAt = Date.now(); save(); }   // 최초 사용일(로컬 경과일 계산용)
 
 /* URL 파라미터 (?t=tab&demo=57 — 화면 캡처/시연용) */
 const Q = new URLSearchParams(location.search);
-const DEMO = Q.get("demo") !== null ? Math.min(100, Math.max(0, +Q.get("demo") || 57)) : null;
+const demoParam = Q.get("demo");
+const DEMO = demoParam === null ? null : Math.min(100, Math.max(0, +demoParam || 57));
 function timeoutSignal(ms) {
   if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
   if (typeof AbortController === "undefined") return undefined;
@@ -106,7 +120,7 @@ function timeoutSignal(ms) {
 const API = {
   // 기본은 동일 오리진(/api/v1). Capacitor(iOS) 번들 빌드처럼 오리진이 다른 경우
   // index.html에서 window.FM_API_BASE = "https://<배포도메인>/api/v1" 로 주입한다.
-  base: normalizeApiBase(typeof window !== "undefined" ? window.FM_API_BASE : ""),
+  base: normalizeApiBase(globalThis.FM_API_BASE || ""),
   mode: "local",
   lastError: "",
   token: null,
@@ -118,14 +132,14 @@ const API = {
     this.consumeAuthRedirect();
     try {
       const r = await fetch(this.url("/healthz"), { signal: timeoutSignal(1500) });
-      if (!r.ok) throw new Error();
+      if (!r.ok) throw new Error("health check failed");
       this.mode = "cloud";
       this.lastError = "";
       if (this.authToken) await this.loadMe();
       return true;
     } catch (err) {
       this.mode = "local";
-      this.lastError = err && err.message ? err.message : "server unavailable";
+      this.lastError = err?.message ? err.message : "server unavailable";
       return false;
     }
   },
@@ -150,8 +164,7 @@ const API = {
     return reg;
   },
   url(path) {
-    const cleanPath = String(path || "").startsWith("/") ? String(path) : `/${path}`;
-    return this.base + cleanPath;
+    return this.base + safeApiPath(path);
   },
   async ensureToken() {
     if (!this.authToken && !this.token) await this.register();
@@ -164,7 +177,7 @@ const API = {
   },
   async get(path, auth = true, retry = true) {
     if (auth) await this.ensureToken();
-    const r = await fetch(this.url(path), { headers: this.headers(auth), signal: timeoutSignal(3000) });
+    const r = await fetch(this.url(path), { headers: this.headers(auth), signal: timeoutSignal(3000) }); // NOSONAR: safeApiPath allow-lists API paths.
     if (r.status === 401 && auth && retry) {   // 토큰 무효 → 게스트 기기 재등록 후 1회 재시도
       this.clearAccount();
       this.token = null;
@@ -176,7 +189,7 @@ const API = {
   },
   async post(path, body, auth = true, retry = true) {
     if (auth) await this.ensureToken();
-    const r = await fetch(this.url(path), {
+    const r = await fetch(this.url(path), { // NOSONAR: safeApiPath allow-lists API paths.
       method: "POST", headers: this.headers(auth), body: JSON.stringify(body || {}),
       signal: timeoutSignal(4000),
     });
@@ -193,7 +206,7 @@ const API = {
   },
   async patch(path, body, auth = true) {
     if (auth) await this.ensureToken();
-    const r = await fetch(this.url(path), {
+    const r = await fetch(this.url(path), { // NOSONAR: safeApiPath allow-lists API paths.
       method: "PATCH", headers: this.headers(auth), body: JSON.stringify(body || {}),
       signal: timeoutSignal(4000),
     });
@@ -206,7 +219,7 @@ const API = {
       this.token = safeToken(body.device_token);
     }
     S.account = sanitizeAccount(body.user);
-    if (body.user && body.user.profile) {
+    if (body.user?.profile) {
       S.profile = { ...S.profile, ...sanitizeProfile(body.user.profile), set: true };
     }
     save();
@@ -285,22 +298,47 @@ function toast(title, body, ico = "🔔", alert = false, ms = 3400) {
 
 /* ---------------- 탭 라우팅 ---------------- */
 const tabs = qsa("nav a");
+function safeScreenId(id) {
+  switch (String(id || "")) {
+    case "trail":
+    case "sos":
+    case "ai":
+    case "my":
+      return String(id);
+    default:
+      return "home";
+  }
+}
 function show(id) {
-  qsa(".screen").forEach((s) => s.classList.toggle("active", s.id === id));
-  tabs.forEach((a) => a.classList.toggle("on", a.dataset.t === id));
-  const sc = $(id); if (sc) sc.scrollTop = 0;
+  const activeId = safeScreenId(id);
+  qsa(".screen").forEach((s) => {
+    const active = s.id === activeId;
+    s.classList.toggle("active", active);
+    if (active) s.scrollTop = 0;
+  });
+  tabs.forEach((a) => a.classList.toggle("on", a.dataset.t === activeId));
 }
 tabs.forEach((a) => a.addEventListener("click", (e) => {
   e.preventDefault();
-  history.replaceState(null, "", "#" + a.dataset.t);
-  show(a.dataset.t);
+  const activeId = safeScreenId(a.dataset.t);
+  history.replaceState(null, "", "#" + activeId);
+  show(activeId);
 }));
 
 /* ---------------- 산행지수 ---------------- */
 function calcIndex(r) {
   return Math.floor(r.fire.score * 0.3 + r.landslide.score * 0.25 + r.weather.score * 0.25 + r.sunsetScore * 0.2);
 }
-function idxLabel(v) { return v >= 80 ? "좋음 — 산행하기 좋은 날 🌤" : v >= 60 ? "보통 — 기상 변화에 유의하세요 ⛅" : "주의 — 무리한 산행은 피하세요 ⚠️"; }
+function idxLabel(v) {
+  if (v >= 80) return "좋음 — 산행하기 좋은 날 🌤";
+  if (v >= 60) return "보통 — 기상 변화에 유의하세요 ⛅";
+  return "주의 — 무리한 산행은 피하세요 ⚠️";
+}
+function idxColor(v) {
+  if (v >= 80) return "#B7E4C7";
+  if (v >= 60) return "#FFD8A8";
+  return "#FFB3B8";
+}
 
 let currentConditionContext = null;
 function normalizeWeather(weather) {
@@ -321,7 +359,7 @@ function conditionMapRegions() {
       landslide: region.landslide,
       weather: normalizeWeather(region.weather),
       sunsetAt: region.sunsetAt,
-      selected: S.selectedMountain && S.selectedMountain.name === course.name,
+      selected: S.selectedMountain?.name === course.name,
     });
   }
   if (!rows.length) {
@@ -338,7 +376,7 @@ function conditionMapRegions() {
   }
   return rows;
 }
-function paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel, regionName, sunsetScore) {
+function paintIndexCard({ v, fire, landslide, weather, sunsetAt, placeLabel, regionName, sunsetScore }) {
   const C = 276.5;
   currentConditionContext = {
     index: v,
@@ -355,14 +393,23 @@ function paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel, regio
   };
   $("idxVal").textContent = v;
   $("idxArc").style.strokeDashoffset = (C * (1 - v / 100)).toFixed(1);
-  $("idxArc").style.stroke = v >= 80 ? "#B7E4C7" : v >= 60 ? "#FFD8A8" : "#FFB3B8";
-  $("idxLabel").innerHTML = placeLabel
-    ? `${idxLabel(v)}<span class="idx-place">${esc(placeLabel)} <a id="mntReset">✕ 내 지역</a></span>`
-    : idxLabel(v);
+  $("idxArc").style.stroke = idxColor(v);
+  const label = $("idxLabel");
+  label.textContent = idxLabel(v);
+  if (placeLabel) {
+    const place = document.createElement("span");
+    place.className = "idx-place";
+    place.append(document.createTextNode(`${placeLabel} `));
+    const resetLink = document.createElement("a");
+    resetLink.id = "mntReset";
+    resetLink.textContent = "✕ 내 지역";
+    place.appendChild(resetLink);
+    label.appendChild(place);
+  }
   const items = FM_CONDITION_DETAILS.buildConditionSummaryItems(currentConditionContext);
   $("idxGrid").innerHTML = items.map((item) => `
-    <button type="button" class="idx-item condition-trigger" data-condition="${item.id}" aria-label="${esc(item.ariaLabel)}">
-      <b class="${item.tone}">${esc(item.title)}</b>${esc(item.body)}
+    <button type="button" class="idx-item condition-trigger" data-condition="${esc(item.id)}" aria-label="${esc(item.ariaLabel)}">
+      <b class="${cssToken(item.tone, "neutral")}">${esc(item.title)}</b>${esc(item.body)}
       <span class="idx-more">자세히</span>
     </button>`).join("");
   qsa("#idxGrid .condition-trigger").forEach((b) => b.addEventListener("click", () => openConditionDetail(b.dataset.condition)));
@@ -383,7 +430,7 @@ function openConditionDetail(id) {
   if (!currentConditionContext) return;
   const d = FM_CONDITION_DETAILS.buildConditionDetail(id, currentConditionContext);
   $("extSheet").innerHTML = `
-    <div class="condition-panel" style="--condition-accent:${esc(d.accent || "#74C69D")}">
+    <div class="condition-panel" style="--condition-accent:${cssColor(d.accent)}">
       <button class="condition-close" data-close="extModal" aria-label="닫기">×</button>
       <div class="condition-topline">
         <span>${esc(d.modeLabel || "DATA")}</span>
@@ -411,11 +458,11 @@ function openConditionDetail(id) {
         ${conditionMapMarkup(d.map)}
       </div>
       <div class="condition-card-grid">
-        ${d.cards.map((c) => `<div class="signal-card ${esc(c.level || "neutral")}"><span>${esc(c.label)}</span><b>${esc(c.value)}</b><small>${esc(c.note)}</small></div>`).join("")}
+        ${d.cards.map((c) => `<div class="signal-card ${cssToken(c.level)}"><span>${esc(c.label)}</span><b>${esc(c.value)}</b><small>${esc(c.note)}</small></div>`).join("")}
       </div>
       <div class="condition-guide">
         <b>${esc(d.actionTitle || "출발 전 확인")}</b>
-        <div class="condition-step">${esc(d.primaryAction || (d.guidance && d.guidance[0]) || "")}</div>
+        <div class="condition-step">${esc(d.primaryAction || d.guidance?.[0] || "")}</div>
       </div>
       <div class="condition-source">${esc(d.source)}</div>
     </div>`;
@@ -425,7 +472,8 @@ function openConditionDetail(id) {
 
 function conditionRadarSvg(axes, accent) {
   const W = 360, H = 196, cx = 180, cy = 96, radius = 58, labelRadius = 84;
-  const safe = axes && axes.length ? axes : [{ label: "", value: 0, note: "" }];
+  const safe = axes?.length ? axes : [{ label: "", value: 0, note: "" }];
+  const safeAccent = cssColor(accent);
   const point = (axis, i, r = radius) => {
     const angle = -Math.PI / 2 + (Math.PI * 2 * i) / safe.length;
     const value = Math.max(0, Math.min(100, Number(axis.value) || 0));
@@ -457,13 +505,15 @@ function conditionRadarSvg(axes, accent) {
   }).join("");
   const labels = safe.map((axis, i) => {
     const [x, y] = maxPoint(i, labelRadius);
-    const anchor = x < cx - 8 ? "end" : x > cx + 8 ? "start" : "middle";
+    let anchor = "middle";
+    if (x < cx - 8) anchor = "end";
+    else if (x > cx + 8) anchor = "start";
     return `<text x="${x.toFixed(1)}" y="${Math.max(14, Math.min(H - 12, y)).toFixed(1)}" text-anchor="${anchor}">${esc(axis.label)}</text>`;
   }).join("");
   const legend = safe.map((axis) => `<div class="radar-axis"><span>${esc(axis.label)}</span><b>${esc(String(axis.value))}</b><small>${esc(axis.note || "")}</small></div>`).join("");
   return `<div class="radar-wrap">
     <svg class="radar-graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="현재 위험 벡터 레이더 그래프">
-      <defs><linearGradient id="radarFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${esc(accent || "#74C69D")}" stop-opacity=".54"/><stop offset="1" stop-color="${esc(accent || "#74C69D")}" stop-opacity=".12"/></linearGradient></defs>
+      <defs><linearGradient id="radarFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${safeAccent}" stop-opacity=".54"/><stop offset="1" stop-color="${safeAccent}" stop-opacity=".12"/></linearGradient></defs>
       <g>${rings}${spokes}</g>
       <polygon class="radar-fill" points="${shape}"/>
       <polyline class="radar-line" points="${shape} ${shape.split(" ")[0]}" fill="none"/>
@@ -475,9 +525,9 @@ function conditionRadarSvg(axes, accent) {
 }
 
 function conditionMapMarkup(map) {
-  const safe = map && map.zones && map.zones.length ? map.zones : [];
-  const legend = (map && map.legend ? map.legend : []).map((l) => `<span class="map-legend-item ${esc(l.level)}"><i></i>${esc(l.label)}</span>`).join("");
-  const rows = safe.map((z) => `<div class="zone-row ${esc(z.level)}"><span>${esc(z.label)}</span><b>${esc(z.value)}</b><small>${esc(z.note)}</small></div>`).join("");
+  const safe = map?.zones?.length ? map.zones : [];
+  const legend = (map?.legend ? map.legend : []).map((l) => `<span class="map-legend-item ${cssToken(l.level)}"><i></i>${esc(l.label)}</span>`).join("");
+  const rows = safe.map((z) => `<div class="zone-row ${cssToken(z.level)}"><span>${esc(z.label)}</span><b>${esc(z.value)}</b><small>${esc(z.note)}</small></div>`).join("");
   return `<div class="zone-map-wrap">
     <div class="map-legend">${legend}</div>
     <div id="conditionLeafletMap" class="condition-leaflet-map" role="img" aria-label="${esc(map.title)}"></div>
@@ -487,16 +537,16 @@ function conditionMapMarkup(map) {
 
 let conditionLeafletMap = null;
 function mapTileConfig() {
-  if (window.FM_MAP_TILE_URL) {
+  if (globalThis.FM_MAP_TILE_URL) {
     return {
-      url: window.FM_MAP_TILE_URL,
-      options: { maxZoom: 18, attribution: window.FM_MAP_ATTRIBUTION || "" },
+      url: globalThis.FM_MAP_TILE_URL,
+      options: { maxZoom: 18, attribution: globalThis.FM_MAP_ATTRIBUTION || "" },
     };
   }
-  if (window.FM_VWORLD_KEY) {
+  if (globalThis.FM_VWORLD_KEY) {
     return {
-      url: `https://api.vworld.kr/req/wmts/1.0.0/${window.FM_VWORLD_KEY}/Base/{z}/{y}/{x}.png`,
-      options: { maxZoom: 19, attribution: window.FM_MAP_ATTRIBUTION || "VWorld" },
+      url: `https://api.vworld.kr/req/wmts/1.0.0/${globalThis.FM_VWORLD_KEY}/Base/{z}/{y}/{x}.png`,
+      options: { maxZoom: 19, attribution: globalThis.FM_MAP_ATTRIBUTION || "VWorld" },
     };
   }
   return {
@@ -506,7 +556,8 @@ function mapTileConfig() {
 }
 function initConditionMap(mapData) {
   const el = $("conditionLeafletMap");
-  if (!el || !window.L || !mapData || !Array.isArray(mapData.zones)) return;
+  const leaflet = globalThis.L;
+  if (!el || !leaflet || !mapData || !Array.isArray(mapData.zones)) return;
   if (conditionLeafletMap) {
     conditionLeafletMap.remove();
     conditionLeafletMap = null;
@@ -515,13 +566,13 @@ function initConditionMap(mapData) {
     .map((z) => ({ ...z, lat: Number(z.lat), lon: Number(z.lon) }))
     .filter((z) => Number.isFinite(z.lat) && Number.isFinite(z.lon));
   if (!points.length) return;
-  const map = L.map(el, { attributionControl: false, zoomControl: false, dragging: true, scrollWheelZoom: false, tap: false });
+  const map = leaflet.map(el, { attributionControl: false, zoomControl: false, dragging: true, scrollWheelZoom: false, tap: false });
   const tile = mapTileConfig();
-  L.tileLayer(tile.url, tile.options).addTo(map);
+  leaflet.tileLayer(tile.url, tile.options).addTo(map);
   const bounds = [];
   const color = { low: "#58d68d", mid: "#ffd166", high: "#ff6b6b" };
   points.forEach((z) => {
-    const marker = L.circleMarker([z.lat, z.lon], {
+    const marker = leaflet.circleMarker([z.lat, z.lon], {
       radius: z.size === "l" ? 10 : 8,
       color: "#fff",
       weight: 3,
@@ -567,11 +618,13 @@ async function renderHome() {
       catch { /* 로컬 계산 유지 */ }
     }
   }
-  paintIndexCard(v, fire, landslide, weather, sunsetAt, placeLabel, regionName, sunsetScore);
+  paintIndexCard({ v, fire, landslide, weather, sunsetAt, placeLabel, regionName, sunsetScore });
   updateLocLabel();
   renderReco();
   $("briefing").innerHTML = `<b>${FM_DATA.briefings[new Date().getDay() % FM_DATA.briefings.length].split(".")[0]}.</b><br>${FM_DATA.briefings[new Date().getDay() % FM_DATA.briefings.length].split(".").slice(1).join(".").trim()}`;
-  $("newsLine").textContent = FM_DATA.news.slice(0, 3).map((n) => n.title || n).join(" · ");
+  $("newsLine").textContent = FM_DATA.news.slice(0, 3)
+    .map((n) => typeof n === "object" ? (n.title || "") : String(n))
+    .join(" · ");
 }
 
 async function selectMountainIndex(listNo, name) {
@@ -601,14 +654,14 @@ async function renderReco() {
   if (loc) {
     try {
       const d = await API.get(`/mountains/nearby?lat=${loc.lat}&lon=${loc.lon}&radius=60&limit=6`, false);
-      if (d.items && d.items.length) {
+      if (d.items?.length) {
         $("recoNote").textContent = `${loc.label} 주변 · ${notes.join(" · ")} 반영`;
         $("recoList").innerHTML = d.items.map((m) => `
           <button class="r" data-mtn-id="${esc(m.list_no)}" data-mtn-name="${esc(m.name)}">
-            <div class="thumb t1"><img class="thumb-img" data-mtn="${esc((m.name || "").split(" ")[0])}" data-h="${m.height || 0}" alt="">
-              <span class="match">${m.dist_km}km</span></div>
+            <div class="thumb t1"><img class="thumb-img" data-mtn="${esc((m.name || "").split(" ")[0])}" data-h="${clampNumber(m.height, 0, 10000, 0)}" alt="">
+              <span class="match">${esc(m.dist_km)}km</span></div>
             <div class="body"><b>${esc(m.name)}${m.top100 ? " 🏅" : ""}</b>
-              <div class="meta"><span>📍 ${esc(m.sido || "")}</span><span>⛰ ${m.height ? m.height + "m" : "—"}</span><span>${loc.label} 인근</span></div>
+              <div class="meta"><span>📍 ${esc(m.sido || "")}</span><span>⛰ ${m.height ? esc(m.height) + "m" : "—"}</span><span>${esc(loc.label)} 인근</span></div>
             </div></button>`).join("");
         qsa("#recoList .r").forEach((b) => b.addEventListener("click", () => openMountainDetail(b.dataset.mtnId, b.dataset.mtnName)));
         qsa("#recoList .thumb-img").forEach((img) => loadHero(img, img.dataset.mtn, +img.dataset.h));
@@ -627,16 +680,26 @@ async function renderReco() {
     } catch { /* 로컬 순위 유지 */ }
   }
   $("recoList").innerHTML = list.map(({ c, s }) => `
-    <button class="r" data-course="${c.id}">
-      <div class="thumb ${c.theme}"><img class="thumb-img" data-mtn="${c.name.split(" ")[0]}" data-h="${parseInt((c.peak || "").replace(/\D/g, "")) || 0}" alt=""><span class="match">매칭 ${s}%</span></div>
+    <button class="r" data-course="${esc(c.id)}">
+      <div class="thumb ${c.theme}"><img class="thumb-img" data-mtn="${c.name.split(" ")[0]}" data-h="${Number.parseInt((c.peak || "").replace(/\D/g, ""), 10) || 0}" alt=""><span class="match">매칭 ${s}%</span></div>
       <div class="body"><b>${c.name}</b>
-        <div class="meta"><span>⛰ ${c.km}km</span><span>⏱ ${fmtMin(c.minutes)}</span><span>난이도 ${c.level}</span><span>${c.view >= 5 ? "전망 ★★★" : "혼잡 " + c.crowd}</span></div>
+        <div class="meta"><span>⛰ ${c.km}km</span><span>⏱ ${fmtMin(c.minutes)}</span><span>난이도 ${c.level}</span><span>${courseHighlight(c)}</span></div>
       </div>
     </button>`).join("");
   qsa("#recoList .r").forEach((b) => b.addEventListener("click", () => openCourse(b.dataset.course)));
   qsa("#recoList .thumb-img").forEach((img) => loadHero(img, img.dataset.mtn, +img.dataset.h));
 }
-const fmtMin = (m) => (m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60 ? (m % 60) + "분" : ""}` : `${m}분`).trim();
+function courseHighlight(course) {
+  if (course.view >= 5) return "전망 ★★★";
+  return `혼잡 ${course.crowd}`;
+}
+function fmtMin(m) {
+  if (m < 60) return `${m}분`;
+  const minutes = m % 60;
+  const hourText = `${Math.floor(m / 60)}시간`;
+  const minuteText = minutes ? `${minutes}분` : "";
+  return `${hourText} ${minuteText}`.trim();
+}
 
 /* ---------------- 코스 상세 모달 ---------------- */
 function sparkline(elev) {
@@ -672,7 +735,7 @@ function openCourse(id) {
     </div>`;
   { const [la, lo] = courseLatLon(c); setTimeout(() => miniMap("courseMap", la, lo, c.startLabel + " · 들머리"), 60); }
   $("courseModal").classList.add("show");
-  loadHero($("courseHero"), c.name.split(" ")[0], parseInt((c.peak || "").replace(/\D/g, "")) || 0);
+  loadHero($("courseHero"), c.name.split(" ")[0], Number.parseInt((c.peak || "").replace(/\D/g, ""), 10) || 0);
   $("btnStartCourse").addEventListener("click", () => {
     $("courseModal").classList.remove("show");
     selectCourse(c.id);          // 산행 탭으로 — 들머리까지 '가는 길' 표시(아직 시작 아님)
@@ -698,7 +761,7 @@ function selectCourse(id) {
 }
 function courseLatLon(c) {
   const m = (c.gps || "").match(/([\d.]+)[^\d]*N[^\d]*([\d.]+)/i) || (c.gps || "").match(/([\d.]+)[^\d]+([\d.]+)/);
-  return m ? [parseFloat(m[1]), parseFloat(m[2])] : [37.6, 127.0];
+  return m ? [Number.parseFloat(m[1]), Number.parseFloat(m[2])] : [37.6, 127];
 }
 function haversineKm(a, b, c, d) {
   const R = 6371, r = Math.PI / 180;
@@ -712,25 +775,25 @@ function buildMap() {
   Hike.origin = [lat, lon]; Hike.gpsTrack = []; Hike.gpsKm = 0;
   $("mapHost").innerHTML = `<div id="hikeMap"></div>`;
   setTimeout(() => {
-    if (!window.L) { $("mapHost").innerHTML = `<div class="map-fallback">🗺 지도를 불러오려면 네트워크 연결이 필요해요</div>`; return; }
-    const map = L.map("hikeMap", { attributionControl: false }).setView([lat, lon], 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
-    L.marker([lat, lon]).addTo(map).bindPopup(`${c.startLabel} · 들머리`);
+    const leaflet = globalThis.L;
+    if (!leaflet) { $("mapHost").innerHTML = `<div class="map-fallback">🗺 지도를 불러오려면 네트워크 연결이 필요해요</div>`; return; }
+    const map = leaflet.map("hikeMap", { attributionControl: false }).setView([lat, lon], 14);
+    leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
+    leaflet.marker([lat, lon]).addTo(map).bindPopup(`${c.startLabel} · 들머리`);
     Hike.map = map;
-    Hike.trackLine = L.polyline([], { color: "#2D6A4F", weight: 6, opacity: 0.85 }).addTo(map);
-    Hike.posMarker = L.circleMarker([lat, lon], { radius: 9, color: "#fff", weight: 3, fillColor: "#1B4332", fillOpacity: 1 }).addTo(map).bindPopup("내 위치");
+    Hike.trackLine = leaflet.polyline([], { color: "#2D6A4F", weight: 6, opacity: 0.85 }).addTo(map);
+    Hike.posMarker = leaflet.circleMarker([lat, lon], { radius: 9, color: "#fff", weight: 3, fillColor: "#1B4332", fillOpacity: 1 }).addTo(map).bindPopup("내 위치");
     setTimeout(() => map.invalidateSize(), 160);
     // 코스 산의 실제 등산로 선 표시(이름→카탈로그 코드 해석)
     if (API.mode === "cloud") {
       API.get(`/mountains?q=${encodeURIComponent(c.name.split(" ")[0])}&size=1`, false)
-        .then((r) => { if (r.items && r.items[0]) drawTrails(map, r.items[0].list_no); })
+        .then((r) => { if (r.items?.[0]) drawTrails(map, r.items[0].list_no); })
         .catch(() => {});
     }
   }, 60);
   drawProgress();
 }
-function onGps(lat, lon, acc) {
-  Hike.gps = { lat: +lat.toFixed(6), lon: +lon.toFixed(6), acc: Math.round(acc || 0) };
+function recordGpsTrack(lat, lon) {
   if (Hike.gpsTrack) {
     const last = Hike.gpsTrack[Hike.gpsTrack.length - 1];
     if (last) {
@@ -743,13 +806,17 @@ function onGps(lat, lon, acc) {
     if (Hike.map) Hike.map.panTo([lat, lon], { animate: true });
     if (Hike.course) Hike.prog = Math.min(1, (Hike.gpsKm || 0) / Hike.course.km);
   }
+}
+function onGps(lat, lon, acc) {
+  Hike.gps = { lat: +lat.toFixed(6), lon: +lon.toFixed(6), acc: Math.round(acc || 0) };
+  recordGpsTrack(lat, lon);
   checkHazards();
   renderHikeUI();
   if (Hike.prog >= 1 && Hike.active) endHike(false);
 }
 function demoStep() {
   // 테스트용 — 실제 걷지 않고 약 90m씩 북동진(GPS 이동 시뮬레이션)
-  const [lat, lon] = Hike.origin || [37.6, 127.0];
+  const [lat, lon] = Hike.origin || [37.6, 127];
   const n = Hike.gpsTrack ? Hike.gpsTrack.length : 0;
   onGps(lat + n * 0.0006, lon + n * 0.0007, 6);
 }
@@ -808,7 +875,7 @@ function renderHikeStats(c) {
   $("stHr").innerHTML = Hike.active || Hike.prog > 0 ? `${Hike.hr}<small>bpm</small>` : "—";
 }
 function watchIsFresh() {
-  return !!(Hike.watch && Hike.watch.connected && Hike.watch.seenAtMs && Date.now() - Hike.watch.seenAtMs < WATCH_FRESH_MS);
+  return !!(Hike.watch?.connected && Hike.watch.seenAtMs && Date.now() - Hike.watch.seenAtMs < WATCH_FRESH_MS);
 }
 function renderWatchStatus() {
   const card = $("watchCard"), title = $("watchTitle"), text = $("watchText"), btn = $("btnWatchPair"), code = $("watchCode");
@@ -824,20 +891,20 @@ function renderWatchStatus() {
     const battery = Hike.watch.battery == null ? "배터리 —" : `배터리 ${Hike.watch.battery}%`;
     text.textContent = `${Hike.watch.hr || "—"}bpm · ${battery} · ${Hike.watch.age_sec || 0}초 전`;
   } else if (Hike.watchPair) {
-    title.textContent = "⌚ 워치 페어링 코드";
-    text.textContent = "워치앱에서 코드를 입력하세요";
+    title.textContent = "⌚ 워치 연결 준비";
+    text.textContent = "워치 앱 대기 · 필요 시 백업 코드 사용";
   } else if (API.mode !== "cloud") {
     title.textContent = "⌚ Galaxy Watch";
     text.textContent = "서버 연결 필요";
   } else if (!Hike.active) {
     title.textContent = "⌚ Galaxy Watch";
     text.textContent = "워치 착용 대기 · 시작하면 기록 연결";
-  } else if (!API.hikeId) {
-    title.textContent = "⌚ Galaxy Watch";
-    text.textContent = "서버 산행 준비 중";
-  } else {
+  } else if (API.hikeId) {
     title.textContent = "⌚ Galaxy Watch";
     text.textContent = "워치앱 연결 대기";
+  } else {
+    title.textContent = "⌚ Galaxy Watch";
+    text.textContent = "서버 산행 준비 중";
   }
 }
 async function ensureCloudHike() {
@@ -861,7 +928,7 @@ async function startWatchPairing() {
     const r = await API.post("/watch/pair/start", payload);
     Hike.watchPair = { code: r.code, expiresAt: Date.now() + r.expires_in * 1000 };
     renderWatchStatus();
-    toast("워치 페어링 코드", `${r.code} 를 워치앱에 입력하세요`, "⌚", false, 5200);
+    toast("워치 연결 준비", `필요 시 백업 코드 ${r.code}`, "⌚", false, 5200);
     startWatchPolling();
   } catch {
     toast("워치 연결 실패", "잠시 후 다시 시도해주세요", "⌚", true);
@@ -983,14 +1050,14 @@ function tick() {
 /* 일몰 카운트다운 — 지역 일몰시각 기준 실시간 */
 function sunsetTick() {
   let secs;
-  if (DEMO !== null) {
-    if (Hike.sunsetLeft == null) Hike.sunsetLeft = 3 * 3600 + 12 * 60;
-    secs = Hike.sunsetLeft = Math.max(0, Hike.sunsetLeft - 1);
-  } else {
+  if (DEMO === null) {
     const r = FM_DATA.regions[S.region];
     const [h, m] = r.sunsetAt.split(":").map(Number);
     const t = new Date(); const sun = new Date(); sun.setHours(h, m, 0, 0);
     secs = Math.floor((sun - t) / 1000);
+  } else {
+    if (Hike.sunsetLeft == null) Hike.sunsetLeft = 3 * 3600 + 12 * 60;
+    secs = Hike.sunsetLeft = Math.max(0, Hike.sunsetLeft - 1);
   }
   $("sunset").textContent = secs > 0 ? `${Math.floor(secs / 3600)}:${String(Math.floor(secs % 3600 / 60)).padStart(2, "0")}` : "일몰";
 }
@@ -1101,14 +1168,40 @@ async function sosDispatch() {
     ["구조대 배정", station + " 출동"],
     ["구조대 이동 중", `ETA ${eta}분 — 관제센터가 실시간 추적 중`],
   ];
-  $("sosSheet").innerHTML = `
-    <div class="grab"></div>
-    <h3>🚨 신고가 접수됐어요</h3>
-    <p class="sub">제자리에서 체온을 유지하세요. 휘슬·불빛으로 위치를 알리면 도움이 됩니다.</p>
-    <div class="steps">${steps.map(([b, s], i) => `
-      <div class="stp" id="stp${i}"><div class="si">${i + 1}</div><div><b>${b}</b><span>${s}</span></div></div>`).join("")}
-    </div>
-    <div class="btnrow"><button class="btn ghost" id="sosDone">상황 종료(데모)</button></div>`;
+  const sheet = $("sosSheet");
+  const grab = document.createElement("div");
+  grab.className = "grab";
+  const title = document.createElement("h3");
+  title.textContent = "🚨 신고가 접수됐어요";
+  const summary = document.createElement("p");
+  summary.className = "sub";
+  summary.textContent = "제자리에서 체온을 유지하세요. 휘슬·불빛으로 위치를 알리면 도움이 됩니다.";
+  const stepList = document.createElement("div");
+  stepList.className = "steps";
+  steps.forEach(([b, s], i) => {
+    const step = document.createElement("div");
+    step.className = "stp";
+    step.id = `stp${i}`;
+    const icon = document.createElement("div");
+    icon.className = "si";
+    icon.textContent = String(i + 1);
+    const copy = document.createElement("div");
+    const strong = document.createElement("b");
+    strong.textContent = b;
+    const span = document.createElement("span");
+    span.textContent = s;
+    copy.append(strong, span);
+    step.append(icon, copy);
+    stepList.appendChild(step);
+  });
+  const row = document.createElement("div");
+  row.className = "btnrow";
+  const done = document.createElement("button");
+  done.className = "btn ghost";
+  done.id = "sosDone";
+  done.textContent = "상황 종료(데모)";
+  row.appendChild(done);
+  sheet.replaceChildren(grab, title, summary, stepList, row);
   steps.forEach((_, i) => setTimeout(() => { const el = $("stp" + i); if (el) el.classList.add("done"); }, 400 + i * 1600));
   $("sosDone").addEventListener("click", () => {
     $("sosModal").classList.remove("show");
@@ -1127,7 +1220,7 @@ function bubble(html, who = "bot") {
     label.className = "who";
     label.textContent = "🌲 숲이";
     div.appendChild(label);
-    appendSanitizedHtml(div, html);
+    appendRichText(div, html);
   } else {
     div.textContent = String(html);
   }
@@ -1137,35 +1230,65 @@ function bubble(html, who = "bot") {
 }
 const CHAT_HTML_TAGS = new Set(["b", "br", "div", "i", "p"]);
 const CHAT_HTML_CLASSES = new Set(["danger-flag", "safe2", "conf"]);
-function appendSanitizedHtml(target, html) {
-  const parsed = new DOMParser().parseFromString(String(html), "text/html");
-  const convert = (node) => {
-    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent || "");
-    if (node.nodeType !== Node.ELEMENT_NODE) return document.createTextNode("");
-    const tag = node.tagName.toLowerCase();
-    const fragment = document.createDocumentFragment();
+function appendRichText(target, html) {
+  const source = String(html ?? "");
+  const tagPattern = /<(\/?)(b|br|div|i|p)\b([^>]*)>/gi;
+  const stack = [{ tag: "", el: target }];
+  let offset = 0;
+  const current = () => stack[stack.length - 1].el;
+  const appendText = (text) => {
+    if (text) current().appendChild(document.createTextNode(text));
+  };
+
+  for (const match of source.matchAll(tagPattern)) {
+    appendText(source.slice(offset, match.index));
+    offset = match.index + match[0].length;
+    const tag = match[2].toLowerCase();
     if (!CHAT_HTML_TAGS.has(tag)) {
-      node.childNodes.forEach((child) => fragment.appendChild(convert(child)));
-      return fragment;
+      appendText(match[0]);
+      continue;
     }
+    if (match[1]) {
+      for (let i = stack.length - 1; i > 0; i--) {
+        if (stack[i].tag === tag) {
+          stack.length = i;
+          break;
+        }
+      }
+      continue;
+    }
+    if (tag === "br") {
+      current().appendChild(document.createElement("br"));
+      continue;
+    }
+
     const el = document.createElement(tag);
+    const attrs = match[3] || "";
     if (tag === "div") {
-      const classes = [...node.classList].filter((name) => CHAT_HTML_CLASSES.has(name));
+      const classMatch = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs);
+      const classes = (classMatch ? classMatch[1].split(/\s+/) : [])
+        .filter((name) => CHAT_HTML_CLASSES.has(name));
       if (classes.length) el.className = classes.join(" ");
     }
     if (tag === "i") {
-      const match = /^width:\s*(\d{1,3})%$/i.exec(node.getAttribute("style") || "");
-      if (match) el.style.width = `${clampNumber(match[1], 0, 100, 0)}%`;
+      const widthMatch = /\bwidth\s*:\s*(\d{1,3})%/i.exec(attrs);
+      if (widthMatch) el.style.width = `${clampNumber(widthMatch[1], 0, 100, 0)}%`;
     }
-    node.childNodes.forEach((child) => el.appendChild(convert(child)));
-    return el;
-  };
-  parsed.body.childNodes.forEach((node) => target.appendChild(convert(node)));
+    current().appendChild(el);
+    stack.push({ tag, el });
+  }
+  appendText(source.slice(offset));
 }
 function photoBubble(sp) {
   const div = document.createElement("div");
   div.className = "photo";
-  div.innerHTML = `<div class="ph-img" style="background:${sp.grad}"></div><div class="ph-cap">📷 방금 촬영한 사진</div>`;
+  const image = document.createElement("div");
+  image.className = "ph-img";
+  image.style.background = sp.grad;
+  const caption = document.createElement("div");
+  caption.className = "ph-cap";
+  caption.textContent = "📷 방금 촬영한 사진";
+  div.append(image, caption);
   chatLog().appendChild(div);
 }
 function speciesReply(sp) {
@@ -1351,7 +1474,7 @@ function renderProfileSummary(summary) {
 function renderProfileExtra() {
   const box = $("repExtra");
   if (!box) return;
-  const hasBadges = lastSum && lastSum.badges;
+  const hasBadges = lastSum?.badges;
   const aiEarned = S.aiCount >= 10 ? 1 : 0;
   const earned = hasBadges ? lastSum.badges.filter((b) => b.earned).length + aiEarned : aiEarned;
   const total = hasBadges ? lastSum.badges.length + 1 : 4;
@@ -1426,12 +1549,17 @@ const BADGE_DESC = {
   master: "추천 코스를 모두 완등하면 획득해요.", ai: "AI 숲이와 10회 대화하면 획득해요.",
 };
 let lastBadges = [];
+function badgeUnit(id) {
+  if (id.startsWith("km")) return "km";
+  if (id === "days30") return "일";
+  return "";
+}
 function renderBadges() {
   // 서버 실집계 배지(진척·달성) + 클라이언트 AI 대화 배지. 하드코딩 아님.
   let cards;
-  if (lastSum && lastSum.badges && lastSum.badges.length) {
+  if (lastSum?.badges?.length) {
     cards = lastSum.badges.map((b) => {
-      const unit = b.id.startsWith("km") ? "km" : b.id === "days30" ? "일" : "";
+      const unit = badgeUnit(b.id);
       const prog = b.earned ? "달성!" : `${b.progress}/${b.goal}${unit}`;
       return { id: b.id, ic: b.icon, label: b.label, prog, ok: b.earned, goal: b.goal, cur: b.progress, unit };
     });
@@ -1460,9 +1588,14 @@ function openBadgeDetail(bid) {
     <p style="text-align:center;font-size:13px;font-weight:700;margin-top:8px">${b.ok ? "달성 완료! 🎉" : `진행 ${b.cur}/${b.goal}${b.unit} (${pct}%)`}</p>
     <div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>`);
 }
+function insuranceFee(idx) {
+  if (idx >= 80) return 990;
+  if (idx >= 60) return 1290;
+  return 1590;
+}
 function renderIns() {
   const idx = calcIndex(FM_DATA.regions[S.region]);
-  const fee = idx >= 80 ? 990 : idx >= 60 ? 1290 : 1590;
+  const fee = insuranceFee(idx);
   if (S.insurance) {
     $("insTitle").textContent = "1일 안심보험 가입 완료 ✅";
     $("insSub").textContent = `${S.insurance.date} 산행 보장 — 상해·구조비용·휴대품`;
@@ -1477,7 +1610,7 @@ function renderIns() {
 }
 $("insBtn").addEventListener("click", () => {
   const idx = calcIndex(FM_DATA.regions[S.region]);
-  const fee = idx >= 80 ? 990 : idx >= 60 ? 1290 : 1590;
+  const fee = insuranceFee(idx);
   const d = new Date(Date.now() + 86400000);
   const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
   $("insSheet").innerHTML = `
@@ -1507,12 +1640,17 @@ $("insBtn").addEventListener("click", () => {
 
 /* ---------------- 온보딩 ---------------- */
 let ftueTimer = null;
+function profileCheckActive(value) {
+  if (value === "knee") return S.profile.knee;
+  if (value === "heart") return S.profile.heart;
+  return !S.profile.knee && !S.profile.heart;
+}
 function openOnboard() {
   if ($("obName")) $("obName").value = S.profile.set ? S.profile.name : "";
   qsa("#obFit button").forEach((b) => b.classList.toggle("on", +b.dataset.v === S.profile.fit));
   qsa("#obChecks .ckc").forEach((b) => {
     const v = b.dataset.v;
-    b.classList.toggle("on", v === "knee" ? S.profile.knee : v === "heart" ? S.profile.heart : !S.profile.knee && !S.profile.heart);
+    b.classList.toggle("on", profileCheckActive(v));
   });
   const onboard = $("onboard");
   const splash = qs("#onboard .ftue-splash");
@@ -1530,7 +1668,7 @@ function openOnboard() {
   }
   onboard.classList.add("show");
   clearTimeout(ftueTimer);
-  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
   ftueTimer = setTimeout(() => {
     onboard.classList.add("ready");
     if (content) {
@@ -1559,25 +1697,39 @@ function authMessage(msg, ok = false) {
   el.classList.toggle("ok", ok);
   el.classList.toggle("err", !!msg && !ok);
 }
+function authMessageFor(prefix) {
+  if (prefix === "auth") return authMessage;
+  return (text, ok) => {
+    const el = $(`${prefix}Msg`);
+    if (el) {
+      el.textContent = text || "";
+      el.className = `auth-msg ${ok ? "ok" : "err"}`;
+    }
+  };
+}
+function emailAuthCopy(mode) {
+  return mode === "register"
+    ? ["가입이 완료됐어요", "가입 완료", "이미 가입된 이메일이거나 입력값을 확인해주세요"]
+    : ["로그인됐어요", "로그인 완료", "이메일 또는 비밀번호를 확인해주세요"];
+}
 async function emailAuth(mode, prefix = "auth") {
   if (API.mode !== "cloud") return toast("서버 연결 필요", "백엔드 연결 시 계정을 만들 수 있어요", "🔐");
   if (prefix === "auth") captureOnboardProfile();
   const email = $(`${prefix}Email`).value.trim();
   const password = $(`${prefix}Password`).value;
-  const msg = prefix === "auth" ? authMessage : (text, ok) => {
-    const el = $(`${prefix}Msg`); if (el) { el.textContent = text || ""; el.className = `auth-msg ${ok ? "ok" : "err"}`; }
-  };
+  const msg = authMessageFor(prefix);
   if (!email || !password) { msg("이메일과 비밀번호를 입력해주세요", false); return; }
+  const [successMessage, toastTitle, failureMessage] = emailAuthCopy(mode);
   try {
     if (mode === "register") await API.accountRegister(email, password);
     else await API.accountLogin(email, password);
-    msg(mode === "register" ? "가입이 완료됐어요" : "로그인됐어요", true);
+    msg(successMessage, true);
     $("onboard").classList.remove("show");
     $("extModal").classList.remove("show");
     renderMy(); renderHome();
-    toast(mode === "register" ? "가입 완료" : "로그인 완료", "워치와 웹에서도 기록을 볼 수 있어요", "🔐");
+    toast(toastTitle, "워치와 웹에서도 기록을 볼 수 있어요", "🔐");
   } catch {
-    msg(mode === "register" ? "이미 가입된 이메일이거나 입력값을 확인해주세요" : "이메일 또는 비밀번호를 확인해주세요", false);
+    msg(failureMessage, false);
   }
 }
 async function socialAuth(provider) {
@@ -1607,16 +1759,16 @@ qsa(".social-row button[data-provider]").forEach((b) => b.addEventListener("clic
 /* ---------------- 공용 닫기 / 지역 / 벨 ---------------- */
 qsa("[data-close]").forEach((b) => b.addEventListener("click", () => $(b.dataset.close).classList.remove("show")));
 document.addEventListener("click", (e) => {
-  if (e.target.classList && e.target.classList.contains("overlay")) e.target.classList.remove("show");
-  const dc = e.target.closest && e.target.closest("[data-close]");
+  if (e.target?.classList?.contains("overlay")) e.target.classList.remove("show");
+  const dc = e.target.closest?.("[data-close]");
   if (dc) $(dc.dataset.close).classList.remove("show");
-  const routeBtn = e.target.closest && e.target.closest("[data-route-provider]");
+  const routeBtn = e.target.closest?.("[data-route-provider]");
   if (routeBtn) {
     e.preventDefault();
     openRouteFromCurrent(routeBtn);
     return;
   }
-  if (e.target && e.target.id === "setHomeBtn") {           // 길찾기 '집 등록'(전역)
+  if (e.target?.id === "setHomeBtn") {           // 길찾기 '집 등록'(전역)
     if (!navigator.geolocation) return toast("위치 미지원", "이 기기는 GPS를 지원하지 않아요", "🏠");
     navigator.geolocation.getCurrentPosition(
       (pos) => { S.home = { lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5) }; save(); toast("집 등록 완료", "현재 위치를 집으로 저장했어요. 길찾기를 다시 열면 '집에서'가 보여요", "🏠"); },
@@ -1625,12 +1777,12 @@ document.addEventListener("click", (e) => {
 });
 /* ---------------- 위치 선택 (현재위치/시도/검색) ---------------- */
 const SIDO_LOCS = [
-  ["서울", 37.5663, 126.9779], ["부산", 35.1798, 129.0750], ["대구", 35.8714, 128.6014],
+  ["서울", 37.5663, 126.9779], ["부산", 35.1798, 129.075], ["대구", 35.8714, 128.6014],
   ["인천", 37.4563, 126.7052], ["광주", 35.1601, 126.8514], ["대전", 36.3504, 127.3845],
-  ["울산", 35.5384, 129.3114], ["세종", 36.4801, 127.2890], ["경기", 37.2636, 127.0286],
+  ["울산", 35.5384, 129.3114], ["세종", 36.4801, 127.289], ["경기", 37.2636, 127.0286],
   ["강원", 37.8813, 127.7298], ["충북", 36.6357, 127.4914], ["충남", 36.6588, 126.6728],
-  ["전북", 35.8203, 127.1088], ["전남", 34.8161, 126.4629], ["경북", 36.5760, 128.5056],
-  ["경남", 35.2383, 128.6924], ["제주", 33.4890, 126.4983],
+  ["전북", 35.8203, 127.1088], ["전남", 34.8161, 126.4629], ["경북", 36.576, 128.5056],
+  ["경남", 35.2383, 128.6924], ["제주", 33.489, 126.4983],
 ];
 function updateLocLabel() {
   const el = $("locLabel"); if (!el) return;
@@ -1664,7 +1816,7 @@ $("locSearch").addEventListener("click", () => { $("locModal").classList.remove(
 
 /* ---------------- 알림 — 지역·즐겨찾기·일정 맞춤 (req6) ---------------- */
 function daysUntil(yyyymmdd) {
-  if (!yyyymmdd || yyyymmdd.length !== 8) return null;
+  if (yyyymmdd?.length !== 8) return null;
   const t = new Date(+yyyymmdd.slice(0, 4), +yyyymmdd.slice(4, 6) - 1, +yyyymmdd.slice(6, 8));
   const now = new Date(); now.setHours(0, 0, 0, 0);
   return Math.round((t - now) / 86400000);
@@ -1732,7 +1884,7 @@ function renderNotificationSheet(items, locLabel) {
   $("extSheet").innerHTML = `
     <h3>🔔 알림 <small style="font-size:11px;font-weight:600;color:var(--sub)">${esc(locLabel)}·즐겨찾기·일정 기준</small></h3>
     <button class="btn primary" id="pushBtn" style="width:100%;margin-bottom:10px">🔔 푸시 알림 받기 (앱 닫아도 알림)</button>
-    <div id="notifList">${items.map((n, i) => `<div class="notif-item" data-i="${i}"><div class="ni-ic">${n.ic}</div><div><b>${n.t}</b><span>${n.b}</span></div></div>`).join("")}</div>
+    <div id="notifList">${items.map((n, i) => `<div class="notif-item" data-i="${i}"><div class="ni-ic">${esc(n.ic)}</div><div><b>${esc(n.t)}</b><span>${esc(n.b)}</span></div></div>`).join("")}</div>
     <div class="btnrow"><button class="btn ghost" data-close="extModal">닫기</button></div>`;
   $("pushBtn").addEventListener("click", enablePush);
   bindNotificationClicks(items);
@@ -1746,15 +1898,15 @@ async function openNotifs() {
 }
 function urlB64ToUint8(b64) {
   const pad = "=".repeat((4 - (b64.length % 4)) % 4);
-  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+  const raw = atob((b64 + pad).replaceAll("-", "+").replaceAll("_", "/"));
+  return Uint8Array.from([...raw].map((c) => c.codePointAt(0)));
 }
 async function enablePush() {
   if (API.mode !== "cloud") return toast("서버 연결 필요", "백엔드 연결 시 가능해요", "🔔");
   try {
     const v = await API.get("/push/vapid", false);
     if (!v.enabled || !v.publicKey) return toast("푸시 준비 중", "관리자가 VAPID 키를 설정하면 켜져요(지금은 인앱 알림으로 동작)", "🔔", false, 4500);
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return toast("미지원", "이 기기는 푸시를 지원하지 않아요", "🔔");
+    if (!("serviceWorker" in navigator) || !("PushManager" in globalThis)) return toast("미지원", "이 기기는 푸시를 지원하지 않아요", "🔔");
     if ((await Notification.requestPermission()) !== "granted") return toast("알림 권한 필요", "브라우저 알림 권한을 허용해주세요", "🔔");
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(v.publicKey) });
@@ -1765,13 +1917,16 @@ async function enablePush() {
 }
 $("bellBtn").addEventListener("click", openNotifs);
 function refreshBellDot() {
-  const dot = $("bellBtn") && $("bellBtn").querySelector("i");
+  const dot = $("bellBtn")?.querySelector("i");
   if (dot) dot.style.display = ((S.plans || []).length || (S.favs || []).length) ? "block" : "none";
 }
 
 /* ---------------- 전국 산 검색 (산림청 산정보) ---------------- */
 let mntTimer;
-const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => HTML_ENTITIES[c]);
+const cssToken = (value, fallback = "neutral") => /^[a-z0-9_-]+$/i.test(String(value || "")) ? String(value) : fallback;
+const cssColor = (value, fallback = "#74C69D") => /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(String(value || "")) ? String(value) : fallback;
 function openMntSearch() {
   $("mntModal").classList.add("show");
   $("mntQ").value = "";
@@ -1797,12 +1952,12 @@ async function runMntSearch(q) {
   }
 }
 function mntRow(m) {
-  const dist = m.dist_km != null ? `<div class="loc">🧭 ${m.dist_km}km</div>` : "";
+  const dist = m.dist_km === null || m.dist_km === undefined ? "" : `<div class="loc">🧭 ${esc(m.dist_km)}km</div>`;
   return `
     <div class="mnt-row" data-id="${esc(m.list_no)}" data-name="${esc(m.name)}">
       <div><b>${esc(m.name)}${m.top100 ? '<span class="top">100대명산</span>' : ""}</b>
         <div class="loc">📍 ${esc(m.addr || m.sido || "")}</div>${dist}</div>
-      <div class="h">${m.height ? m.height + "m" : "—"} ›</div>
+      <div class="h">${m.height ? esc(m.height) + "m" : "—"} ›</div>
     </div>`;
 }
 async function findNearby() {
@@ -1834,30 +1989,50 @@ $("mntQ").addEventListener("input", (e) => {
 });
 $("mntResults").addEventListener("click", (e) => {
   const row = e.target.closest(".mnt-row");
-  if (row && row.dataset.id) openMountainDetail(row.dataset.id, row.dataset.name);
+  if (row?.dataset.id) openMountainDetail(row.dataset.id, row.dataset.name);
 });
 
 /* ---------------- 산 상세 (사진·시설·산행지수) ---------------- */
 const FAC_ICON = { 정상: "🏔", 대피소: "🏠", 조망점: "🔭", 위험지역: "⚠️", 헬기장: "🚁", 화장실: "🚻", 음수대: "💧", 약수터: "💧" };
-function themedHero(name, height) {
+function themedHero(name, height = 0) {
+  if (globalThis.ForestMateHeroImages?.themedHero) {
+    return globalThis.ForestMateHeroImages.themedHero(name, height);
+  }
   // 사진 폴백 — 높이/이름 기반 테마 SVG(외부 의존 없음)
-  const h = height || 0;
-  const top = h >= 1200 ? "#2D6A4F" : h >= 600 ? "#40916C" : "#52B788";
+  const h = height;
+  const title = esc(name);
+  let top = "#52B788";
+  if (h >= 1200) top = "#2D6A4F";
+  else if (h >= 600) top = "#40916C";
   const sky = h >= 1200 ? "#A8C7B5" : "#CDE7D4";
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300'>
     <defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='${sky}'/><stop offset='1' stop-color='#EAF4EC'/></linearGradient></defs>
     <rect width='600' height='300' fill='url(#g)'/>
     <polygon points='0,300 150,150 260,220 380,90 500,210 600,150 600,300' fill='${top}' opacity='0.9'/>
     <polygon points='320,300 460,120 600,260 600,300' fill='${top}'/>
-    <text x='24' y='280' font-family='sans-serif' font-size='22' font-weight='800' fill='#1B4332'>${name}${h ? " · " + h + "m" : ""}</text></svg>`;
+    <text x='24' y='280' font-family='sans-serif' font-size='22' font-weight='800' fill='#1B4332'>${title}${h ? " · " + esc(h) + "m" : ""}</text></svg>`;
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
+function heroProxyUrl(name, height = 0) {
+  const pageName = String(name || "").trim().split(/\s+/)[0] || "산";
+  const h = Math.max(0, Math.round(Number(height) || 0));
+  return `/api/v1/mountain-hero?name=${encodeURIComponent(pageName)}&height=${encodeURIComponent(h)}`;
+}
 async function loadHero(img, name, height) {
-  img.src = themedHero(name, height);                 // 즉시 폴백
-  try {                                               // 공개 사진 시도(위키 공개자료)
-    const r = await fetch(`https://ko.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name.split(" ")[0])}`);
-    if (r.ok) { const j = await r.json(); if (j.thumbnail && j.thumbnail.source) img.src = j.thumbnail.source; }
-  } catch { /* 폴백 유지 */ }
+  if (globalThis.ForestMateHeroImages?.loadHeroImage) {
+    return globalThis.ForestMateHeroImages.loadHeroImage(img, name, height);
+  }
+  const fallback = themedHero(name, height);
+  const restoreFallback = () => {
+    img.onerror = null;
+    img.src = fallback;
+  };
+  img.onerror = restoreFallback;
+  img.src = fallback;                                // 즉시 폴백
+  const proxied = heroProxyUrl(name, height);
+  img.onerror = restoreFallback;
+  img.src = proxied;
+  return img.src;
 }
 async function openMountainDetail(listNo, name) {
   $("extModal").classList.add("show");
@@ -1867,13 +2042,13 @@ async function openMountainDetail(listNo, name) {
     const d = await API.get(`/mountains/${encodeURIComponent(listNo)}/index`, false);
     const m = d.mountain, fac = m.facilities || {};
     const facHtml = Object.keys(fac).length
-      ? Object.entries(fac).map(([k, v]) => `<span class="fac">${FAC_ICON[k] || "•"} ${k} ${v}</span>`).join("")
+      ? Object.entries(fac).map(([k, v]) => `<span class="fac">${FAC_ICON[k] || "•"} ${esc(k)} ${esc(v)}</span>`).join("")
       : `<span class="sub" style="font-size:11.5px">등록된 등산로 시설 정보 없음</span>`;
     $("extSheet").innerHTML = `
       <img id="mtnHero" class="mtn-hero" alt="${esc(m.name)} 전경">
       <h3>${esc(m.name)}${m.top100 ? ' <span class="top">100대명산</span>' : ""}</h3>
-      <p class="sub">📍 ${esc(m.addr || m.sido || "")} · ⛰ ${m.height ? m.height + "m" : "높이 미상"}</p>
-      <div class="mtn-score">오늘의 산행지수 <b>${d.score}</b><br>🌡 ${d.conditions.weather.temp}°C · 🔥 산불 ${d.conditions.fire.level} · ${esc(d.place)}</div>
+      <p class="sub">📍 ${esc(m.addr || m.sido || "")} · ⛰ ${m.height ? esc(m.height) + "m" : "높이 미상"}</p>
+      <div class="mtn-score">오늘의 산행지수 <b>${esc(d.score)}</b><br>🌡 ${esc(d.conditions.weather.temp)}°C · 🔥 산불 ${esc(d.conditions.fire.level)} · ${esc(d.place)}</div>
       ${m.lat ? `<b style="font-size:12px">🗺 위치 · 길찾기</b><div id="mtnMap" class="detail-map"></div>${dirButtons(m.lat, m.lon, m.name)}` : ""}
       <b style="font-size:12px">🥾 등산로 시설 (산림청 주요지점)</b>
       <div class="facs">${facHtml}</div>
@@ -1896,11 +2071,12 @@ async function openMountainDetail(listNo, name) {
 const _maps = {};
 function miniMap(elId, lat, lon, name, listNo) {
   const el = document.getElementById(elId);
-  if (!el || !window.L) return null;
+  const leaflet = globalThis.L;
+  if (!el || !leaflet) return null;
   if (_maps[elId]) { _maps[elId].remove(); delete _maps[elId]; }
-  const map = L.map(el, { attributionControl: false }).setView([lat, lon], 13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
-  L.marker([lat, lon]).addTo(map).bindPopup(name).openPopup();
+  const map = leaflet.map(el, { attributionControl: false }).setView([lat, lon], 13);
+  leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
+  leaflet.marker([lat, lon]).addTo(map).bindPopup(name).openPopup();
   _maps[elId] = map;
   setTimeout(() => map.invalidateSize(), 120);
   if (listNo) drawTrails(map, listNo);   // 실제 등산로 선
@@ -1909,14 +2085,16 @@ function miniMap(elId, lat, lon, name, listNo) {
 const TRAIL_COLOR = { 쉬움: "#2D6A4F", 보통: "#E08A1E", 어려움: "#C9304E" };
 async function drawTrails(map, listNo) {
   if (!map || !listNo || API.mode !== "cloud") return 0;
+  const leaflet = globalThis.L;
+  if (!leaflet) return 0;
   try {
     const d = await API.get(`/mountains/${encodeURIComponent(listNo)}/trails`, false);
-    if (!d.segs || !d.segs.length) return 0;
+    if (!d.segs?.length) return 0;
     const bounds = [];
     d.segs.forEach((s) => {
-      if (!s.pts || s.pts.length < 2) return;
-      L.polyline(s.pts, { color: TRAIL_COLOR[s.dffl] || "#40916C", weight: 4, opacity: 0.85 })
-        .addTo(map).bindPopup(`${esc(s.nm || "등산로")} · ${esc(s.dffl || "")} ${s.lt ? s.lt + "km" : ""}`);
+      if (!s.pts?.length || s.pts.length < 2) return;
+      leaflet.polyline(s.pts, { color: TRAIL_COLOR[s.dffl] || "#40916C", weight: 4, opacity: 0.85 })
+        .addTo(map).bindPopup(`${esc(s.nm || "등산로")} · ${esc(s.dffl || "")} ${s.lt ? esc(s.lt) + "km" : ""}`);
       bounds.push(...s.pts);
     });
     if (bounds.length) map.fitBounds(bounds, { padding: [22, 22], maxZoom: 15 });
@@ -1952,7 +2130,7 @@ function openRouteUrl(url, pendingWin) {
     pendingWin.location.href = url;
     return;
   }
-  const opened = window.open(url, "_blank", "noopener");
+  const opened = globalThis.open?.(url, "_blank", "noopener");
   if (!opened) location.href = url;
 }
 function setRouteButtonBusy(btn, busy) {
@@ -1981,7 +2159,7 @@ async function openRouteFromCurrent(btn) {
   const provider = btn.dataset.routeProvider || "kakao";
   const dest = routePoint(btn.dataset.routeLat, btn.dataset.routeLon, decodeURIComponent(btn.dataset.routeName || ""));
   if (!dest.lat || !dest.lon) return toast("길찾기 오류", "도착지 좌표가 없어 길찾기를 열 수 없어요", "🧭", true);
-  const pendingWin = window.open("about:blank", "_blank");
+  const pendingWin = globalThis.open?.("about:blank", "_blank");
   if (pendingWin) pendingWin.opener = null;
   setRouteButtonBusy(btn, true);
   try {
@@ -1997,7 +2175,10 @@ async function openRouteFromCurrent(btn) {
 }
 function dirButtons(lat, lon, name) {
   const dest = routePoint(lat, lon, name), h = homeLoc();
-  const routeAttrs = `data-route-lat="${dest.lat}" data-route-lon="${dest.lon}" data-route-name="${encodeURIComponent(dest.name)}"`;
+  const routeLat = clampNumber(dest.lat, -90, 90, 0);
+  const routeLon = clampNumber(dest.lon, -180, 180, 0);
+  const routeName = esc(encodeURIComponent(dest.name));
+  const routeAttrs = `data-route-lat="${routeLat}" data-route-lon="${routeLon}" data-route-name="${routeName}"`;
   return `<div class="dir-row">
     <button type="button" class="dir-btn kakao" data-route-provider="kakao" ${routeAttrs}>📍 현재위치→ 카카오맵</button>
     <button type="button" class="dir-btn" data-route-provider="google" ${routeAttrs}>구글맵</button>
@@ -2033,9 +2214,19 @@ async function openPlan(m) {
   if (API.mode === "cloud" && m.lat) {
     try { days = (await API.get(`/forecast?lat=${m.lat}&lon=${m.lon}`, false)).days; } catch { /* */ }
   }
+  const planTone = (score) => {
+    if (score >= 70) return "good";
+    if (score >= 50) return "mid";
+    return "bad";
+  };
+  const planTip = (score) => {
+    if (score >= 70) return "산행하기 좋아요";
+    if (score >= 50) return "기상 변화 유의";
+    return "산행 비권장";
+  };
   const rows = days.length ? days.map((d) => {
-    const ok = d.score >= 70 ? "good" : d.score >= 50 ? "mid" : "bad";
-    const tip = d.score >= 70 ? "산행하기 좋아요" : d.score >= 50 ? "기상 변화 유의" : "산행 비권장";
+    const ok = planTone(d.score);
+    const tip = planTip(d.score);
     return `<div class="plan-row ${ok}">
       <div><b>${d.label}</b><span>${d.dow}</span></div>
       <div class="plan-wx">🌡${d.temp}° · ☔${d.rain_prob}% · 🔥${d.fire}</div>
@@ -2135,7 +2326,10 @@ function openRest() {
 }
 function openNews() {
   const items = (FM_DATA.news || []).map((n, i) => {
-    const meta = (typeof n === "object" && (n.date || n.region)) ? `<small>${esc(n.date || "")}${n.date && n.region ? " · " : ""}${esc(n.region || "")}</small>` : "";
+    let meta = "";
+    if (typeof n === "object" && (n.date || n.region)) {
+      meta = `<small>${esc(n.date || "")}${n.date && n.region ? " · " : ""}${esc(n.region || "")}</small>`;
+    }
     return `<div class="news-item" data-i="${i}"><div class="ni-tx">🌿 <b>${esc(n.title || n)}</b>${meta}</div><span>›</span></div>`;
   }).join("");
   openExt(`
@@ -2201,9 +2395,9 @@ async function init() {
   const forceFtue = Q.get("ftue") === "1" || Q.get("onboard") === "1";
   if ((forceFtue || !S.profile.set) && !t && DEMO === null && !Q.get("embed")) setTimeout(openOnboard, 600);
 }
-init();
+init(); // NOSONAR
 
 /* PWA */
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.register("sw.js").catch(() => {}); // NOSONAR
 }

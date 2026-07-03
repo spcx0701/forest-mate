@@ -19,8 +19,6 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <a href="https://api.reuse.software/info/github.com/spcx0701/forest-mate"><img alt="REUSE status" src="https://api.reuse.software/badge/github.com/spcx0701/forest-mate"></a>
   <a href="https://forestmate.onrender.com/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Android APK" src="https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white"></a>
-  <a href="packaging/fdroid/README.md"><img alt="F-Droid candidate" src="https://img.shields.io/badge/F--Droid-candidate-1976D2?logo=fdroid&logoColor=white"></a>
   <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-5A0FC8?logo=pwa&logoColor=white">
   <img alt="No tracking SDK" src="https://img.shields.io/badge/no_tracking_SDK-verified-0B7A75">
 </p>
@@ -30,9 +28,14 @@
 </p>
 
 <p align="center">
-  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="56"></a>
-  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="56"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6" height="56"></a>
+  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" align="center" height="64"></a>
+  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" align="center" height="64"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" align="center" height="64"></a>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Get it on GitHub" src="https://tachibanagenerallaboratories.github.io/images/badges/GitHub/get-it-on-github.png" align="center" height="64"></a>
+</p>
+<p align="center">
+  <strong>Galaxy Watch / Wear OS</strong><br>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Download Wear OS APK" src="https://img.shields.io/badge/Wear%20OS%20APK-forestmate--wear--vX.apk-2D6A4F?logo=wearos&logoColor=white" align="center"></a>
 </p>
 <p align="center">
   <strong>한국어</strong> · <a href="README.en.md">English</a>
@@ -44,11 +47,9 @@
   ·
   <a href="https://forestmate.onrender.com/dashboard.html"><strong>Dashboard</strong></a>
   ·
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>Android APK</strong></a>
+  <a href="https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408"><strong>공공데이터 활용사례</strong></a>
   ·
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><strong>GitHub Release</strong></a>
-  ·
-  <a href="packaging/fdroid/README.md"><strong>F-Droid Candidate</strong></a>
+  <a href="https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK"><strong>Civic Tech Guide</strong></a>
 </p>
 
 <p align="center">
@@ -57,9 +58,9 @@
 
 ForestMate(숲길동무)는 산림 공공데이터와 AI 기반 안전 판단 로직을 활용해 **산행 전 코스 선택 → 산행 중 위험 감지·SOS → B2G 관제**까지 잇는 산행 안전 서비스입니다. 통신 음영지역에서는 자동으로 로컬 엔진으로 폴백해 핵심 기능이 끊기지 않습니다.
 
-웹 앱, 관제 대시보드, Android APK를 함께 제공합니다. 백엔드 연결 시 `/api/v1`로 실시간 공공데이터와 산행 기록을 사용하고, 정적 호스팅 환경에서는 로컬 데이터·규칙 기반 폴백으로 주요 화면을 확인할 수 있습니다.
+웹 앱, 관제 대시보드, Android APK, Wear OS APK를 함께 제공합니다. 백엔드 연결 시 `/api/v1`로 실시간 공공데이터와 산행 기록을 사용하고, 정적 호스팅 환경에서는 로컬 데이터·규칙 기반 폴백으로 주요 화면을 확인할 수 있습니다.
 
-> [「2026년 산림 공공데이터·AI 활용 창업경진대회」](https://www.kofpi.or.kr/notice/notice_01view.do?bb_seq=12456) 제품 및 서비스 개발 부문 출품 패키지.
+> [「2026년 산림 공공데이터·AI 활용 창업경진대회」](https://www.kofpi.or.kr/notice/notice_01view.do?bb_seq=12456) 제품 및 서비스 개발 부문 출품 패키지. [공공데이터포털 활용사례](https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408)와 [Civic Tech Guide](https://app.civictech.guide/p/forestmate/r/recQXWFIHBTDJLoZK)에 등재되어 있습니다.
 
 ## 주요 기능
 
@@ -67,11 +68,12 @@ ForestMate(숲길동무)는 산림 공공데이터와 AI 기반 안전 판단 �
 - **실시간 산행지수** — 기상청 단기예보 + 국립산림과학원 산불위험예보(V2) + 산사태·일몰을 결합. 선택한 산의 위치 격자로 정밀 산출.
 - **실제 등산로 지도** — 산림청 등산로 공간정보(2,200여 산, 5만여 구간)를 난이도색 경로로 Leaflet 지도에 표시. 들머리까지 카카오맵/구글맵 길찾기.
 - **GPS 산행 추적** — 실제 위치(`watchPosition`)대로 경로·거리 기록(자동 진행 아님), 이동 멈춤+심박 이상 시 **자동 조난 감지** → 보호자·119 전파.
+- **Galaxy Watch 동반 앱** — Wear OS 네이티브 화면에서 지도형 산행 뷰, 심박, GPS, 나침반, 배터리, 위험 상태를 표시하고 센서 샘플을 서버 기록에 동기화.
 - **AI 숲이** — 규칙 엔진/LLM(RAG) 의도 응답, 식물·버섯 식별 데모.
 - **개인화** — 실집계 배지·산행 캘린더·산행 일정 계획(날짜별 적합도)·위치/즐겨찾기 맞춤 알림(Web Push).
 - **B2G 관제 대시보드** — 실시간 KPI + WebSocket 피드 + k-익명화 위험 히트맵.
 
-Android 사용자는 GitHub Release에서 APK를 내려받아 설치할 수 있습니다. F-Droid 제출용 소스 빌드 메타데이터도 포함되며, 현재 Android TWA는 `forestmate.onrender.com` hosted service를 열기 때문에 F-Droid 메타데이터에 `NonFreeNet` Anti-Feature를 명시합니다.
+Android 사용자는 GitHub Release에서 Kotlin 네이티브 `forestmate-android-vX.apk`를 내려받아 설치할 수 있습니다. Galaxy Watch/Wear OS 사용자는 같은 Release에서 Kotlin 네이티브 `forestmate-wear-vX.apk`를 설치합니다. 웹 사용자는 별도 APK 없이 PWA 설치 경로를 사용할 수 있습니다. 기본 Android 빌드는 `forestmate.onrender.com` API에 연결되므로 F-Droid 메타데이터에는 `NonFreeNet` Anti-Feature를 명시합니다.
 
 ## B2G 관제 대시보드
 
@@ -98,6 +100,7 @@ Android 사용자는 GitHub Release에서 APK를 내려받아 설치할 수 있�
 - **백엔드** FastAPI · SQLAlchemy(SQLite/PostgreSQL) · Pydantic · pytest · WebSocket
 - **프런트** PWA(서비스워커·오프라인·Web Push) · Vanilla JS · Leaflet 지도
 - **데이터·AI** 공공데이터포털(기상청·산림청) · VWorld 지오코딩 · Claude(LLM RAG)
+- **Android** Kotlin 네이티브 phone APK · Kotlin 네이티브 Wear OS companion
 - **인프라** Docker · Render · GitHub Actions(CI)
 
 ## 아키텍처
@@ -122,7 +125,7 @@ forest-mate/
 │   ├── app.js            #   API 클라이언트(헬스체크 감지·실패 시 로컬 폴백) + 앱 로직
 │   └── data.js, sw.js    #   로컬 폴백 데이터 / 오프라인 서비스워커
 ├── deploy → Dockerfile · docker-compose.yml · render.yaml(무료 호스팅) · .env.example
-├── packaging/            # 배포 빌드 — android(TWA APK·Bubblewrap) · ios(Capacitor)
+├── packaging/            # 배포 빌드 — android(Kotlin phone APK·Kotlin Wear OS APK) · ios(Capacitor)
 ├── deliverables/         # 기획서 DOCX · 발표 PPTX
 ├── legal/                # 개인정보처리방침 · 이용약관
 └── store/                # 스토어 등록 메타데이터 + 스토어_제출_런북.md
@@ -133,7 +136,7 @@ forest-mate/
 ### 풀스택(백엔드 + 프런트, 권장)
 ```bash
 cd forest-mate
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements.lock
 .venv/bin/uvicorn server.main:app --port 5181
 ```
 - 랜딩 http://localhost:5181/home.html · 앱 http://localhost:5181/index.html · 관제 http://localhost:5181/dashboard.html

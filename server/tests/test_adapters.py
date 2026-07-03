@@ -45,8 +45,8 @@ def test_fetch_helpers_cache_and_redact(monkeypatch):
         ]
         calls = []
 
-        def __init__(self, timeout):
-            self.timeout = timeout
+        def __init__(self, *_, **__):
+            self.timeout = None
 
         async def __aenter__(self):
             return self
@@ -55,6 +55,7 @@ def test_fetch_helpers_cache_and_redact(monkeypatch):
             return None
 
         async def get(self, url, params):
+            await asyncio.sleep(0)
             self.calls.append((url, params, self.timeout))
             return self.queue.pop(0)
 
@@ -95,6 +96,7 @@ def test_public_data_live_parsing_and_fallback(monkeypatch):
     ]
 
     async def ok_fetch(url, params, cache_key):
+        await asyncio.sleep(0)
         assert params.get("serviceKey", params.get("ServiceKey")) == "KEY"
         assert cache_key.endswith(":eunpyeong")
         if url == public_data.KMA_URL:
@@ -172,11 +174,12 @@ def test_mountain_fetch_passes_cache_key_and_timeout(monkeypatch):
     </item></items><totalCount>7</totalCount></body></response>
     """
 
-    async def fake_fetch_text(url, params, cache_key, timeout):
+    async def fake_fetch_text(url, params, cache_key, request_timeout_s):
+        await asyncio.sleep(0)
         assert url == mountains.MNT_INFO_URL
         assert params == {"serviceKey": "KEY", "pageNo": 2, "numOfRows": 5, "searchWrd": "북한"}
         assert cache_key == "mnt:북한:2:5"
-        assert timeout == mountains._TIMEOUT
+        assert request_timeout_s == mountains._TIMEOUT
         return xml
 
     monkeypatch.setattr(mountains, "service_key", lambda: "KEY")

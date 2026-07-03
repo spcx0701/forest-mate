@@ -10,10 +10,10 @@ def _bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-PRIMARY_PASSPHRASE = " ".join(("correct", "horse", "battery", "staple"))
-SECONDARY_PASSPHRASE = "-".join(("very", "secret", "test", "phrase"))
-GHOST_PASSPHRASE = "-".join(("ghost", "test", "phrase"))
-WRONG_PASSPHRASE = "invalid"
+PRIMARY_AUTH_VALUE = " ".join(("correct", "horse", "battery", "staple"))
+SECONDARY_AUTH_VALUE = "-".join(("very", "secret", "test", "phrase"))
+GHOST_AUTH_VALUE = "-".join(("ghost", "test", "phrase"))
+WRONG_AUTH_VALUE = "invalid"
 
 
 def test_email_account_register_login_profile_and_logout(client, register_device):
@@ -21,7 +21,7 @@ def test_email_account_register_login_profile_and_logout(client, register_device
 
     res = client.post("/api/v1/auth/register", json={
         "email": "hiker@example.com",
-        "password": PRIMARY_PASSPHRASE,
+        "password": PRIMARY_AUTH_VALUE,
         "name": "산계정",
         "fit": 3,
         "knee": False,
@@ -59,7 +59,7 @@ def test_email_account_register_login_profile_and_logout(client, register_device
 
     duplicate = client.post("/api/v1/auth/register", json={
         "email": "hiker@example.com",
-        "password": PRIMARY_PASSPHRASE,
+        "password": PRIMARY_AUTH_VALUE,
         "name": "다른이름",
     })
     assert duplicate.status_code == 409
@@ -70,7 +70,7 @@ def test_email_account_register_login_profile_and_logout(client, register_device
 
     login = client.post("/api/v1/auth/login", json={
         "email": "hiker@example.com",
-        "password": PRIMARY_PASSPHRASE,
+        "password": PRIMARY_AUTH_VALUE,
         "device_token": legacy["token"],
     })
     assert login.status_code == 200
@@ -82,7 +82,7 @@ def test_account_session_can_drive_hike_records(client, register_device):
     _, legacy = register_device(name="기록러")
     reg = client.post("/api/v1/auth/register", json={
         "email": "trail@example.com",
-        "password": SECONDARY_PASSPHRASE,
+        "password": SECONDARY_AUTH_VALUE,
         "name": "기록러",
         "device_token": legacy["token"],
     }).json()
@@ -109,6 +109,7 @@ def test_oauth_start_and_callback_create_account_session(client, register_device
     _, legacy = register_device(name="소셜러")
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "google-client-id")
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "google-client-secret")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://forestmate.example")
 
     from server.config import get_settings
     get_settings.cache_clear()
@@ -129,6 +130,7 @@ def test_oauth_start_and_callback_create_account_session(client, register_device
     from server.routers import auth as auth_router
 
     async def fake_fetch_oauth_profile(provider, code, redirect_uri):
+        await asyncio.sleep(0)
         assert provider == "google"
         assert code == "provider-code"
         assert redirect_uri.endswith("/api/v1/auth/oauth/google/callback")
@@ -156,6 +158,122 @@ def test_oauth_start_and_callback_create_account_session(client, register_device
     assert body["user"]["email"] == "social@example.com"
     assert body["user"]["profile"]["name"] == "소셜러"
     assert body["user"]["profile"]["heart"] is True
+
+
+def test_oauth_redirect_path_is_allow_listed(client, register_device, monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "google-client-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "google-client-secret")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://forestmate.example")
+
+    from server.config import get_settings
+    from server.routers import auth as auth_router
+
+    get_settings.cache_clear()
+    issued = 0
+
+    async def fake_fetch_oauth_profile(provider, code, redirect_uri):
+        nonlocal issued
+        issued += 1
+        await asyncio.sleep(0)
+        return {
+            "provider_user_id": f"google-redirect-{issued}",
+            "email": f"redirect-{issued}@example.com",
+            "email_verified": True,
+            "name": "리다이렉트",
+            "avatar_url": "",
+        }
+
+    monkeypatch.setattr(auth_router, "fetch_oauth_profile", fake_fetch_oauth_profile)
+
+    def roundtrip(redirect_path: str) -> str:
+        _, legacy = register_device(name="소셜러")
+        start = client.get("/api/v1/auth/oauth/google/start", params={
+            "device_token": legacy["token"],
+            "redirect_path": redirect_path,
+        }, follow_redirects=False)
+        assert start.status_code in (302, 307)
+        state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+        callback = client.get("/api/v1/auth/oauth/google/callback", params={
+            "code": "provider-code",
+            "state": state,
+        }, follow_redirects=False)
+        assert callback.status_code in (302, 307)
+        return callback.headers["location"]
+
+    assert roundtrip("https://evil.example/callback").startswith("/index.html#auth_token=")
+    assert roundtrip("//evil.example/callback").startswith("/index.html#auth_token=")
+    assert roundtrip("/admin").startswith("/index.html#auth_token=")
+    assert roundtrip("/home.html").startswith("/home.html#auth_token=")
+
+
+def test_oauth_redirect_helpers_cover_provider_and_error_edges():
+    from fastapi import HTTPException
+
+    from server.routers import auth as auth_router
+
+    assert auth_router._safe_oauth_redirect_path(None) == "/index.html"
+    assert auth_router._safe_oauth_redirect_path("/index.html") == "/index.html"
+    assert auth_router._safe_oauth_redirect_path("/home.html") == "/home.html"
+    assert auth_router._safe_oauth_redirect_path("/admin") == "/index.html"
+
+    assert auth_router._oauth_error("access_denied").headers["location"] == "/index.html#auth_error=access_denied"
+    invalid = auth_router._oauth_error("invalid_oauth_callback")
+    assert invalid.headers["location"] == "/index.html#auth_error=invalid_oauth_callback"
+    assert auth_router._oauth_error("unexpected").headers["location"] == "/index.html#auth_error=oauth_failed"
+
+    assert auth_router._provider_config("google")["authorize_url"] == (
+        "https://accounts.google.com/o/oauth2/v2/auth"
+    )
+    assert auth_router._provider_config("kakao")["authorize_url"] == "https://kauth.kakao.com/oauth/authorize"
+    assert auth_router._provider_config("naver")["authorize_url"] == "https://nid.naver.com/oauth2.0/authorize"
+    with pytest.raises(HTTPException) as unknown_config:
+        auth_router._provider_config("github")
+    assert unknown_config.value.status_code == 404
+
+    redirect_uri = "https://forestmate.example/api/v1/auth/oauth/google/callback"
+    google = auth_router._oauth_authorization_redirect("google", "google-client", redirect_uri, "abc")
+    google_url = urlparse(google.headers["location"])
+    assert google_url.scheme == "https"
+    assert google_url.netloc == "accounts.google.com"
+    assert google_url.path == "/o/oauth2/v2/auth"
+    assert parse_qs(google_url.query) == {
+        "response_type": ["code"],
+        "client_id": ["google-client"],
+        "redirect_uri": [redirect_uri],
+        "state": ["abc"],
+        "scope": ["openid email profile"],
+    }
+    kakao = auth_router._oauth_authorization_redirect("kakao", "kakao-client", redirect_uri, "abc")
+    kakao_url = urlparse(kakao.headers["location"])
+    assert kakao_url.scheme == "https"
+    assert kakao_url.netloc == "kauth.kakao.com"
+    assert kakao_url.path == "/oauth/authorize"
+    assert parse_qs(kakao_url.query) == {
+        "response_type": ["code"],
+        "client_id": ["kakao-client"],
+        "redirect_uri": [redirect_uri],
+        "state": ["abc"],
+        "scope": ["profile_nickname account_email"],
+    }
+    naver = auth_router._oauth_authorization_redirect("naver", "naver-client", redirect_uri, "abc")
+    naver_url = urlparse(naver.headers["location"])
+    assert naver_url.scheme == "https"
+    assert naver_url.netloc == "nid.naver.com"
+    assert naver_url.path == "/oauth2.0/authorize"
+    assert parse_qs(naver_url.query) == {
+        "response_type": ["code"],
+        "client_id": ["naver-client"],
+        "redirect_uri": [redirect_uri],
+        "state": ["abc"],
+    }
+    with pytest.raises(HTTPException) as unknown_redirect:
+        auth_router._oauth_authorization_redirect("github", "client", redirect_uri, "abc")
+    assert unknown_redirect.value.status_code == 404
+
+    home = auth_router._oauth_success_redirect("/home.html", "token value")
+    assert home.headers["location"] == "/home.html#auth_token=token+value"
+    fallback = auth_router._oauth_success_redirect("/admin", "token")
+    assert fallback.headers["location"] == "/index.html#auth_token=token"
 
 
 def test_auth_helpers_cover_invalid_and_guest_edges(register_device):
@@ -238,13 +356,13 @@ def test_auth_routes_reject_guest_and_invalid_login(client, register_device):
 
     registered = client.post("/api/v1/auth/register", json={
         "email": "new@example.com",
-        "password": PRIMARY_PASSPHRASE,
+        "password": PRIMARY_AUTH_VALUE,
         "name": "새계정",
     })
     assert registered.status_code == 201
     assert registered.json()["device_token"]
 
-    bad = client.post("/api/v1/auth/login", json={"email": "new@example.com", "password": WRONG_PASSPHRASE})
+    bad = client.post("/api/v1/auth/login", json={"email": "new@example.com", "password": WRONG_AUTH_VALUE})
     assert bad.status_code == 401
 
     from server.auth import hash_password
@@ -256,13 +374,13 @@ def test_auth_routes_reject_guest_and_invalid_login(client, register_device):
         db.add(AuthIdentity(user_id="missing-user", provider="password",
                             provider_user_id="ghost@example.com",
                             email="ghost@example.com",
-                            credential_hash=hash_password(GHOST_PASSPHRASE)))
+                            credential_hash=hash_password(GHOST_AUTH_VALUE)))
         db.commit()
     finally:
         db.close()
     ghost = client.post("/api/v1/auth/login", json={
         "email": "ghost@example.com",
-        "password": GHOST_PASSPHRASE,
+        "password": GHOST_AUTH_VALUE,
     })
     assert ghost.status_code == 401
 
@@ -273,8 +391,6 @@ def test_auth_provider_configuration_and_oauth_error_routes(client, monkeypatch)
     monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
     monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
 
-    from fastapi import HTTPException
-
     from server.config import get_settings
     from server.routers import auth as auth_router
 
@@ -283,9 +399,9 @@ def test_auth_provider_configuration_and_oauth_error_routes(client, monkeypatch)
     assert providers["oauth"]["kakao"] is True
     assert providers["oauth"]["google"] is False
 
-    with pytest.raises(HTTPException) as unknown:
+    with pytest.raises(ValueError) as unknown:
         auth_router._provider_credentials("unknown")
-    assert unknown.value.status_code == 404
+    assert "unknown oauth provider" in str(unknown.value)
     assert client.get("/api/v1/auth/oauth/unknown/start").status_code == 404
     assert client.get("/api/v1/auth/oauth/google/start").status_code == 503
 
@@ -330,11 +446,13 @@ def test_oauth_profile_fetch_maps_all_supported_providers(monkeypatch):
             return False
 
         async def post(self, url, data, headers):
+            await asyncio.sleep(0)
             self.provider = next(p for p, cfg in auth_router.OAUTH_PROVIDERS.items()
                                  if cfg["token_url"] == url)
             return FakeResponse({"access_token": f"{self.provider}-token"})
 
         async def get(self, url, headers):
+            await asyncio.sleep(0)
             provider = self.provider
             payloads = {
                 "google": {"sub": "g-1", "email": "GOOGLE@EXAMPLE.COM",
@@ -399,6 +517,7 @@ def test_oauth_profile_fetch_rejects_missing_access_token(monkeypatch):
             return False
 
         async def post(self, url, data, headers):
+            await asyncio.sleep(0)
             return FakeResponse()
 
     monkeypatch.setattr(auth_router.httpx, "AsyncClient", lambda *args, **kwargs: FakeClient())
@@ -411,9 +530,13 @@ def test_oauth_state_and_social_account_edge_cases(client, monkeypatch):
     from fastapi import HTTPException
 
     from server.auth import token_hash
+    from server.config import get_settings
     from server.db import SessionLocal
     from server.models import AuthIdentity, OAuthState, User, UserDevice, utcnow
     from server.routers import auth as auth_router
+
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://forestmate.example")
+    get_settings.cache_clear()
 
     db = SessionLocal()
     try:

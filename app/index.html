@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="description" content="산림 공공데이터·AI 기반 산행 안전 동반자 — 산행지수·맞춤 코스·위험 경고·AI 조난 감지·원터치 SOS">
 <meta name="theme-color" content="#1B4332">
 <meta name="google-site-verification" content="yvFSsQF4caLMU9TIPQ3KU_SUnYnaV-phrx9wp2c5DVQ">
@@ -14,9 +14,10 @@
 <meta name="apple-mobile-web-app-title" content="숲길동무">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
-<link rel="stylesheet" href="app.css?v=20260617-ftue-social-center-leaflet-map">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=20260618-local-leaflet">
+<script src="vendor/leaflet/leaflet.js?v=20260618-local-leaflet"></script>
+<link rel="stylesheet" href="app.css?v=20260618-modal-bounce">
+<link rel="stylesheet" href="contour.css?v=20260619-contour-fonts">
 <title>숲길동무 ForestMate — AI 산행 안전 동반자</title>
 </head>
 <body>
@@ -126,7 +127,7 @@
     </div>
     <div class="inputbar">
       <button class="rbtn" id="btnPhoto">📷</button>
-      <input id="chatInput" placeholder="숲이에게 물어보세요…" autocomplete="off">
+      <input id="chatInput" placeholder="숲이에게 물어보세요…" autocomplete="off" aria-label="숲이에게 질문">
       <button class="rbtn mic" id="btnSend">🎤</button>
     </div>
     <div class="src">학습·지식 출처: 국가생물종지식정보시스템(국립수목원) · 산림청 숲e랑 해설 콘텐츠 · 등산로 POI 공간정보 — 공공 지식베이스 근거 답변(RAG)</div>
@@ -311,6 +312,7 @@
 
 <script src="data.js"></script>
 <script src="condition-details.js?v=20260617-leaflet-map"></script>
-<script src="app.js?v=20260617-server-connection-leaflet-map"></script>
+<script src="hero-images.js?v=20260618-hero-proxy"></script>
+<script src="app.js?v=20260618-local-leaflet"></script>
 </body>
 </html>

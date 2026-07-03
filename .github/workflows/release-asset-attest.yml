@@ -1,0 +1,55 @@
+name: Attest Existing Release Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing GitHub Release tag whose APK assets should receive Sigstore bundles.
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  attest:
+    name: Attach Sigstore bundles
+    runs-on: ubuntu-latest
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+
+      - name: Download release APK assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          mkdir -p release-assets
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.apk' \
+            --dir release-assets
+          test -n "$(find release-assets -name '*.apk' -print -quit)"
+
+      - name: Generate release asset attestation
+        id: release-asset-attestation
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
+        with:
+          subject-path: release-assets/*.apk
+
+      - name: Upload Sigstore bundle to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SIGSTORE_BUNDLE: ${{ steps.release-asset-attestation.outputs.bundle-path }}
+        run: |
+          test -n "$SIGSTORE_BUNDLE"
+          asset_tag="${RELEASE_TAG#android-}"
+          cp "$SIGSTORE_BUNDLE" "release-assets/forestmate-android-${asset_tag}.sigstore.json"
+          gh release upload "$RELEASE_TAG" release-assets/*.sigstore.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber

@@ -1,5 +1,6 @@
 """기기 등록·산행 추적·SOS — 토큰 인증 구간."""
 from datetime import datetime, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
@@ -17,8 +18,8 @@ from ..services.safety import assess_distress
 router = APIRouter()
 
 
-def get_device(authorization: str = Header(default=""),
-               db: Session = Depends(get_db)) -> Device:
+def get_device(db: Annotated[Session, Depends(get_db)],
+               authorization: Annotated[str, Header()] = "") -> Device:
     return context_from_authorization(db, authorization).device
 
 
@@ -30,16 +31,17 @@ def _course(course_id: str) -> dict:
 
 
 @router.post("/devices", response_model=DeviceOut, status_code=201)
-async def register_device(body: DeviceCreate, db: Session = Depends(get_db)):
+async def register_device(body: DeviceCreate, db: Annotated[Session, Depends(get_db)]):
     device = Device(name=body.name, fit=body.fit, knee=body.knee, heart=body.heart)
     db.add(device)
     db.commit()
     return DeviceOut(device_id=device.id, token=device.token, name=device.name)
 
 
-@router.post("/hikes", status_code=201)
-async def start_hike(body: HikeCreate, device: Device = Depends(get_device),
-                     db: Session = Depends(get_db)):
+@router.post("/hikes", status_code=201,
+             responses={404: {"description": "Course not found"}})
+async def start_hike(body: HikeCreate, device: Annotated[Device, Depends(get_device)],
+                     db: Annotated[Session, Depends(get_db)]):
     course = _course(body.course_id)
     hike = Hike(device_id=device.id, course_id=course["id"])
     db.add(hike)
@@ -51,9 +53,13 @@ async def start_hike(body: HikeCreate, device: Device = Depends(get_device),
     return {"hike_id": hike.id, "course_id": course["id"], "started_at": hike.started_at}
 
 
-@router.post("/hikes/{hike_id}/track", response_model=TrackOut)
-async def track(hike_id: str, body: TrackIn, device: Device = Depends(get_device),
-                db: Session = Depends(get_db)):
+@router.post("/hikes/{hike_id}/track", response_model=TrackOut,
+             responses={
+                 404: {"description": "Hike not found"},
+                 409: {"description": "Hike is not active"},
+             })
+async def track(hike_id: str, body: TrackIn, device: Annotated[Device, Depends(get_device)],
+                db: Annotated[Session, Depends(get_db)]):
     hike = db.get(Hike, hike_id)
     if not hike or hike.device_id != device.id:
         raise HTTPException(404, "hike not found")
@@ -93,9 +99,10 @@ async def track(hike_id: str, body: TrackIn, device: Device = Depends(get_device
     return TrackOut(alerts=alerts, distress=distress, progress=body.progress)
 
 
-@router.post("/hikes/{hike_id}/end", response_model=HikeEndOut)
-async def end_hike(hike_id: str, device: Device = Depends(get_device),
-                   db: Session = Depends(get_db)):
+@router.post("/hikes/{hike_id}/end", response_model=HikeEndOut,
+             responses={404: {"description": "Hike not found"}})
+async def end_hike(hike_id: str, device: Annotated[Device, Depends(get_device)],
+                   db: Annotated[Session, Depends(get_db)]):
     hike = db.get(Hike, hike_id)
     if not hike or hike.device_id != device.id:
         raise HTTPException(404, "hike not found")
@@ -132,7 +139,8 @@ def _compute_badges(total, total_km, total_kcal, active_days, regions, distinct,
 
 
 @router.get("/hikes/summary", response_model=HikeSummaryOut)
-async def hike_summary(ctx: AuthContext = Depends(get_auth_context), db: Session = Depends(get_db)):
+async def hike_summary(ctx: Annotated[AuthContext, Depends(get_auth_context)],
+                       db: Annotated[Session, Depends(get_db)]):
     """마이 리포트 — 계정이면 연결 기기 전체, 게스트면 이 기기 기록을 집계."""
     ids = linked_device_ids(db, ctx.user) if ctx.user and ctx.account_session else [ctx.device.id]
     hikes = db.execute(
@@ -179,7 +187,8 @@ async def hike_summary(ctx: AuthContext = Depends(get_auth_context), db: Session
 
 
 @router.get("/hikes")
-async def hike_list(ctx: AuthContext = Depends(get_auth_context), db: Session = Depends(get_db)):
+async def hike_list(ctx: Annotated[AuthContext, Depends(get_auth_context)],
+                    db: Annotated[Session, Depends(get_db)]):
     """산행 기록 — 계정이면 연결 기기 전체, 게스트면 이 기기의 완료 산행."""
     ids = linked_device_ids(db, ctx.user) if ctx.user and ctx.account_session else [ctx.device.id]
     hikes = db.execute(
@@ -195,8 +204,8 @@ async def hike_list(ctx: AuthContext = Depends(get_auth_context), db: Session = 
 
 
 @router.post("/sos", response_model=SosOut, status_code=201)
-async def sos(body: SosCreate, device: Device = Depends(get_device),
-              db: Session = Depends(get_db)):
+async def sos(body: SosCreate, device: Annotated[Device, Depends(get_device)],
+              db: Annotated[Session, Depends(get_db)]):
     course = None
     if body.hike_id:
         hike = db.get(Hike, body.hike_id)

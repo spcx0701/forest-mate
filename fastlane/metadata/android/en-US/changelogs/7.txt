@@ -1,0 +1,6 @@
+ForestMate 1.2.0 native Android release.
+
+- Replaces the phone Trusted Web Activity wrapper with a Kotlin native Android app.
+- Adds a shared Android core API layer for trail, hike, watch pairing, and SOS flows.
+- Converts the Wear OS companion app, API client, and sensor service to Kotlin.
+- Ships phone and Wear OS APKs from the same GitHub Release.

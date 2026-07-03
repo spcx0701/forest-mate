@@ -87,8 +87,7 @@ def rule_reply(message: str, lang: str, cond: dict, course: dict, progress: floa
                      "어떤 게 궁금하세요?", "intent": "fallback"}
 
 
-async def answer(message: str, lang: str, region_id: str,
-                 course_id: str | None, progress: float, cond: dict) -> dict:
+async def answer(message: str, lang: str, course_id: str | None, progress: float, cond: dict) -> dict:
     settings = get_settings()
     course = _course(course_id)
     sources = [
