@@ -14,10 +14,11 @@ class BottomNavLayoutTest {
     }
 
     @Test
-    fun bottomNavContentKeepsTheFullSystemNavigationInset() {
-        assertEquals(0, BottomNavLayout.tabContentSafeBottomInsetPx(rawInsetPx = -12))
-        assertEquals(14, BottomNavLayout.tabContentSafeBottomInsetPx(rawInsetPx = 14))
-        assertEquals(96, BottomNavLayout.tabContentSafeBottomInsetPx(rawInsetPx = 96))
+    fun bottomNavContentCapsLargeSystemNavigationInsets() {
+        assertEquals(0, BottomNavLayout.tabContentSafeBottomInsetPx(rawInsetPx = -12, maxInsetPx = 100))
+        assertEquals(14, BottomNavLayout.tabContentSafeBottomInsetPx(rawInsetPx = 14, maxInsetPx = 100))
+        assertEquals(96, BottomNavLayout.tabContentSafeBottomInsetPx(rawInsetPx = 96, maxInsetPx = 100))
+        assertEquals(100, BottomNavLayout.tabContentSafeBottomInsetPx(rawInsetPx = 144, maxInsetPx = 100))
     }
 
     @Test
@@ -26,6 +27,7 @@ class BottomNavLayoutTest {
 
         assertTrue(source.contains("BottomNavLayout.rootBottomPaddingPx()"))
         assertTrue(source.contains("BottomNavLayout.tabContentSafeBottomInsetPx("))
+        assertTrue(source.contains("BottomNavLayout.maxVisualSafeBottomInsetDp"))
         assertFalse(source.contains("setPadding(0, 0, 0, navigationBarHeight())"))
     }
 
