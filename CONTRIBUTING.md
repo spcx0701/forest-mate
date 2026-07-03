@@ -44,7 +44,7 @@ tests, screenshots, fixtures, or logs.
 
 ## Development Setup
 
-Use Python 3.12 or newer.
+Use Python 3.14 or newer.
 
 ```bash
 python3 -m venv .venv
@@ -66,8 +66,8 @@ out of git.
 When dependency pins change, regenerate the hashed lock files:
 
 ```bash
-uv pip compile --python-version 3.12 --python-platform x86_64-manylinux_2_28 --generate-hashes requirements.txt -o requirements.lock
-uv pip compile --python-version 3.12 --python-platform x86_64-manylinux_2_28 --generate-hashes requirements-dev.txt -o requirements-dev.lock
+uv pip compile --python-version 3.14 --python-platform x86_64-manylinux_2_28 --generate-hashes requirements.txt -o requirements.lock
+uv pip compile --python-version 3.14 --python-platform x86_64-manylinux_2_28 --generate-hashes requirements-dev.txt -o requirements-dev.lock
 ```
 
 ## Testing

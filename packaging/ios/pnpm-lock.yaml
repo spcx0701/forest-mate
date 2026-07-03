@@ -5,46 +5,46 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  tar: 7.5.16
+  tar: 7.5.19
 
 importers:
 
   .:
     dependencies:
       '@capacitor/core':
-        specifier: 8.4.0
-        version: 8.4.0
+        specifier: 8.4.1
+        version: 8.4.1
       '@capacitor/geolocation':
         specifier: 8.2.0
-        version: 8.2.0(@capacitor/core@8.4.0)
+        version: 8.2.0(@capacitor/core@8.4.1)
       '@capacitor/ios':
-        specifier: 8.4.0
-        version: 8.4.0(@capacitor/core@8.4.0)
+        specifier: 8.4.1
+        version: 8.4.1(@capacitor/core@8.4.1)
       '@capacitor/push-notifications':
         specifier: 8.1.1
-        version: 8.1.1(@capacitor/core@8.4.0)
+        version: 8.1.1(@capacitor/core@8.4.1)
     devDependencies:
       '@capacitor/cli':
-        specifier: 8.4.0
-        version: 8.4.0
+        specifier: 8.4.1
+        version: 8.4.1
 
 packages:
 
-  '@capacitor/cli@8.4.0':
-    resolution: {integrity: sha512-5Z9RKHxiqJYRTLrfMeZmzR4qrlg5B85MxsWZ5goyXsLkO3bgpW9a1qV/6fR1SX9s5gwLza5y7PZVwITl/hDJ7g==}
+  '@capacitor/cli@8.4.1':
+    resolution: {integrity: sha512-t7F2s7fFHCq113xgrggrmK6ctV0/8E5YfLNVLfPHp4GCTDO+tly9fZvWPf2/sOI8lMm18dLT43qbXLRTz/OZgw==}
     engines: {node: '>=22.0.0'}
     hasBin: true
 
-  '@capacitor/core@8.4.0':
-    resolution: {integrity: sha512-LrS1xPIrqLtJABBIPDGXxxKmI9OyesrzWw8DiHbxhSC9JoiLUleUAJlX1a0LWIVLRbuY4Szgf9huFeRqYH2SAQ==}
+  '@capacitor/core@8.4.1':
+    resolution: {integrity: sha512-xqhOGLbTAYeOWK+IDUNSjQJAPapQjRHrIcgk9PYp52or9zFTaaMko31uNi16N6W+CRJ8VrRram6fOYILkBG2Hg==}
 
   '@capacitor/geolocation@8.2.0':
     resolution: {integrity: sha512-N29QcoIPmme0xSxRkm7+3hjoHp6mBAOarxecvtCCZKyOBeKiJsFUq981cezg2XWBa6fhCXJMCCjQPngKK/dIag==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
-  '@capacitor/ios@8.4.0':
-    resolution: {integrity: sha512-tnwstEdbTJ2nHAfoAwnurXgYRscWeLY+IIGdz69o24gN2Crfj9Xc0TWo8L5uFLF1LmpbUywH1IT0U1oHV8c+CA==}
+  '@capacitor/ios@8.4.1':
+    resolution: {integrity: sha512-EgcAk7NYheHMTyP3CUrA65qKs4D2UEAKgw44HI6Uk3dTw6KjLQkdLOQWvbeRncHaZ2gklfOojUoc5DlSw2lhYg==}
     peerDependencies:
       '@capacitor/core': ^8.4.0
 
@@ -345,8 +345,8 @@ packages:
     resolution: {integrity: sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==}
     engines: {node: '>=8'}
 
-  tar@7.5.16:
-    resolution: {integrity: sha512-56adEpPMouktRlBLXiaYFFzZ/3+JXa8P9n7WbR+ibIjtviN55mEaOkiysCnPnWm+7kkui1Dn8J9l+g6zV8731w==}
+  tar@7.5.19:
+    resolution: {integrity: sha512-4LeEWl96twnS2Q7Bz4MGqgazLqO+hJN63GZxXoIqh1T3VweYD997gbU1ItNsQafqqXTXd5WFyFdReLtwvRBNiw==}
     engines: {node: '>=18'}
 
   through2@4.0.2:
@@ -403,7 +403,7 @@ packages:
 
 snapshots:
 
-  '@capacitor/cli@8.4.0':
+  '@capacitor/cli@8.4.1':
     dependencies:
       '@ionic/cli-framework-output': 2.2.8
       '@ionic/utils-subprocess': 3.0.1
@@ -419,28 +419,28 @@ snapshots:
       prompts: 2.4.2
       rimraf: 6.1.3
       semver: 7.8.4
-      tar: 7.5.16
+      tar: 7.5.19
       tslib: 2.8.1
       xml2js: 0.6.2
     transitivePeerDependencies:
       - supports-color
 
-  '@capacitor/core@8.4.0':
+  '@capacitor/core@8.4.1':
     dependencies:
       tslib: 2.8.1
 
-  '@capacitor/geolocation@8.2.0(@capacitor/core@8.4.0)':
+  '@capacitor/geolocation@8.2.0(@capacitor/core@8.4.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.4.1
       '@capacitor/synapse': 1.0.4
 
-  '@capacitor/ios@8.4.0(@capacitor/core@8.4.0)':
+  '@capacitor/ios@8.4.1(@capacitor/core@8.4.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.4.1
 
-  '@capacitor/push-notifications@8.1.1(@capacitor/core@8.4.0)':
+  '@capacitor/push-notifications@8.1.1(@capacitor/core@8.4.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.4.1
 
   '@capacitor/synapse@1.0.4': {}
 
@@ -750,7 +750,7 @@ snapshots:
     dependencies:
       ansi-regex: 5.0.1
 
-  tar@7.5.16:
+  tar@7.5.19:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0

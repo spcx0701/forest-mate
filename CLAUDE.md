@@ -26,7 +26,7 @@ Local URLs once running: `/home.html` (landing), `/index.html` (PWA), `/dashboar
 
 ### Frontend property tests (Node)
 ```bash
-corepack enable && corepack prepare pnpm@11.7.0 --activate
+corepack enable && corepack prepare pnpm@11.9.0 --activate
 pnpm install --frozen-lockfile
 pnpm test:app          # runs `node --test app/*.test.js`
 ```
