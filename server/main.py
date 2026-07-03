@@ -283,6 +283,13 @@ def create_app() -> FastAPI:
             return FileResponse(f, media_type="application/json")
         return JSONResponse({}, status_code=404)
 
+    # 루트(/)는 회사 랜딩(home.html)을 서빙 — 웹앱은 /index.html.
+    # (StaticFiles html=True가 /를 index.html로 주므로 명시 라우트로 우선 처리)
+    @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+    async def _landing():
+        f = APP_DIR / "home.html"
+        return FileResponse(f if f.exists() else APP_DIR / "index.html", media_type="text/html")
+
     # 정적 프런트 (모바일 PWA·랜딩·관제) — API 라우트 뒤에 마운트
     if APP_DIR.exists():
         app.mount("/", StaticFiles(directory=APP_DIR, html=True), name="app")

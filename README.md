@@ -16,9 +16,9 @@
   <a href="https://sonarcloud.io/summary/overall?id=spcx0701_forest-mate&branch=main"><img alt="Maintainability Rating" src="https://sonarcloud.io/api/project_badges/measure?project=spcx0701_forest-mate&metric=sqale_rating"></a>
   <a href="https://sonarcloud.io/summary/overall?id=spcx0701_forest-mate&branch=main"><img alt="Technical Debt" src="https://sonarcloud.io/api/project_badges/measure?project=spcx0701_forest-mate&metric=sqale_index"></a>
   <img alt="Top language" src="https://img.shields.io/github/languages/top/spcx0701/forest-mate">
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue"></a>
   <a href="https://api.reuse.software/info/github.com/spcx0701/forest-mate"><img alt="REUSE status" src="https://api.reuse.software/badge/github.com/spcx0701/forest-mate"></a>
-  <a href="https://forestmate.onrender.com/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
+  <a href="https://forestmate.app/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
   <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-5A0FC8?logo=pwa&logoColor=white">
   <img alt="No tracking SDK" src="https://img.shields.io/badge/no_tracking_SDK-verified-0B7A75">
 </p>
@@ -28,10 +28,10 @@
 </p>
 
 <p align="center">
-  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" align="center" height="80"></a>
-  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" align="center" height="80"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" align="center" height="54"></a>
-  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Get it on GitHub" src="https://tachibanagenerallaboratories.github.io/images/badges/GitHub/get-it-on-github.png" align="center" height="80"></a>
+  <a href="https://play.google.com/store/apps/details?id=kr.forestmate.app"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" align="center" height="64"></a>
+  <a href="https://f-droid.org/packages/kr.forestmate.app/"><img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" align="center" height="64"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/spcx0701/forest-mate"><img alt="Get it on Obtainium" src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" align="center" height="64"></a>
+  <a href="https://github.com/spcx0701/forest-mate/releases/latest"><img alt="Get it on GitHub" src="https://tachibanagenerallaboratories.github.io/images/badges/GitHub/get-it-on-github.png" align="center" height="64"></a>
 </p>
 <p align="center">
   <strong>Galaxy Watch / Wear OS</strong><br>
@@ -41,11 +41,11 @@
   <strong>한국어</strong> · <a href="README.en.md">English</a>
 </p>
 <p align="center">
-  <a href="https://forestmate.onrender.com/index.html"><strong>Web App</strong></a>
+  <a href="https://forestmate.app/index.html"><strong>Web App</strong></a>
   ·
-  <a href="https://forestmate.onrender.com/home.html"><strong>Service Intro</strong></a>
+  <a href="https://forestmate.app/home.html"><strong>Service Intro</strong></a>
   ·
-  <a href="https://forestmate.onrender.com/dashboard.html"><strong>Dashboard</strong></a>
+  <a href="https://forestmate.app/dashboard.html"><strong>Dashboard</strong></a>
   ·
   <a href="https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408"><strong>공공데이터 활용사례</strong></a>
   ·
@@ -73,7 +73,7 @@ ForestMate(숲길동무)는 산림 공공데이터와 AI 기반 안전 판단 �
 - **개인화** — 실집계 배지·산행 캘린더·산행 일정 계획(날짜별 적합도)·위치/즐겨찾기 맞춤 알림(Web Push).
 - **B2G 관제 대시보드** — 실시간 KPI + WebSocket 피드 + k-익명화 위험 히트맵.
 
-Android 사용자는 GitHub Release에서 Kotlin 네이티브 `forestmate-android-vX.apk`를 내려받아 설치할 수 있습니다. Galaxy Watch/Wear OS 사용자는 같은 Release에서 Kotlin 네이티브 `forestmate-wear-vX.apk`를 설치합니다. 웹 사용자는 별도 APK 없이 PWA 설치 경로를 사용할 수 있습니다. 기본 Android 빌드는 `forestmate.onrender.com` API에 연결되므로 F-Droid 메타데이터에는 `NonFreeNet` Anti-Feature를 명시합니다.
+Android 사용자는 GitHub Release에서 Kotlin 네이티브 `forestmate-android-vX.apk`를 내려받아 설치할 수 있습니다. Galaxy Watch/Wear OS 사용자는 같은 Release에서 Kotlin 네이티브 `forestmate-wear-vX.apk`를 설치합니다. 웹 사용자는 별도 APK 없이 PWA 설치 경로를 사용할 수 있습니다. 기본 Android 빌드는 `forestmate.app` API에 연결되므로 F-Droid 메타데이터에는 `NonFreeNet` Anti-Feature를 명시합니다.
 
 ## B2G 관제 대시보드
 
@@ -195,4 +195,4 @@ CI(`.github/workflows/ci.yml`)가 push·PR마다 pytest와 Docker 빌드를 수�
 
 ## 라이선스
 
-이 저장소의 프로젝트 코드, 문서, Android 리소스, 프로젝트 소유 이미지 자산은 별도 표기가 없는 한 Apache License 2.0으로 배포된다. 자세한 내용은 [LICENSE](LICENSE)와 [NOTICE](NOTICE)를 참고한다.
+이 저장소의 프로젝트 코드, 문서, Android 리소스, 프로젝트 소유 이미지 자산은 별도 표기가 없는 한 GNU Affero General Public License v3.0 or later(AGPL-3.0-or-later)로 배포된다. 이 소프트웨어를 수정해 네트워크로 서비스하는 경우, 그 이용자에게 수정본의 소스 코드를 제공해야 한다. Android·iOS 모바일 클라이언트에는 앱스토어 배포를 위한 7조 추가 허가(additional permission)가 별도로 적용된다(서버·웹 클라이언트는 제외). 자세한 내용은 [LICENSE](LICENSE)와 [NOTICE](NOTICE)를 참고한다.

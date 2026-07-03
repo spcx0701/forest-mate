@@ -7,14 +7,14 @@ instead of publishing the GitHub Release APK directly.
 
 - Application ID: `kr.forestmate.app`
 - Android source directory: `packaging/android`
-- Current version: `1.3.0`
-- Current version code: `8`
-- Release tag: `android-v1.3.0`
+- Current version: `1.4.4`
+- Current version code: `13`
+- Release tag: `android-v1.4.4`
 - Expected unsigned APK: `packaging/android/app/build/outputs/apk/release/app-release-unsigned.apk`
 
 ## Inclusion fit
 
-- License is declared as `Apache-2.0` in `LICENSE` and `.fdroid.yml`.
+- License is declared as `AGPL-3.0-or-later` in `LICENSE` and `.fdroid.yml`.
 - Android release builds produce an unsigned APK that F-Droid can sign.
 - The build does not require the private Android signing keystore or GitHub Release
   APK.
@@ -24,7 +24,7 @@ instead of publishing the GitHub Release APK directly.
 - No Firebase, Crashlytics, Google Play Services, AdMob, or tracking SDKs are
   included in the Android source.
 - The app should be marked `NonFreeNet` because the default native Android app
-  connects to the hosted ForestMate API service at `forestmate.onrender.com`.
+  connects to the hosted ForestMate API service at `forestmate.app`.
   The web app and server are source-available in this repository and can be
   self-hosted.
 

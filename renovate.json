@@ -1,0 +1,100 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "timezone": "Asia/Seoul",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "dependencyDashboard": true,
+  "labels": [
+    "dependencies"
+  ],
+  "prConcurrentLimit": 6,
+  "branchConcurrentLimit": 6,
+  "enabledManagers": [
+    "github-actions",
+    "pip_requirements",
+    "dockerfile",
+    "docker-compose",
+    "npm",
+    "gradle"
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on monday"
+    ],
+    "labels": [
+      "dependencies",
+      "lockfile-maintenance"
+    ]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": [
+      "security",
+      "dependencies"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Keep GitHub Actions updates together.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions dependencies",
+      "labels": [
+        "dependencies",
+        "github-actions"
+      ]
+    },
+    {
+      "description": "Keep Python requirement updates together.",
+      "matchManagers": [
+        "pip_requirements"
+      ],
+      "groupName": "Python dependencies",
+      "labels": [
+        "dependencies",
+        "python"
+      ]
+    },
+    {
+      "description": "Keep Docker image updates together.",
+      "matchManagers": [
+        "dockerfile",
+        "docker-compose"
+      ],
+      "groupName": "Docker image dependencies",
+      "labels": [
+        "dependencies",
+        "docker"
+      ]
+    },
+    {
+      "description": "Keep Android Gradle updates together.",
+      "matchManagers": [
+        "gradle"
+      ],
+      "groupName": "Android Gradle dependencies",
+      "labels": [
+        "dependencies",
+        "android"
+      ]
+    },
+    {
+      "description": "Keep Node package updates together.",
+      "matchManagers": [
+        "npm"
+      ],
+      "groupName": "Node dependencies",
+      "labels": [
+        "dependencies",
+        "node"
+      ]
+    }
+  ]
+}

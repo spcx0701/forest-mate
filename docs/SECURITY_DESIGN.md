@@ -28,7 +28,7 @@ DOM.
 ## Supply Chain
 
 GitHub Actions are pinned to immutable commit SHAs. Docker base images are pinned
-by digest. Dependabot tracks GitHub Actions, Python, Docker, Android, and Node
+by digest. Renovate tracks GitHub Actions, Python, Docker, Android, and Node
 dependencies. CodeQL and OpenSSF Scorecard run on a schedule and on relevant
 repository events.
 

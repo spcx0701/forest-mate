@@ -7,8 +7,8 @@ const RDS = require("react-dom/server");
 const sharp = require("sharp");
 const FA = require("react-icons/fa");
 
-const ASSETS = "/Users/dong9733/Documents/LYT Kit 2/forest-mate/assets";
-const OUT = "/Users/dong9733/Documents/LYT Kit 2/forest-mate/deliverables/숲길동무_발표자료.pptx";
+const ASSETS = path.join(__dirname, "assets");
+const OUT = path.join(__dirname, "deliverables", "숲길동무_발표자료.pptx");
 
 const PINE = "1B4332", MOSS = "2D6A4F", LEAF = "40916C", MINT = "74C69D",
       PALE = "D8F3DC", LIGHT = "F2F7F1", INK = "1D2B22", SUB = "6B7F72",
@@ -125,8 +125,8 @@ async function icon(Comp, color, size = 256) {
     chip(s, 3.35, 5.3, 1.9, "AI 엔진 5종 탑재", "FFFFFF", PINE, 11);
     chip(s, 5.4, 5.3, 2.5, "iOS·Android·웹 동시 지원", "FFFFFF", PINE, 11);
     s.addText([
-      { text: "팀명  ", options: { color: MINT, bold: true } },
-      { text: "【팀명 기재】", options: { color: WHITE } },
+      { text: "참가자  ", options: { color: MINT, bold: true } },
+      { text: "이동현", options: { color: WHITE } },
       { text: "      2026. 6.", options: { color: "9DBFA9" } },
     ], { x: 0.75, y: 6.35, w: 7, h: 0.4, fontSize: 13, fontFace: F, margin: 0 });
   }
@@ -312,6 +312,35 @@ async function icon(Comp, color, size = 256) {
     });
   }
 
+  /* ---------------- S9.5 워치(Wear OS) ---------------- */
+  {
+    const s = newSlide();
+    kickTitle(s, "WEARABLE — 워치(Wear OS)", "휴대폰을 꺼내지 않아도, 손목에서 안전이 작동합니다");
+    const wh = 4.6, ww = imgW("app_watch.png", wh);
+    s.addImage({ path: px("app_watch.png"), x: 1.0, y: 1.95, w: ww, h: wh });
+    const tx = 1.0 + ww + 0.6, tw = W - tx - 0.6;
+    const blocks = [
+      [I.heart, "심박 연동 조난 자동감지", "이동 정지 + 심박 이상을 결합 — 실신·추락 등 자력 신고가 불가능한 상황을 손목에서 먼저 감지해 보호자·119로 전파"],
+      [I.sosR, "손목 원터치 SOS", "휴대폰을 꺼내기 어려운 순간에도 워치에서 바로 구조 신호 · 기기 분리 시 6자리 백업 코드로 산행 기록과 즉시 연결"],
+      [I.shieldG, "오프라인 수집·일괄 전송", "Wear OS 네이티브(Kotlin) — 통신 음영지역에서도 심박·고도·배터리를 수집해 복귀 시 자동 전송"],
+    ];
+    let y = 2.0;
+    blocks.forEach(([ic, t1, t2]) => {
+      iconCircle(s, ic, tx, y + 0.04, 0.58);
+      s.addText(t1, { x: tx + 0.8, y, w: tw - 0.8, h: 0.4, fontSize: 15.5, bold: true, fontFace: F, color: INK, margin: 0 });
+      s.addText(t2, { x: tx + 0.8, y: y + 0.42, w: tw - 0.8, h: 0.78, fontSize: 12, fontFace: F, color: SUB, lineSpacingMultiple: 1.22, margin: 0 });
+      y += 1.25;
+    });
+    let cx = tx;
+    [["Galaxy Watch · Wear OS", 2.25, PALE, PINE], ["등고선 워치페이스", 1.8, PALE, PINE], ["산행지수·코스·심박", 1.95, PALE, PINE]]
+      .forEach(([label, wch, fill, color]) => { chip(s, cx, y + 0.03, wch, label, fill, color); cx += wch + 0.18; });
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: tx, y: y + 0.6, w: tw, h: 0.9, fill: { color: PINE }, rectRadius: 0.09 });
+    s.addText([
+      { text: "휴대폰 · 워치 · 웹 · 관제", options: { bold: true, color: MINT } },
+      { text: "  —  하나의 안전 데이터 파이프라인으로 연결됩니다", options: { color: WHITE } },
+    ], { x: tx + 0.25, y: y + 0.6, w: tw - 0.5, h: 0.9, fontSize: 14, fontFace: F, valign: "middle", margin: 0 });
+  }
+
   /* ---------------- S10 관제 ---------------- */
   {
     const s = newSlide();
@@ -471,7 +500,7 @@ async function icon(Comp, color, size = 256) {
     });
     s.addText([
       { text: "감사합니다  ", options: { bold: true, color: WHITE, fontSize: 20 } },
-      { text: "  숲길동무 ForestMate — 팀 【팀명 기재】", options: { color: MINT, fontSize: 13 } },
+      { text: "  숲길동무 ForestMate — 참가자 이동현", options: { color: MINT, fontSize: 13 } },
     ], { x: 7.6, y: 6.55, w: 5.3, h: 0.5, fontFace: F, align: "right", margin: 0 });
   }
 

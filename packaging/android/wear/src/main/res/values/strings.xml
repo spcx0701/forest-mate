@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">숲길동무 Watch</string>
-    <string name="default_api_base">https://forestmate.onrender.com/api/v1</string>
+    <string name="default_api_base">https://forestmate.app/api/v1</string>
 </resources>

@@ -7,10 +7,15 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import kotlin.math.cos
+import kotlin.math.sin
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -71,7 +76,7 @@ class MainActivity : Activity() {
 
     private fun buildUi(): FrameLayout {
         val root = FrameLayout(this).apply {
-            setBackgroundColor(color(R.color.forest_deep))
+            setBackgroundColor(color(R.color.forest_cream))
         }
 
         face = WatchFaceView(this)
@@ -87,28 +92,28 @@ class MainActivity : Activity() {
             inputType = InputType.TYPE_CLASS_NUMBER
             filters = arrayOf(InputFilter.LengthFilter(6))
             gravity = Gravity.CENTER
-            setTextColor(color(R.color.forest_text))
-            setHintTextColor(0x88F4F7F2.toInt())
+            setTextColor(color(R.color.forest_ink))
+            setHintTextColor(0x9954604F.toInt())
             textSize = 17f
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             hint = "백업 코드"
             setSingleLine(true)
             includeFontPadding = false
             setPadding(dp(8), 0, dp(8), 0)
-            background = round(0xEE0B2417.toInt(), color(R.color.forest_mint), dp(1), dp(14))
+            background = round(color(R.color.forest_card), color(R.color.forest_green), dp(1), dp(14))
             visibility = View.GONE
         }
         root.addView(codeInput, centerInputLayout())
 
         primaryButton = compactButton().apply {
-            background = round(color(R.color.forest_mint), 0, 0, dp(14))
-            setTextColor(color(R.color.forest_deep))
+            background = round(color(R.color.forest_green), 0, 0, dp(14))
+            setTextColor(0xFFFFFFFF.toInt())
             setOnClickListener { handlePrimaryAction() }
         }
 
         secondaryButton = compactButton().apply {
-            background = round(0xEE0B2417.toInt(), 0x66B7E4C7, dp(1), dp(14))
-            setTextColor(color(R.color.forest_text))
+            background = round(color(R.color.forest_card), color(R.color.forest_green), dp(1), dp(14))
+            setTextColor(color(R.color.forest_ink))
             setOnClickListener { handleSecondaryAction() }
         }
 
@@ -404,26 +409,64 @@ class MainActivity : Activity() {
             )
         }
 
+        private val contourPath = Path()
+
         private fun drawBackground(canvas: Canvas, metrics: FaceMetrics) {
+            // cream "paper" face
+            paint.shader = null
             paint.style = Paint.Style.FILL
-            paint.color = context.getColor(R.color.forest_deep)
+            paint.color = context.getColor(R.color.forest_cream)
             canvas.drawRect(0f, 0f, metrics.w, metrics.h, paint)
 
-            paint.color = 0x331B4332
-            canvas.drawCircle(metrics.cx, metrics.cy, metrics.radius, paint)
+            // 등고선 motif: organic ink contour rings (ported generator).
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(1).toFloat()
+            paint.color = context.getColor(R.color.contour_ink)
+            val unit = metrics.radius / 90f
+            for (i in 0 until 7) {
+                paint.alpha = (30 * (1f - i * 0.04f)).toInt().coerceIn(8, 255)
+                buildContourRing(metrics.cx + metrics.radius * 0.28f, metrics.cy - metrics.radius * 0.30f, (14f + i * 13f) * unit, 11f * unit, i * 1.7f)
+                canvas.drawPath(contourPath, paint)
+            }
+            paint.alpha = 255
+        }
+
+        private fun buildContourRing(cx: Float, cy: Float, baseR: Float, amp: Float, seed: Float) {
+            contourPath.reset()
+            val n = 60
+            for (k in 0..n) {
+                val a = k.toFloat() / n * Math.PI.toFloat() * 2f
+                val r = baseR + amp * sin(a * 3f + seed) + amp * 0.45f * cos(a * 5f + seed * 1.4f)
+                val x = cx + cos(a) * r
+                val y = cy + sin(a) * r * 0.82f
+                if (k == 0) contourPath.moveTo(x, y) else contourPath.lineTo(x, y)
+            }
+            contourPath.close()
         }
 
         private fun drawProgress(canvas: Canvas, metrics: FaceMetrics) {
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = dp(7).toFloat()
-            paint.color = context.getColor(R.color.forest_mint)
             arc.set(
                 metrics.cx - metrics.radius,
                 metrics.cy - metrics.radius,
                 metrics.cx + metrics.radius,
                 metrics.cy + metrics.radius,
             )
+            // faint track
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(8).toFloat()
+            paint.shader = null
+            paint.color = 0x1F143C28
+            canvas.drawArc(arc, 0f, 360f, false, paint)
+            // green → blue progress arc
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.shader = LinearGradient(
+                arc.left, arc.top, arc.right, arc.bottom,
+                context.getColor(R.color.forest_green), context.getColor(R.color.forest_blue),
+                Shader.TileMode.CLAMP,
+            )
             canvas.drawArc(arc, -90f, snapshot.progress.coerceIn(0f, 1f) * 360f, false, paint)
+            paint.shader = null
+            paint.strokeCap = Paint.Cap.BUTT
         }
 
         private fun drawTitle(canvas: Canvas, metrics: FaceMetrics) {

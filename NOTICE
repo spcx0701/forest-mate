@@ -5,7 +5,18 @@ This product includes software developed for the ForestMate project.
 
 Unless otherwise noted, source code, documentation, Android resources,
 screenshots, and project-owned artwork in this repository are licensed under
-the Apache License, Version 2.0.
+the GNU Affero General Public License, Version 3 or later (AGPL-3.0-or-later).
+
+If you run a modified version of this software on a server and let users
+interact with it over a network, the AGPL requires you to make the
+corresponding source code of your modified version available to those users.
+See LICENSE for the full terms.
+
+The Android and iOS mobile client applications carry an additional
+permission under AGPL section 7 that allows distribution through app
+stores (e.g. Apple's App Store) whose terms are otherwise incompatible
+with the AGPL. This exception does not extend to the server component
+or the web/PWA client. See LICENSE for the exact scope and wording.
 
 The service integrates public forest and weather data sources at runtime.
 Those external datasets and remote services remain governed by their own

@@ -11,6 +11,24 @@ import org.junit.Test
 
 class ForestMateRepositoryTest {
     @Test
+    fun checksBackendHealth() {
+        val transport = FakeTransport(
+            getResponses = mapOf(
+                "https://example.test/api/healthz" to HttpResponse(
+                    200,
+                    """{"status":"ok","service":"forestmate-api","live_data":true}""",
+                ),
+            ),
+        )
+        val repo = ForestMateRepository(ApiConfig("https://example.test/api"), transport)
+
+        val health = successValue(repo.health())
+
+        assertEquals("ok", health.getString("status"))
+        assertTrue(health.getBoolean("live_data"))
+    }
+
+    @Test
     fun loadsIndexAndCourses() {
         val transport = FakeTransport(
             getResponses = mapOf(
@@ -142,6 +160,25 @@ class ForestMateRepositoryTest {
         assertEquals(accountAuthValue, successValue(registered).accessToken)
         assertEquals(deviceAuthValue, successValue(loggedIn).deviceToken)
         assertEquals("hiker@example.com", successValue(loggedIn).email)
+    }
+
+    @Test
+    fun surfacesNetworkFailureAsRetryableFailure() {
+        val transport = FakeTransport(
+            getResponses = mapOf(
+                "https://example.test/api/healthz" to HttpResponse(
+                    0,
+                    "네트워크 연결 실패: Read timed out",
+                ),
+            ),
+        )
+        val repo = ForestMateRepository(ApiConfig("https://example.test/api"), transport)
+
+        val result = repo.health()
+        val failure = result as ApiResult.Failure
+
+        assertTrue(failure.isRetryable)
+        assertEquals("네트워크 연결 실패: Read timed out", failure.displayMessage)
     }
 
     private fun fixtureAuthValue(scope: String): String =
