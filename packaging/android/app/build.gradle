@@ -28,14 +28,16 @@ android {
         applicationId "kr.forestmate.app"
         minSdkVersion 23
         targetSdkVersion 35
-        versionCode 12
-        versionName "1.4.3"
+        versionCode 14
+        versionName "1.4.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (hasReleaseSigning) {
                 signingConfig signingConfigs.release
             }
@@ -51,5 +53,6 @@ android {
 dependencies {
     implementation project(':core')
     implementation 'org.osmdroid:osmdroid-android:6.1.20'
+    testImplementation 'org.robolectric:robolectric:4.15.1'
     testImplementation 'junit:junit:4.13.2'
 }

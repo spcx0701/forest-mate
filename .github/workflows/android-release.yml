@@ -62,13 +62,15 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "dist/forestmate-android-${asset_tag}.apk"
           cp app/build/outputs/bundle/release/app-release.aab "dist/forestmate-android-${asset_tag}.aab"
           cp wear/build/outputs/apk/release/wear-release.apk "dist/forestmate-wear-${asset_tag}.apk"
-          shasum -a 256 dist/*.apk dist/*.aab > "dist/forestmate-android-${asset_tag}.sha256"
+          test -s app/build/outputs/mapping/release/mapping.txt
+          cp app/build/outputs/mapping/release/mapping.txt "dist/forestmate-android-${asset_tag}-mapping.txt"
+          shasum -a 256 "dist/forestmate-android-${asset_tag}.apk" > "dist/forestmate-android-${asset_tag}.sha256"
 
       - name: Generate build provenance
         id: apk-provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
         with:
-          subject-path: packaging/android/dist/*.apk
+          subject-path: packaging/android/dist/forestmate-android-*.apk
 
       - name: Stage release provenance bundle
         if: ${{ github.event_name == 'release' || inputs.upload_to_release }}
@@ -87,6 +89,7 @@ jobs:
           path: |
             packaging/android/dist/*.apk
             packaging/android/dist/*.aab
+            packaging/android/dist/*mapping*.txt
             packaging/android/dist/*.sha256
             packaging/android/dist/*.sigstore.json
           if-no-files-found: error
@@ -97,4 +100,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test -n "$RELEASE_TAG"
-          gh release upload "$RELEASE_TAG" dist/*.apk dist/*.sha256 dist/*.sigstore.json --repo "$GITHUB_REPOSITORY" --clobber
+          asset_tag="${RELEASE_TAG#android-}"
+          test -n "$asset_tag" || asset_tag="local"
+          gh release upload "$RELEASE_TAG" \
+            "dist/forestmate-android-${asset_tag}.apk" \
+            "dist/forestmate-android-${asset_tag}.sha256" \
+            "dist/forestmate-android-${asset_tag}.sigstore.json" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
