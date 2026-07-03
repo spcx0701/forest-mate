@@ -24,11 +24,11 @@ buildscript {
     }
     configurations.classpath {
         resolutionStrategy.force(
-            'com.google.protobuf:protobuf-java:3.25.5',
-            'com.google.protobuf:protobuf-java-util:3.25.5',
-            'com.google.protobuf:protobuf-javalite:3.25.5',
-            'com.google.protobuf:protobuf-kotlin:3.25.5',
-            'com.google.protobuf:protobuf-kotlin-lite:3.25.5',
+            'com.google.protobuf:protobuf-java:4.35.1',
+            'com.google.protobuf:protobuf-java-util:4.35.1',
+            'com.google.protobuf:protobuf-javalite:4.35.1',
+            'com.google.protobuf:protobuf-kotlin:4.35.1',
+            'com.google.protobuf:protobuf-kotlin-lite:4.35.1',
             'io.netty:netty-buffer:4.1.135.Final',
             'io.netty:netty-codec:4.1.135.Final',
             'io.netty:netty-codec-http:4.1.135.Final',
@@ -65,11 +65,11 @@ allprojects {
     }
     configurations.all {
         resolutionStrategy.force(
-            'com.google.protobuf:protobuf-java:3.25.5',
-            'com.google.protobuf:protobuf-java-util:3.25.5',
-            'com.google.protobuf:protobuf-javalite:3.25.5',
-            'com.google.protobuf:protobuf-kotlin:3.25.5',
-            'com.google.protobuf:protobuf-kotlin-lite:3.25.5',
+            'com.google.protobuf:protobuf-java:4.35.1',
+            'com.google.protobuf:protobuf-java-util:4.35.1',
+            'com.google.protobuf:protobuf-javalite:4.35.1',
+            'com.google.protobuf:protobuf-kotlin:4.35.1',
+            'com.google.protobuf:protobuf-kotlin-lite:4.35.1',
             'io.netty:netty-buffer:4.1.135.Final',
             'io.netty:netty-codec:4.1.135.Final',
             'io.netty:netty-codec-http:4.1.135.Final',
