@@ -158,5 +158,12 @@ Before opening a pull request:
 ## License
 
 By contributing to this repository, you agree that your contribution is licensed
-under the repository's [Apache License 2.0](LICENSE), unless a different license
-is explicitly stated for a specific file.
+under the repository's [GNU Affero General Public License v3.0 or later](LICENSE),
+unless a different license is explicitly stated for a specific file.
+
+Contributions are also subject to the [Contributor License Agreement](CLA.md),
+which lets you keep ownership of what you write while allowing the maintainers
+to apply the same licensing flexibility to your contribution as to the rest of
+the project (e.g. the app-store distribution exception in [LICENSE](LICENSE)).
+Submitting a pull request constitutes agreement to the CLA; for now this is
+tracked by acknowledgement in the pull request itself.

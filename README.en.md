@@ -16,9 +16,9 @@
   <a href="https://sonarcloud.io/summary/overall?id=spcx0701_forest-mate&branch=main"><img alt="Maintainability Rating" src="https://sonarcloud.io/api/project_badges/measure?project=spcx0701_forest-mate&metric=sqale_rating"></a>
   <a href="https://sonarcloud.io/summary/overall?id=spcx0701_forest-mate&branch=main"><img alt="Technical Debt" src="https://sonarcloud.io/api/project_badges/measure?project=spcx0701_forest-mate&metric=sqale_index"></a>
   <img alt="Top language" src="https://img.shields.io/github/languages/top/spcx0701/forest-mate">
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue"></a>
   <a href="https://api.reuse.software/info/github.com/spcx0701/forest-mate"><img alt="REUSE status" src="https://api.reuse.software/badge/github.com/spcx0701/forest-mate"></a>
-  <a href="https://forestmate.onrender.com/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
+  <a href="https://forestmate.app/home.html"><img alt="Service" src="https://img.shields.io/badge/service-live-1B4332"></a>
   <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-5A0FC8?logo=pwa&logoColor=white">
   <img alt="No tracking SDK" src="https://img.shields.io/badge/no_tracking_SDK-verified-0B7A75">
 </p>
@@ -41,11 +41,11 @@
   <a href="README.md">Korean</a> &middot; <strong>English</strong>
 </p>
 <p align="center">
-  <a href="https://forestmate.onrender.com/index.html"><strong>Web App</strong></a>
+  <a href="https://forestmate.app/index.html"><strong>Web App</strong></a>
   &middot;
-  <a href="https://forestmate.onrender.com/home.html"><strong>Service Intro</strong></a>
+  <a href="https://forestmate.app/home.html"><strong>Service Intro</strong></a>
   &middot;
-  <a href="https://forestmate.onrender.com/dashboard.html"><strong>Dashboard</strong></a>
+  <a href="https://forestmate.app/dashboard.html"><strong>Dashboard</strong></a>
   &middot;
   <a href="https://www.data.go.kr/tcs/puc/selectPublicUseCaseView.do?prcuseCaseSn=1077408"><strong>Public Data Use Case</strong></a>
   &middot;
@@ -73,7 +73,7 @@ The project ships a web app, an operations dashboard, an Android APK, and a Wear
 - **Personalization** - Includes earned badges, a hike calendar, date-based suitability planning, location/favorite alerts, and Web Push notifications.
 - **B2G monitoring dashboard** - Shows real-time KPIs, a WebSocket feed, and k-anonymized risk heatmaps for municipalities and emergency operators.
 
-Android users can download the Kotlin native `forestmate-android-vX.apk` from GitHub Releases. Galaxy Watch/Wear OS users install the Kotlin native `forestmate-wear-vX.apk` from the same Release. Web users can install the PWA path without an APK. The default Android build connects to the hosted `forestmate.onrender.com` API, so the F-Droid metadata declares the `NonFreeNet` Anti-Feature.
+Android users can download the Kotlin native `forestmate-android-vX.apk` from GitHub Releases. Galaxy Watch/Wear OS users install the Kotlin native `forestmate-wear-vX.apk` from the same Release. Web users can install the PWA path without an APK. The default Android build connects to the hosted `forestmate.app` API, so the F-Droid metadata declares the `NonFreeNet` Anti-Feature.
 
 ## B2G Monitoring Dashboard
 
@@ -201,4 +201,4 @@ The suite covers scoring, distress detection, k-anonymization, device registrati
 
 ## License
 
-Unless otherwise noted, the project code, documentation, Android resources, and project-owned image assets in this repository are distributed under the Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.
+Unless otherwise noted, the project code, documentation, Android resources, and project-owned image assets in this repository are distributed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). If you modify this software and let users interact with it over a network, the AGPL requires you to make the corresponding source of your modified version available to those users. The Android and iOS mobile clients carry a separate section 7 additional permission for app store distribution (the server and web client are not covered by it). See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.
