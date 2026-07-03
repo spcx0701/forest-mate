@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 
 const appDir = __dirname;
 const leafletVersion = "20260618-local-leaflet";
-const cssVersion = "20260618-modal-bounce";
+const cssVersion = "20260703-bottom-nav-safe-area";
 
 test("app shell loads Leaflet from same-origin vendored assets", () => {
   const index = fs.readFileSync(path.join(appDir, "index.html"), "utf8");
@@ -20,7 +20,7 @@ test("app shell loads Leaflet from same-origin vendored assets", () => {
 test("service worker precaches the same local Leaflet assets", () => {
   const sw = fs.readFileSync(path.join(appDir, "sw.js"), "utf8");
 
-  assert.match(sw, /const CACHE = "forestmate-v38";/);
+  assert.match(sw, /const CACHE = "forestmate-v39";/);
   assert.match(sw, /contour\.css\?v=/);
   assert.match(sw, new RegExp(`vendor/leaflet/leaflet\\.css\\?v=${leafletVersion}`));
   assert.match(sw, new RegExp(`vendor/leaflet/leaflet\\.js\\?v=${leafletVersion}`));
