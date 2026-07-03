@@ -659,28 +659,3 @@ specific requirements.
 if any, to sign a "copyright disclaimer" for the program, if necessary.
 For more information on this, and how to apply and follow the GNU AGPL, see
 <https://www.gnu.org/licenses/>.
-
-================================================================================
-
-ForestMate additional permission under GNU AGPL version 3, section 7
-
-  This additional permission applies only to the ForestMate mobile client
-applications (the Android app under packaging/android and the iOS wrapper
-under packaging/ios), and does not apply to the ForestMate server
-component (the FastAPI backend under server/) or the web/PWA client
-(under app/), which remain covered by the GNU Affero General Public
-License without this additional permission.
-
-  As an additional permission under section 7, the ForestMate
-contributors grant you permission to distribute the ForestMate mobile
-client applications through app stores (including but not limited to
-Apple's App Store) whose terms and conditions are incompatible with the
-GNU Affero General Public License, provided that the corresponding
-source code of the distributed version remains available under the GNU
-Affero General Public License, with or without this additional
-permission, through this repository:
-<https://github.com/spcx0701/forest-mate>.
-
-  If you convey a modified version of the mobile client applications,
-you may remove this additional permission from that copy, or from any
-part of it.
