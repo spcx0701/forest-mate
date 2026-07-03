@@ -14,6 +14,6 @@ class ApiConfig(rawBaseUrl: String) {
     }
 
     companion object {
-        const val DEFAULT_BASE_URL = "https://forestmate.onrender.com/api/v1"
+        const val DEFAULT_BASE_URL = "https://forestmate.app/api/v1"
     }
 }
