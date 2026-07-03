@@ -3,7 +3,7 @@
   "private": true,
   "description": "ForestMate repository-level development tooling",
   "scripts": {
-    "test:app": "node --test app/*.test.js"
+    "test:app": "node --test app/*.test.js scripts/*.test.js"
   },
   "devDependencies": {
     "fast-check": "4.8.0"
