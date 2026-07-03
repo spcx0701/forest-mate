@@ -88,7 +88,7 @@ ForestMate includes a real-time monitoring web dashboard for municipalities and 
 
 <p align="center">
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white">
-  <img alt="Python 3.12" src="https://img.shields.io/badge/Python_3.12-3776AB?logo=python&logoColor=white">
+  <img alt="Python 3.14" src="https://img.shields.io/badge/Python_3.14-3776AB?logo=python&logoColor=white">
   <img alt="SQLAlchemy" src="https://img.shields.io/badge/SQLAlchemy-D71F00?logo=sqlalchemy&logoColor=white">
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white">
   <img alt="Leaflet" src="https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white">

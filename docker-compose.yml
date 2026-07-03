@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   db:
-    image: postgis/postgis:16-3.4   # 등산로 공간 질의 대비 PostGIS
+    image: postgis/postgis:17-3.4   # v16 pgdata는 dump/restore 후 재사용
     environment:
       POSTGRES_USER: forest
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD before starting}

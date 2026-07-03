@@ -2,7 +2,7 @@ packages:
   - .
 
 overrides:
-  "@types/node": 25.9.3
-  file-type: 21.3.2
-  tar: 7.5.16
-  uuid: 11.1.1
+  "@types/node": 25.9.4
+  file-type: 22.0.1
+  tar: 7.5.19
+  uuid: 14.0.1
