@@ -12,6 +12,11 @@ services:
     region: singapore               # 한국에서 가장 가까운 무료 리전
     healthCheckPath: /api/v1/healthz
     autoDeploy: true
+    # 커스텀 도메인 — Render가 forestmate.app / www를 인식(인증서 자동 발급).
+    # DNS(A/CNAME)는 Spaceship에서 Render 표시값대로 설정해야 연결 완료.
+    domains:
+      - forestmate.app
+      - www.forestmate.app
     envVars:
       - key: ENV
         value: prod
@@ -41,6 +46,8 @@ services:
         value: claude-opus-4-8
       - key: LLM_MAX_TOKENS
         value: "1024"
+      # 커스텀 도메인 DNS 연결 + OAuth 콜백(구글/카카오/네이버) 등록 완료 후
+      # https://forestmate.app 로 교체(로그인 유지 위해 그 전엔 onrender 유지).
       - key: PUBLIC_BASE_URL
         value: https://forestmate.onrender.com
       - key: AUTH_SESSION_DAYS
