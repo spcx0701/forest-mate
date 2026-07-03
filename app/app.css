@@ -4,6 +4,8 @@
   --amber:#F4A261; --danger:#E63946; --safe:#2D6A4F; --sky:#457B9D;
   --shadow:0 6px 18px rgba(16,48,31,.10);
   --radius:18px;
+  --bottom-nav-safe-inset:min(env(safe-area-inset-bottom),18px);
+  --bottom-nav-height:calc(66px + var(--bottom-nav-safe-inset));
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
@@ -14,14 +16,14 @@ body{
 }
 button{font-family:inherit; border:none; cursor:pointer; background:none}
 #phone{
-  width:100%; max-width:430px; height:100vh; max-height:932px;
+  width:100%; max-width:430px; height:100vh; height:100dvh; max-height:none;
   background:var(--bg); position:relative; overflow:hidden;
   display:flex; flex-direction:column;
 }
 @media(min-width:560px){
-  #phone{height:880px; border-radius:44px; box-shadow:0 30px 80px rgba(0,0,0,.35); border:10px solid #0e1f15}
+  #phone{height:880px; max-height:880px; border-radius:44px; box-shadow:0 30px 80px rgba(0,0,0,.35); border:10px solid #0e1f15}
 }
-.screen{display:none; flex:1; overflow-y:auto; padding:18px 18px 96px; scrollbar-width:none}
+.screen{display:none; flex:1; overflow-y:auto; padding:18px 18px calc(var(--bottom-nav-height) + 18px); scrollbar-width:none}
 .screen::-webkit-scrollbar{display:none}
 .screen.active{display:block}
 .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin-bottom:14px}
@@ -214,7 +216,7 @@ button.idx-item:active{background:rgba(255,255,255,.22); transform:translateY(1p
 .ins .cta{background:#fff; color:#264653; font-weight:900; font-size:12px; padding:9px 13px; border-radius:11px; flex:none}
 .ins .cta.joined{background:#B7E4C7; color:#10301f}
 /* nav */
-nav{position:absolute; bottom:0; left:0; right:0; background:rgba(255,255,255,.96); backdrop-filter:blur(14px); border-top:1px solid #e6ece6; display:flex; padding:8px 6px calc(12px + env(safe-area-inset-bottom)); z-index:50}
+nav{position:absolute; bottom:0; left:0; right:0; background:rgba(255,255,255,.96); backdrop-filter:blur(14px); border-top:1px solid #e6ece6; display:flex; padding:8px 6px calc(10px + var(--bottom-nav-safe-inset)); z-index:50}
 nav a{flex:1; text-align:center; font-size:9.5px; font-weight:700; color:#9fb0a4; text-decoration:none; display:flex; flex-direction:column; align-items:center; gap:3px}
 nav a .nic{font-size:20px; line-height:1}
 nav a.on{color:var(--pine)}

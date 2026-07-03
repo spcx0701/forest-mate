@@ -24,6 +24,7 @@ import kr.forestmate.app.state.LatLon
 import kr.forestmate.app.state.NavigationState
 import kr.forestmate.app.state.PhoneTab
 import kr.forestmate.app.state.TrailMapState
+import kr.forestmate.app.ui.BottomNavLayout
 import kr.forestmate.app.ui.ConditionDetailViews
 import kr.forestmate.app.ui.Contour
 import kr.forestmate.app.ui.NativeViews
@@ -64,7 +65,7 @@ class MainActivity : Activity() {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = Contour.appBackground()
-            setPadding(0, 0, 0, navigationBarHeight())
+            setPadding(0, 0, 0, BottomNavLayout.rootBottomPaddingPx())
             // let the raised SOS nav button overflow above the tab bar
             clipChildren = false
             clipToPadding = false
@@ -105,6 +106,12 @@ class MainActivity : Activity() {
         val resId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
         return if (resId > 0) resources.getDimensionPixelSize(resId) else 0
     }
+
+    private fun bottomNavSafeInset(): Int =
+        BottomNavLayout.tabContentSafeBottomInsetPx(
+            navigationBarHeight(),
+            Contour.dp(this, BottomNavLayout.maxVisualSafeBottomInsetDp),
+        )
 
     private fun render() {
         currentMapView?.onDetach()
@@ -151,7 +158,7 @@ class MainActivity : Activity() {
                         Contour.dp(this@MainActivity, 6f),
                         Contour.dp(this@MainActivity, 8f),
                         Contour.dp(this@MainActivity, 6f),
-                        Contour.dp(this@MainActivity, 10f),
+                        Contour.dp(this@MainActivity, 10f) + bottomNavSafeInset(),
                     )
                     PhoneTab.entries.forEach { tab ->
                         addView(
