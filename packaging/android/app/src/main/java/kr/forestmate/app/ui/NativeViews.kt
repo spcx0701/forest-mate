@@ -208,6 +208,7 @@ object NativeViews {
             background = Contour.round(context, fill, radiusDp = 14f, stroke = stroke, strokeDp = strokeDp)
             setPadding(dp(context, 16f), dp(context, 12f), dp(context, 16f), dp(context, 12f))
             minHeight = dp(context, 48f)
+            setOnClickListener { onClick() }
             (layoutParamsOrMargin(this)).apply {
                 topMargin = dp(context, 5f)
                 bottomMargin = dp(context, 5f)

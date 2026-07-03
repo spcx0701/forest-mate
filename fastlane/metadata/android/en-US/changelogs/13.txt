@@ -1,0 +1,5 @@
+ForestMate 1.4.4 button reliability release.
+
+- Fixes native Android action buttons so SOS, AI chat, account, hike, map, and summary actions invoke their tap handlers.
+- Adds Robolectric coverage for the shared native action button factory.
+- Keeps the 1.4.3 bottom navigation and forestmate.app API endpoint updates.
