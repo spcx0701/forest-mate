@@ -1,0 +1,5 @@
+ForestMate 1.4.4 bottom navigation visual inset fix.
+
+- Caps large Android navigation-bar insets before they become visible tab-bar padding.
+- Keeps native tab labels clear of 3-button navigation without leaving a tall white slab.
+- Adds source and unit regression guards for the capped visual safe area.

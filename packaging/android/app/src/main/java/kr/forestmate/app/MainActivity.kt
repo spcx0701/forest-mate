@@ -108,7 +108,10 @@ class MainActivity : Activity() {
     }
 
     private fun bottomNavSafeInset(): Int =
-        BottomNavLayout.tabContentSafeBottomInsetPx(navigationBarHeight())
+        BottomNavLayout.tabContentSafeBottomInsetPx(
+            navigationBarHeight(),
+            Contour.dp(this, BottomNavLayout.maxVisualSafeBottomInsetDp),
+        )
 
     private fun render() {
         currentMapView?.onDetach()
