@@ -31,8 +31,8 @@ test("modal corner css changes are cache-busted in the app shell and service wor
   const index = fs.readFileSync(path.join(appDir, "index.html"), "utf8");
   const sw = fs.readFileSync(path.join(appDir, "sw.js"), "utf8");
 
-  assert.match(index, /app\.css\?v=20260618-modal-bounce/);
+  assert.match(index, /app\.css\?v=20260703-bottom-nav-safe-area/);
   assert.match(index, /app\.js\?v=20260618-local-leaflet/);
-  assert.match(sw, /app\.css\?v=20260618-modal-bounce/);
+  assert.match(sw, /app\.css\?v=20260703-bottom-nav-safe-area/);
   assert.match(sw, /app\.js\?v=20260618-local-leaflet/);
 });

@@ -1,0 +1,5 @@
+ForestMate 1.4.3 bottom navigation release.
+
+- Keeps the native Android bottom navigation flush with the screen edge without floating above system navigation.
+- Preserves tab labels and touch targets above the Android system navigation bar.
+- Updates the default production API endpoint to forestmate.app for phone and Wear OS builds.
