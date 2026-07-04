@@ -13,6 +13,10 @@ os.environ["K_ANONYMITY"] = "1"
 os.environ["DISTRESS_STALL_MINUTES"] = "30"
 os.environ["DATA_GO_KR_KEY"] = ""       # 스냅샷 모드 강제
 os.environ["ANTHROPIC_API_KEY"] = ""    # 규칙 엔진 강제
+os.environ["GEMINI_API_KEY"] = ""       # 규칙 엔진 강제
+os.environ["LLM_API_KEY"] = ""          # 규칙 엔진 강제
+os.environ["LLM_PROVIDER"] = ""         # 키 종류 자동 선택도 비활성
+os.environ["LLM_MODEL"] = ""
 os.environ["FORESTMATE_SKIP_CATALOG"] = "1"  # 베이크 카탈로그 적재 생략(테스트 자체 시드)
 
 

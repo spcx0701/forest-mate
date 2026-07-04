@@ -94,12 +94,12 @@ Android 사용자는 GitHub Release에서 Kotlin 네이티브 `forestmate-androi
   <img alt="Leaflet" src="https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white">
   <img alt="PWA" src="https://img.shields.io/badge/PWA-5A0FC8?logo=pwa&logoColor=white">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white">
-  <img alt="Claude" src="https://img.shields.io/badge/Claude_LLM-D97757?logo=anthropic&logoColor=white">
+  <img alt="Gemini / Claude" src="https://img.shields.io/badge/Gemini%20%2F%20Claude_LLM-4285F4?logo=googlegemini&logoColor=white">
 </p>
 
 - **백엔드** FastAPI · SQLAlchemy(SQLite/PostgreSQL) · Pydantic · pytest · WebSocket
 - **프런트** PWA(서비스워커·오프라인·Web Push) · Vanilla JS · Leaflet 지도
-- **데이터·AI** 공공데이터포털(기상청·산림청) · VWorld 지오코딩 · Claude(LLM RAG)
+- **데이터·AI** 공공데이터포털(기상청·산림청) · VWorld 지오코딩 · Gemini/Claude(LLM RAG)
 - **Android** Kotlin 네이티브 phone APK · Kotlin 네이티브 Wear OS companion
 - **인프라** Docker · Render · GitHub Actions(CI)
 
@@ -115,7 +115,7 @@ forest-mate/
 │   ├── geo.py            #   KMA 격자 변환 + 시도 좌표 (정밀 산행지수·GPS)
 │   ├── data/             #   영속 카탈로그(catalog.json) + 등산로 선(trails/{code}.json)
 │   ├── services/         #   scoring(산행지수·추천·위험융합) · safety(조난감지·k익명화)
-│   │                     #   chat(의도엔진) · llm(Claude RAG) · bus(관제 WS pub/sub)
+│   │                     #   chat(의도엔진) · llm(Gemini/Claude RAG) · bus(관제 WS pub/sub)
 │   ├── routers/          #   public · hikes(토큰인증) · dashboard(WS)
 │   └── tests/            #   pytest 23개 (스코어링·안전·API E2E·WebSocket)
 ├── app/                  # 클라이언트 (정적 호스팅 가능, 백엔드와 동일 오리진 권장)
@@ -156,10 +156,10 @@ docker compose up             # API + PostgreSQL
 | 기능 | 키 없음(기본) | 키 설정 시 |
 |------|--------------|-----------|
 | 산행지수·기상·산불 | 공공데이터 **스냅샷**(실 API와 동일 스키마) | `DATA_GO_KR_KEY` → **실 공공데이터 API** |
-| AI 숲이 챗 | **규칙 기반 의도 엔진** | `ANTHROPIC_API_KEY` → **Claude RAG**(공공데이터 근거 주입) |
+| AI 숲이 챗 | **규칙 기반 의도 엔진** | `GEMINI_API_KEY` → **Gemini 3.5 Flash RAG** / `ANTHROPIC_API_KEY` + `LLM_PROVIDER=claude` → **Claude RAG** |
 | 프런트 | 로컬 폴백 엔진 | 백엔드 감지 시 **cloud 모드**(서버 경유) |
 
-LLM 모드는 `server/services/llm.py`에서 Claude Messages API를 호출한다 — 고정 시스템 프롬프트(지식베이스)에 prompt caching, 요청별 실시간 컨텍스트(기상·코스·위험)는 user 메시지로 주입. 모델 `claude-opus-4-8`.
+LLM 모드는 `server/services/llm.py`에서 Gemini OpenAI-compatible Chat Completions 또는 Claude Messages API를 호출한다. 고정 시스템 프롬프트(지식베이스)와 요청별 실시간 컨텍스트(기상·코스·위험)를 함께 주입하며, 기본 무료 연결 후보는 `LLM_PROVIDER=gemini`, `LLM_MODEL=gemini-3.5-flash`다.
 
 ## 핵심 도메인 로직(서버가 단일 출처)
 

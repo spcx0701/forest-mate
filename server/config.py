@@ -4,7 +4,7 @@
   - DATABASE_URL을 PostgreSQL(+PostGIS)로 교체
   - DATA_GO_KR_KEY 발급(공공데이터포털) 후 설정 → 어댑터가 실 API 호출
   - K_ANONYMITY=50 (위치정보 통계 표출 기준)
-  - ANTHROPIC_API_KEY 설정 시 AI 챗이 LLM(RAG) 모드로 동작
+  - GEMINI_API_KEY 또는 ANTHROPIC_API_KEY 설정 시 AI 챗이 LLM(RAG) 모드로 동작
 """
 from functools import lru_cache
 
@@ -33,9 +33,16 @@ class Settings(BaseSettings):
     distress_min_points: int = 3
 
     # AI 챗 — LLM(RAG) 모드. 키가 없으면 규칙 기반 의도 엔진으로 동작.
+    # LLM_PROVIDER를 비우면 키 종류로 자동 선택한다: GEMINI_API_KEY/LLM_API_KEY → gemini,
+    # ANTHROPIC_API_KEY → claude.
+    llm_provider: str = ""
+    llm_api_key: str = ""
+    gemini_api_key: str = ""
+    llm_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     anthropic_api_key: str = ""
-    llm_model: str = "claude-opus-4-8"
+    llm_model: str = ""
     llm_max_tokens: int = 1024
+    llm_timeout_s: float = 12.0
 
     cors_origins: str = "*"
 
@@ -63,7 +70,35 @@ class Settings(BaseSettings):
 
     @property
     def llm_enabled(self) -> bool:
-        return bool(self.anthropic_api_key)
+        return bool(self.llm_api_key_for_provider)
+
+    @property
+    def resolved_llm_provider(self) -> str:
+        provider = self.llm_provider.strip().lower()
+        if provider:
+            return provider
+        if self.gemini_api_key or self.llm_api_key:
+            return "gemini"
+        if self.anthropic_api_key:
+            return "claude"
+        return ""
+
+    @property
+    def llm_api_key_for_provider(self) -> str:
+        provider = self.resolved_llm_provider
+        if provider == "gemini":
+            return self.gemini_api_key or self.llm_api_key
+        if provider == "claude":
+            return self.anthropic_api_key
+        return self.llm_api_key
+
+    @property
+    def resolved_llm_model(self) -> str:
+        if self.llm_model:
+            return self.llm_model
+        if self.resolved_llm_provider == "gemini":
+            return "gemini-3.5-flash"
+        return "claude-opus-4-8"
 
     @property
     def live_data(self) -> bool:

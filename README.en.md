@@ -94,12 +94,12 @@ ForestMate includes a real-time monitoring web dashboard for municipalities and 
   <img alt="Leaflet" src="https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white">
   <img alt="PWA" src="https://img.shields.io/badge/PWA-5A0FC8?logo=pwa&logoColor=white">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white">
-  <img alt="Claude" src="https://img.shields.io/badge/Claude_LLM-D97757?logo=anthropic&logoColor=white">
+  <img alt="Gemini / Claude" src="https://img.shields.io/badge/Gemini%20%2F%20Claude_LLM-4285F4?logo=googlegemini&logoColor=white">
 </p>
 
 - **Backend** FastAPI, SQLAlchemy (SQLite/PostgreSQL), Pydantic, pytest, WebSocket
 - **Frontend** PWA with service worker, offline support, Web Push, vanilla JS, and Leaflet maps
-- **Data and AI** Korea public data APIs, Korea Forest Service data, VWorld geocoding, Claude LLM/RAG
+- **Data and AI** Korea public data APIs, Korea Forest Service data, VWorld geocoding, Gemini/Claude LLM RAG
 - **Android** Kotlin native phone APK and Kotlin native Wear OS companion
 - **Infrastructure** Docker, Render, GitHub Actions CI
 
@@ -161,10 +161,10 @@ Host `app/` as static files to run with the local engine only. In this mode the 
 | Feature | No keys, default | With keys |
 |---------|------------------|-----------|
 | Hiking index, weather, forest fire | Public-data **snapshots** with the live API schema | `DATA_GO_KR_KEY` enables **live public data APIs** |
-| AI companion chat | **Rule-based intent engine** | `ANTHROPIC_API_KEY` enables **Claude RAG** with public-data context |
+| AI companion chat | **Rule-based intent engine** | `GEMINI_API_KEY` enables **Gemini 3.5 Flash RAG** / `ANTHROPIC_API_KEY` + `LLM_PROVIDER=claude` enables **Claude RAG** |
 | Frontend | Local fallback engine | Backend detection enables **cloud mode** through the server |
 
-LLM mode calls the Claude Messages API from `server/services/llm.py`. A fixed system prompt carries the knowledge base with prompt caching, while request-specific real-time context such as weather, course, and risk data is injected in the user message. The configured model is `claude-opus-4-8`.
+LLM mode calls either Gemini's OpenAI-compatible Chat Completions endpoint or the Claude Messages API from `server/services/llm.py`. A fixed system prompt carries the knowledge base, while request-specific real-time context such as weather, course, and risk data is injected with the user message. The default free-tier path is `LLM_PROVIDER=gemini` and `LLM_MODEL=gemini-3.5-flash`.
 
 ## Core Domain Logic
 

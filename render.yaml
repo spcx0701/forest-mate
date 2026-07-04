@@ -39,13 +39,23 @@ services:
       # 공공데이터포털 키 — 비우면 동일 스키마 스냅샷 폴백. 대시보드에서 비밀값으로 입력.
       - key: DATA_GO_KR_KEY
         sync: false
-      # Claude API 키 — 비우면 규칙 기반 챗. 대시보드에서 비밀값으로 입력.
+      # AI 숲이 — Gemini 무료 티어(OpenAI-compatible) 우선. 키를 비우면 규칙 기반 챗.
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      # Claude로 전환하려면 대시보드에서 LLM_PROVIDER=claude, ANTHROPIC_API_KEY,
+      # LLM_MODEL=claude-opus-4-8로 바꾼다.
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: LLM_MODEL
-        value: claude-opus-4-8
+        value: gemini-3.5-flash
+      - key: LLM_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
       - key: LLM_MAX_TOKENS
         value: "1024"
+      - key: LLM_TIMEOUT_S
+        value: "12"
       # 커스텀 도메인 DNS 연결 + OAuth 콜백(구글/카카오/네이버) 등록 완료 후
       # https://forestmate.app 로 교체(로그인 유지 위해 그 전엔 onrender 유지).
       - key: PUBLIC_BASE_URL

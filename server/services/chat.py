@@ -97,11 +97,14 @@ async def answer(message: str, lang: str, course_id: str | None, progress: float
     ]
 
     if settings.llm_enabled:
-        from .llm import ask_llm
+        from .llm import LLMProviderError, ask_llm
+        engine = (getattr(settings, "resolved_llm_provider", None)
+                  or getattr(settings, "llm_provider", None)
+                  or "claude")
         try:
             reply = await ask_llm(message, lang, _context_block(cond, course, progress))
-            return {"reply": reply, "intent": "llm", "engine": "claude", "sources": sources}
-        except anthropic.APIError as exc:
+            return {"reply": reply, "intent": "llm", "engine": engine, "sources": sources}
+        except (anthropic.APIError, LLMProviderError) as exc:
             log.warning("LLM fallback to rules: %s", exc)
 
     result = rule_reply(message, lang, cond, course, progress)
