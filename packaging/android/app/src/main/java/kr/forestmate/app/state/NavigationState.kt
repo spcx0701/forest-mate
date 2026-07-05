@@ -1,11 +1,11 @@
 package kr.forestmate.app.state
 
-enum class PhoneTab(val id: String, val label: String) {
-    HOME("home", "홈"),
-    HIKE("hike", "산행"),
-    SOS("sos", "안전"),
-    AI("ai", "AI동무"),
-    MY("my", "마이"),
+enum class PhoneTab(val id: String) {
+    HOME("home"),
+    HIKE("hike"),
+    SOS("sos"),
+    AI("ai"),
+    MY("my"),
 }
 
 data class NavigationState(val selected: PhoneTab = PhoneTab.HOME) {

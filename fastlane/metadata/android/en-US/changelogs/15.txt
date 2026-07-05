@@ -1,0 +1,4 @@
+ForestMate 1.4.6 English language support release.
+
+- Adds English UI copy for the phone app screens, route catalog, map labels, safety detail panels, and launcher label.
+- Adds an in-app Korean/English language selector and sends AI chat requests with the selected language.

@@ -1,5 +1,6 @@
 package kr.forestmate.app.state
 
+import kr.forestmate.app.AppLanguage
 import kr.forestmate.core.model.Course
 import kotlin.math.asin
 import kotlin.math.cos
@@ -28,6 +29,7 @@ data class TrailMarker(
 
 data class TrailMapState(
     val courseId: String,
+    val language: AppLanguage = AppLanguage.KOREAN,
     val start: LatLon,
     val routePoints: List<LatLon>,
     val markers: List<TrailMarker>,
@@ -43,8 +45,8 @@ data class TrailMapState(
         val nextProgress = (nextWalked / routeKm).coerceIn(0.0, 1.0)
         val positionMarker = TrailMarker(
             kind = TrailMarkerKind.POSITION,
-            title = "현재 위치",
-            subtitle = "GPS 트랙 ${"%.2f".format(nextWalked)}km",
+            title = if (language == AppLanguage.ENGLISH) "Current location" else "현재 위치",
+            subtitle = if (language == AppLanguage.ENGLISH) "GPS track ${"%.2f".format(nextWalked)}km" else "GPS 트랙 ${"%.2f".format(nextWalked)}km",
             point = point,
         )
         return copy(
@@ -59,21 +61,23 @@ data class TrailMapState(
         routePoints.zipWithNext().sumOf { (a, b) -> haversineKm(a, b) }
 
     companion object {
-        fun forCourse(course: Course): TrailMapState {
+        fun forCourse(course: Course, language: AppLanguage = AppLanguage.KOREAN): TrailMapState {
             val start = parseGps(course.gps) ?: LatLon(37.6584, 126.9778)
             val route = routeFor(course, start)
             val markers = mutableListOf<TrailMarker>()
-            val startLabel = course.route.substringBefore("→").trim().ifBlank { "들머리" }
+            val startLabel = course.route.substringBefore("→").trim().ifBlank {
+                if (language == AppLanguage.ENGLISH) "Trailhead" else "들머리"
+            }
             markers += TrailMarker(
                 kind = TrailMarkerKind.START,
-                title = "$startLabel · 들머리",
+                title = if (language == AppLanguage.ENGLISH) "$startLabel · trailhead" else "$startLabel · 들머리",
                 subtitle = course.route,
                 point = start,
             )
             markers += TrailMarker(
                 kind = TrailMarkerKind.SUMMIT,
                 title = course.peak.ifBlank { course.name },
-                subtitle = "${course.km}km · ${course.minutes}분",
+                subtitle = if (language == AppLanguage.ENGLISH) "${course.km}km · ${course.minutes}m" else "${course.km}km · ${course.minutes}분",
                 point = route.last(),
             )
             for (hazard in course.hazards) {
@@ -87,13 +91,14 @@ data class TrailMapState(
             if (course.rescuePoint.isNotBlank()) {
                 markers += TrailMarker(
                     kind = TrailMarkerKind.RESCUE,
-                    title = "구조 거점",
+                    title = if (language == AppLanguage.ENGLISH) "Rescue point" else "구조 거점",
                     subtitle = course.rescuePoint,
                     point = interpolate(route, 0.72),
                 )
             }
             return TrailMapState(
                 courseId = course.id,
+                language = language,
                 start = start,
                 routePoints = route,
                 markers = markers,

@@ -4,7 +4,7 @@ import kr.forestmate.core.model.Course
 import kr.forestmate.core.model.Hazard
 
 object LocalCatalog {
-    val courses: List<Course> = listOf(
+    private val koreanCourses: List<Course> = listOf(
         Course(
             id = "bukhansan",
             name = "북한산 백운대 코스",
@@ -84,4 +84,91 @@ object LocalCatalog {
             elevation = listOf(110, 190, 300, 420, 510, 600, 660, 700, 726),
         ),
     )
+
+    val courses: List<Course> = koreanCourses
+    val courseIds: Set<String> = koreanCourses.map { it.id }.toSet()
+
+    private val englishCourses: List<Course> = listOf(
+        Course(
+            id = "bukhansan",
+            name = "Bukhansan Baegundae Route",
+            km = 4.2,
+            minutes = 190,
+            route = "Baegundae Trail Support Center → Baegundae summit",
+            hazards = listOf(
+                Hazard(type = "Rockfall caution", grade = "Landslide grade 1", at = 0.62, note = "Two-week rainfall buildup — detour recommended"),
+                Hazard(type = "Steep slope", grade = "Frequent-accident segment", at = 0.38, note = "Use poles and watch heart rate"),
+            ),
+            level = "Medium",
+            levelN = 2,
+            crowd = "Moderate",
+            view = 4,
+            peak = "Baegundae 836m",
+            gridNo = "Dasa 5683 2741",
+            gps = "37.6584,126.9778",
+            rescuePoint = "Baegunsanjang helipad 620m",
+            fireStation = "Seoul Jongno Fire Station mountain rescue team",
+            elevation = listOf(120, 180, 260, 390, 480, 542, 650, 770, 836),
+        ),
+        Course(
+            id = "inwangsan",
+            name = "Inwangsan Foothill Loop",
+            km = 2.8,
+            minutes = 100,
+            route = "Sajik Park → Suseongdong Valley",
+            hazards = listOf(Hazard(type = "Crowded segment", grade = "Weekend congestion", at = 0.55, note = "Fortress path merge — avoid passing")),
+            level = "Easy",
+            levelN = 1,
+            crowd = "Low",
+            view = 3,
+            peak = "Inwangsan 338m",
+            gridNo = "Dasa 5421 2856",
+            gps = "37.5772,126.9610",
+            rescuePoint = "Hwanghakjeong access road 280m",
+            fireStation = "Seoul Jongno Fire Station",
+            elevation = listOf(60, 95, 140, 180, 210, 196, 170, 150, 130),
+        ),
+        Course(
+            id = "achasan",
+            name = "Achasan Sunrise Ridge",
+            km = 3.5,
+            minutes = 140,
+            route = "Achasan Ecological Park → Sunrise Plaza",
+            hazards = listOf(Hazard(type = "Rocky ridge", grade = "Caution", at = 0.70, note = "Slippery in rain — use handrails")),
+            level = "Easy",
+            levelN = 1,
+            crowd = "Moderate",
+            view = 5,
+            peak = "Achasan 287m",
+            gridNo = "Maba 1043 1822",
+            gps = "37.5713,127.1030",
+            rescuePoint = "Sunrise Plaza heli point",
+            fireStation = "Guri Fire Station",
+            elevation = listOf(40, 80, 130, 170, 210, 240, 262, 280, 287),
+        ),
+        Course(
+            id = "dobong",
+            name = "Dobongsan Sinseondae Route",
+            km = 6.4,
+            minutes = 280,
+            route = "Dobong Trail Support Center → Sinseondae",
+            hazards = listOf(
+                Hazard(type = "Y Valley rocky ridge", grade = "Frequent accidents", at = 0.78, note = "Detour recommended in strong wind"),
+                Hazard(type = "Rockfall caution", grade = "Landslide grade 2", at = 0.45, note = "Helmet recommended segment"),
+            ),
+            level = "Hard",
+            levelN = 3,
+            crowd = "High",
+            view = 5,
+            peak = "Sinseondae 726m",
+            gridNo = "Dasa 6122 3354",
+            gps = "37.6987,127.0114",
+            rescuePoint = "Dobong shelter 410m",
+            fireStation = "Dobong Fire Station mountain rescue team",
+            elevation = listOf(110, 190, 300, 420, 510, 600, 660, 700, 726),
+        ),
+    )
+
+    fun coursesFor(language: AppLanguage): List<Course> =
+        if (language == AppLanguage.ENGLISH) englishCourses else koreanCourses
 }

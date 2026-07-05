@@ -16,6 +16,7 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import kr.forestmate.app.AppLanguage
 import kr.forestmate.core.model.HikeIndex
 
 /**
@@ -64,13 +65,22 @@ object ConditionDetailViews {
     private fun mix(a: Double, b: Double, aw: Double = 0.5) = clamp(a * aw + b * (1 - aw))
     private fun fmtWind(w: Double) = if (w % 1.0 != 0.0) "%.1fm/s".format(w) else "${w.toInt()}m/s"
 
-    private fun statusWord(score: Int) = when {
-        score >= 80 -> "안정"; score >= 60 -> "주의"; else -> "위험"
+    private fun statusWord(score: Int, language: AppLanguage = AppLanguage.KOREAN) = when {
+        language == AppLanguage.ENGLISH && score >= 80 -> "Stable"
+        language == AppLanguage.ENGLISH && score >= 60 -> "Caution"
+        language == AppLanguage.ENGLISH -> "Risky"
+        score >= 80 -> "안정"
+        score >= 60 -> "주의"
+        else -> "위험"
     }
     private fun scoreTone(score: Int) = when {
         score >= 80 -> "ok"; score >= 60 -> "mid"; else -> "bad2"
     }
     private fun fireScoreOf(level: String): Int = when {
+        level.contains("Very", ignoreCase = true) -> 30
+        level.contains("High", ignoreCase = true) -> 45
+        level.contains("Moderate", ignoreCase = true) -> 65
+        level.contains("Low", ignoreCase = true) -> 80
         level.contains("매우") -> 30
         level.contains("높") -> 45
         level.contains("보통") -> 65
@@ -88,10 +98,11 @@ object ConditionDetailViews {
         }
         return ((sunset.timeInMillis - now.timeInMillis) / 60000L).toInt()
     }
-    private fun sunsetMargin(at: String): String {
-        val mins = sunsetMinutes(at) ?: return "일몰 시각 확인 필요"
-        if (mins <= 0) return "이미 일몰 이후"
+    private fun sunsetMargin(at: String, language: AppLanguage = AppLanguage.KOREAN): String {
+        val mins = sunsetMinutes(at) ?: return if (language == AppLanguage.ENGLISH) "Sunset time needs checking" else "일몰 시각 확인 필요"
+        if (mins <= 0) return if (language == AppLanguage.ENGLISH) "Already after sunset" else "이미 일몰 이후"
         val h = mins / 60; val m = mins % 60
+        if (language == AppLanguage.ENGLISH) return if (h > 0) "${h}h ${m.toString().padStart(2, '0')}m left" else "${m}m left"
         return if (h > 0) "${h}시간 ${m.toString().padStart(2, '0')}분 남음" else "${m}분 남음"
     }
     private fun sunsetPressure(at: String): Double {
@@ -101,25 +112,49 @@ object ConditionDetailViews {
     }
 
     // --- context derived from HikeIndex (falls back to home defaults) --------
-    private class Ctx(idx: HikeIndex?) {
-        val fireLevel = idx?.fireLevel?.ifBlank { "보통" } ?: "보통"
+    private class Ctx(idx: HikeIndex?, val language: AppLanguage = AppLanguage.KOREAN) {
+        val fireLevel = localizeFireLevel(idx?.fireLevel?.ifBlank { "보통" } ?: "보통", language)
         val fireScore = fireScoreOf(fireLevel)
         val temp = idx?.temperatureC ?: 18.0
         val wind = idx?.windMps ?: 2.0
         val rain = idx?.rainProbability ?: 10
-        val station = idx?.let { it.regionName.ifBlank { it.place } } ?: "산악기상관측망"
-        val wxLabel = idx?.weatherLabel?.ifBlank { "관측" } ?: "관측"
-        val lsGrade = 5; val lsScore = 82; val lsLabel = "안전"
+        val station = idx?.let { it.regionName.ifBlank { it.place } } ?: if (language == AppLanguage.ENGLISH) "Mountain weather station" else "산악기상관측망"
+        val wxLabel = localizeWeather(idx?.weatherLabel?.ifBlank { "관측" } ?: "관측", language)
+        val lsGrade = 5; val lsScore = 82; val lsLabel = if (language == AppLanguage.ENGLISH) "Safe" else "안전"
         val sunsetAt = "19:52"
-        val region = idx?.regionName?.ifBlank { "현재 지역" } ?: "현재 지역"
-        val place = idx?.let { it.place.ifBlank { it.regionName } } ?: "서울 은평구"
+        val region = idx?.regionName?.ifBlank { if (language == AppLanguage.ENGLISH) "Current region" else "현재 지역" } ?: if (language == AppLanguage.ENGLISH) "Current region" else "현재 지역"
+        val place = idx?.let { it.place.ifBlank { it.regionName } } ?: if (language == AppLanguage.ENGLISH) "Eunpyeong, Seoul" else "서울 은평구"
         val score = idx?.score ?: 0
         val live = idx != null
     }
 
-    fun summaryTiles(idx: HikeIndex?): List<Tile> {
-        val c = Ctx(idx)
-        return listOf(
+    private fun localizeFireLevel(level: String, language: AppLanguage): String =
+        if (language == AppLanguage.KOREAN) level else when {
+            level.contains("매우") -> "Very high"
+            level.contains("높") -> "High"
+            level.contains("보통") -> "Moderate"
+            level.contains("낮") -> "Low"
+            else -> level
+        }
+
+    private fun localizeWeather(label: String, language: AppLanguage): String =
+        if (language == AppLanguage.KOREAN) label else when {
+            label.contains("맑") -> "Clear"
+            label.contains("흐") -> "Cloudy"
+            label.contains("비") -> "Rain"
+            label.contains("눈") -> "Snow"
+            label.contains("관측") -> "Observed"
+            else -> label
+        }
+
+    fun summaryTiles(idx: HikeIndex?, language: AppLanguage = AppLanguage.KOREAN): List<Tile> {
+        val c = Ctx(idx, language)
+        return if (language == AppLanguage.ENGLISH) listOf(
+            Tile("fire", "Wildfire", c.fireLevel, scoreTone(c.fireScore)),
+            Tile("landslide", "Landslide", c.lsLabel, scoreTone(c.lsScore)),
+            Tile("weather", "Mountain wx", "${c.temp.toInt()}°C", scoreTone(((100 - tempBurden(c.temp)).toInt()))),
+            Tile("sunset", "Sunset", c.sunsetAt, scoreTone((100 - sunsetPressure(c.sunsetAt)).toInt())),
+        ) else listOf(
             Tile("fire", "산불위험", c.fireLevel, scoreTone(c.fireScore)),
             Tile("landslide", "산사태", c.lsLabel, scoreTone(c.lsScore)),
             Tile("weather", "산악기상", "${c.temp.toInt()}°C", scoreTone(((100 - tempBurden(c.temp)).toInt()))),
@@ -127,8 +162,11 @@ object ConditionDetailViews {
         )
     }
 
-    fun build(id: String, idx: HikeIndex?): Detail {
-        val c = Ctx(idx)
+    fun build(id: String, idx: HikeIndex?, language: AppLanguage = AppLanguage.KOREAN): Detail =
+        if (language == AppLanguage.ENGLISH) buildEnglish(id, idx) else buildKorean(id, idx)
+
+    private fun buildKorean(id: String, idx: HikeIndex?): Detail {
+        val c = Ctx(idx, AppLanguage.KOREAN)
         val mode = if (c.live) "LIVE" else "SNAPSHOT"
         val updated = if (c.live) "실시간 API 갱신" else "오프라인 스냅샷"
         val rain = c.rain.toDouble()
@@ -269,8 +307,151 @@ object ConditionDetailViews {
         }
     }
 
+    private fun buildEnglish(id: String, idx: HikeIndex?): Detail {
+        val c = Ctx(idx, AppLanguage.ENGLISH)
+        val mode = if (c.live) "LIVE" else "SNAPSHOT"
+        val updated = if (c.live) "Updated from live API" else "Offline snapshot"
+        val rain = c.rain.toDouble()
+        return when (id) {
+            "fire" -> {
+                val risk = clamp(100.0 - c.fireScore)
+                val dry = clamp(100.0 - rain)
+                val wind = windRisk(c.wind)
+                Detail(
+                    "fire", "🔥", "Wildfire", c.fireLevel.ifBlank { "Needs check" },
+                    "Wildfire risk for ${c.place}. Dry leaves, strong wind, cooking, and smoking can change the felt risk quickly.",
+                    FIRE,
+                    listOf(
+                        Metric("Risk level", c.fireLevel, "Forecast tier"),
+                        Metric("Spread wind", fmtWind(c.wind), if (c.wind >= 7) "Strong-wind caution" else "Moderate"),
+                        Metric("Dry signal", "${c.rain}% rain", if (c.rain < 20) "Very dry" else "May ease"),
+                    ),
+                    listOf(
+                        Axis("Forecast", risk.toInt(), c.fireLevel),
+                        Axis("Dryness", dry.toInt(), "${c.rain}% rain"),
+                        Axis("Spread wind", wind.toInt(), fmtWind(c.wind)),
+                        Axis("Fire care", mix(risk, dry, 0.55).toInt(), "No cooking/smoking"),
+                        Axis("Report need", mix(risk, wind, 0.6).toInt(), "Smoke or burnt smell"),
+                        Axis("Access limit", mix(risk, 100.0 - c.score, 0.65).toInt(), "Closure notices"),
+                    ),
+                    listOf(
+                        Signal("Risk level", c.fireLevel, "Wildfire forecast", if (risk >= 45) "warn" else "safe"),
+                        Signal("Spread wind", fmtWind(c.wind), "Ridge-sensitive signal", if (c.wind >= 7) "warn" else "neutral"),
+                        Signal("Dry relief", "${c.rain}%", "Lower rain is worse", if (c.rain < 20) "warn" else "safe"),
+                        Signal("Map area", c.region, "District/grid forecast", "neutral"),
+                        Signal("Compared peaks", "1", "Regional distribution", "neutral"),
+                        Signal("Route call", if (risk >= 45) "Use alternative" else "Proceed", "Before departure", if (risk >= 45) "warn" else "safe"),
+                    ),
+                    "If the wildfire level is high near your mountain, switch to a lower-risk mountain or a shorter route.",
+                    "National Institute of Forest Science wildfire forecast", mode, updated, c.score,
+                )
+            }
+            "landslide" -> {
+                val gradeRisk = clamp((6 - c.lsGrade) * 20.0)
+                val slopeRisk = clamp(100.0 - c.lsScore)
+                Detail(
+                    "landslide", "⛰", "Landslide", "${c.lsLabel} · grade ${c.lsGrade}",
+                    "Check both the landslide risk map and recent rainfall around ${c.place}. Move conservatively in valleys, cut slopes, and rockfall areas.",
+                    LAND,
+                    listOf(
+                        Metric("Map grade", "Grade ${c.lsGrade}", "Regional risk map"),
+                        Metric("Status", c.lsLabel, statusWord(c.lsScore, AppLanguage.ENGLISH)),
+                        Metric("Rain impact", "${c.rain}%", if (c.rain >= 30) "Recent/expected rain" else "Low"),
+                    ),
+                    listOf(
+                        Axis("Map risk", gradeRisk.toInt(), "Grade ${c.lsGrade}"),
+                        Axis("Rain load", rain.toInt(), "Expected rain"),
+                        Axis("Slope", slopeRisk.toInt(), c.lsLabel),
+                        Axis("Valley care", mix(gradeRisk, rain, 0.55).toInt(), "Near water paths"),
+                        Axis("Rockfall", mix(gradeRisk, windRisk(c.wind), 0.7).toInt(), "Cut slopes/ridges"),
+                        Axis("Detour", mix(slopeRisk, rain, 0.62).toInt(), "Alternate descent"),
+                    ),
+                    listOf(
+                        Signal("Risk map", "Grade ${c.lsGrade}", "Landslide information system", if (c.lsGrade <= 2) "warn" else "safe"),
+                        Signal("Status", c.lsLabel, statusWord(c.lsScore, AppLanguage.ENGLISH), if (c.lsScore >= 80) "safe" else "warn"),
+                        Signal("Rain impact", "${c.rain}%", "Recent/expected rain", if (c.rain >= 30) "warn" else "neutral"),
+                        Signal("Map area", c.region, "District/grid", "neutral"),
+                        Signal("Compared peaks", "1", "Regional distribution", "neutral"),
+                        Signal("Route call", if (c.lsGrade <= 2) "Use alternative" else "Proceed", "Before departure", if (c.lsGrade <= 2) "warn" else "safe"),
+                    ),
+                    "If rain is forecast or fell yesterday, remove high-landslide-grade mountains from the candidate list.",
+                    "Landslide information system risk map · Korea Forest Service trail hazard segments", mode, updated, c.score,
+                )
+            }
+            "weather" -> {
+                val wind = windRisk(c.wind)
+                val temp = tempBurden(c.temp)
+                val volatility = clamp(100.0 - 64)
+                Detail(
+                    "weather", "🌦", "Mountain weather", "${c.temp.toInt()}°C · ${c.wxLabel}",
+                    "Based on ${c.station}. Summits and ridges can be colder and windier than the city, so felt temperature may drop fast.",
+                    WX,
+                    listOf(
+                        Metric("Temp", "${c.temp.toInt()}°C", "Ridge baseline"),
+                        Metric("Wind", fmtWind(c.wind), if (c.wind >= 7) "Strong-wind caution" else "Moderate"),
+                        Metric("Rain chance", "${c.rain}%", if (c.rain >= 30) "Pack rain gear" else "Low"),
+                    ),
+                    listOf(
+                        Axis("Strong wind", wind.toInt(), fmtWind(c.wind)),
+                        Axis("Rain cloud", rain.toInt(), "${c.rain}% rain"),
+                        Axis("Wind chill", temp.toInt(), "${c.temp.toInt()}°C"),
+                        Axis("Low visibility", mix(rain, volatility, 0.55).toInt(), c.wxLabel),
+                        Axis("Volatility", volatility.toInt(), "Forecast uncertainty"),
+                        Axis("Slippery path", mix(rain, temp, 0.72).toInt(), "Rock/deck areas"),
+                    ),
+                    listOf(
+                        Signal("Temp", "${c.temp.toInt()}°C", c.wxLabel, "neutral"),
+                        Signal("Wind", fmtWind(c.wind), if (c.wind >= 7) "Strong-wind caution" else "Moderate", if (c.wind >= 7) "warn" else "safe"),
+                        Signal("Rain chance", "${c.rain}%", if (c.rain >= 30) "Pack rain gear" else "Low", if (c.rain >= 30) "warn" else "safe"),
+                        Signal("Station", c.station, "Location baseline", "neutral"),
+                        Signal("Compared peaks", "1", "Regional distribution", "neutral"),
+                        Signal("Route length", if (c.rain >= 30 || c.wind >= 7) "Shorten" else "Normal", "Before departure", if (c.rain >= 30 || c.wind >= 7) "warn" else "safe"),
+                    ),
+                    "Before leaving, check wind speed and rain chance for the mountain station and choose clothing and route length accordingly.",
+                    "KMA short-term forecast · mountain weather observation network", mode, updated, c.score,
+                )
+            }
+            "sunset" -> {
+                val pressure = sunsetPressure(c.sunsetAt)
+                val mins = sunsetMinutes(c.sunsetAt)
+                val afterDark = mins != null && mins <= 0
+                val shortMargin = mins != null && mins < 120
+                val nightTransition = if (afterDark) 100.0 else mix(pressure, if (shortMargin) 70.0 else 20.0, 0.7)
+                Detail(
+                    "sunset", "🌄", "Sunset", c.sunsetAt,
+                    "Sunset time for ${c.place}. Judge by the final junction, transit, and parking arrival time, not only summit arrival.",
+                    SUN,
+                    listOf(
+                        Metric("Sunset", c.sunsetAt, "Regional baseline"),
+                        Metric("Time left", sunsetMargin(c.sunsetAt, AppLanguage.ENGLISH), "Based on device time"),
+                        Metric("Turnaround", "Before 16:00", "New-route cutoff"),
+                    ),
+                    listOf(
+                        Axis("Time pressure", pressure.toInt(), sunsetMargin(c.sunsetAt, AppLanguage.ENGLISH)),
+                        Axis("Descent margin", if (shortMargin) 78 else pressure.toInt(), "Parking/transit included"),
+                        Axis("Night shift", nightTransition.toInt(), "Visibility drop"),
+                        Axis("Gear need", if (shortMargin) 85 else 35, "Headlamp/insulation"),
+                        Axis("Junction care", mix(pressure, 60.0, 0.55).toInt(), "Descent decisions"),
+                        Axis("Transit cutoff", mix(pressure, if (shortMargin) 72.0 else 34.0, 0.52).toInt(), "Return time"),
+                    ),
+                    listOf(
+                        Signal("Sunset", c.sunsetAt, "Regional baseline", "neutral"),
+                        Signal("Time left", sunsetMargin(c.sunsetAt, AppLanguage.ENGLISH), "Device time", if (shortMargin) "warn" else "safe"),
+                        Signal("Turnaround", "Before 16:00", "New-route cutoff", "warn"),
+                        Signal("Gear", "Headlamp", "Battery and warm layer", if (shortMargin) "warn" else "neutral"),
+                        Signal("Compared peaks", "1", "Regional sunset", "neutral"),
+                        Signal("Route call", if (shortMargin) "Shorten" else "Proceed", "Before departure", if (shortMargin) "warn" else "safe"),
+                    ),
+                    "Before departure, confirm the expected finish time is at least one hour before sunset. Otherwise choose a shorter route.",
+                    "Regional sunset time · current-location baseline", mode, updated, c.score,
+                )
+            }
+            else -> throw IllegalArgumentException("unknown condition: $id")
+        }
+    }
+
     // --- panel view ---------------------------------------------------------
-    fun panel(context: Context, d: Detail, onClose: () -> Unit): View {
+    fun panel(context: Context, d: Detail, onClose: () -> Unit, language: AppLanguage = AppLanguage.KOREAN): View {
         fun dp(v: Float) = Contour.dp(context, v)
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -313,7 +494,10 @@ object ConditionDetailViews {
                     typeface = Contour.black(); setPadding(0, dp(4f), 0, 0)
                 })
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(GaugeView(context, d.score, d.accent), LinearLayout.LayoutParams(dp(76f), dp(76f)))
+            addView(
+                GaugeView(context, d.score, d.accent, if (language == AppLanguage.ENGLISH) "Index" else "산행지수"),
+                LinearLayout.LayoutParams(dp(76f), dp(76f)),
+            )
         })
 
         root.addView(TextView(context).apply {
@@ -335,14 +519,26 @@ object ConditionDetailViews {
         })
 
         // radar
-        root.addView(chartHead(context, "현재 위험 벡터", "높을수록 주의"))
+        root.addView(
+            chartHead(
+                context,
+                if (language == AppLanguage.ENGLISH) "Current risk vector" else "현재 위험 벡터",
+                if (language == AppLanguage.ENGLISH) "Higher means more caution" else "높을수록 주의",
+            ),
+        )
         root.addView(RadarChartView(context, d.axes, d.accent), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(200f)).apply {
             topMargin = dp(4f)
         })
         root.addView(axisLegend(context, d.axes))
 
         // signal cards grid (2-col)
-        root.addView(chartHead(context, "신호 카드", "출발 전 점검"))
+        root.addView(
+            chartHead(
+                context,
+                if (language == AppLanguage.ENGLISH) "Signal cards" else "신호 카드",
+                if (language == AppLanguage.ENGLISH) "Before departure" else "출발 전 점검",
+            ),
+        )
         root.addView(cardGrid(context, d.cards))
 
         // guide
@@ -352,7 +548,7 @@ object ConditionDetailViews {
             setPadding(dp(13f), dp(12f), dp(13f), dp(12f))
             (layoutParamsOrSet(this)).topMargin = dp(12f)
             addView(TextView(context).apply {
-                text = "출발 전 확인"; textSize = 12.5f; setTextColor(0xFFFFFFFF.toInt()); typeface = Contour.black()
+                text = if (language == AppLanguage.ENGLISH) "Before departure" else "출발 전 확인"; textSize = 12.5f; setTextColor(0xFFFFFFFF.toInt()); typeface = Contour.black()
             })
             addView(TextView(context).apply {
                 text = d.guidance; textSize = 12f; setTextColor(0xD1EAF4FF.toInt())
@@ -544,7 +740,7 @@ object ConditionDetailViews {
     }
 
     /** 산행지수 게이지 (accent arc + 중앙 숫자). */
-    private class GaugeView(context: Context, private val score: Int, private val accent: Int) : View(context) {
+    private class GaugeView(context: Context, private val score: Int, private val accent: Int, private val caption: String) : View(context) {
         private val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = 0x29FFFFFF }
         private val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = accent; strokeCap = Paint.Cap.ROUND }
         private val num = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); textAlign = Paint.Align.CENTER; typeface = Contour.black() }
@@ -560,7 +756,7 @@ object ConditionDetailViews {
             num.textSize = h * 0.30f
             canvas.drawText(score.toString(), w / 2f, h / 2f - (num.descent() + num.ascent()) / 2f - h * 0.04f, num)
             cap.textSize = h * 0.11f
-            canvas.drawText("산행지수", w / 2f, h * 0.74f, cap)
+            canvas.drawText(caption, w / 2f, h * 0.74f, cap)
         }
     }
 }

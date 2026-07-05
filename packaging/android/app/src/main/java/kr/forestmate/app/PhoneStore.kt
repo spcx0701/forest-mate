@@ -22,6 +22,10 @@ class PhoneStore(context: Context) {
         get() = prefs.getString("accountEmail", "") ?: ""
         set(value) = prefs.edit().putString("accountEmail", value).apply()
 
+    var languageOverride: String
+        get() = prefs.getString("languageOverride", "") ?: ""
+        set(value) = prefs.edit().putString("languageOverride", value).apply()
+
     var activeHikeId: String
         get() = prefs.getString("activeHikeId", "") ?: ""
         set(value) = prefs.edit().putString("activeHikeId", value).apply()
