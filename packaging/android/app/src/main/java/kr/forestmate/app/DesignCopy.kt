@@ -242,6 +242,7 @@ object DesignCopy {
             "screen.home.subtitle" to "Check today's hiking index and personalized routes at a glance.",
             "screen.sos.title" to "Safety Request",
             "screen.sos.subtitle" to "Share your current position and national grid number with rescue teams.",
+        ) + mapOf(
             "screen.ai.title" to "AI forest guide",
             "screen.ai.subtitle" to "Ask about risky plants, route margin, and weather in natural language.",
             "screen.my.title" to "My hikes",
@@ -250,6 +251,7 @@ object DesignCopy {
             "home.ai.meta" to "Intermediate fitness · knee caution history applied",
             "home.safety.title" to "🛡 Safety Briefing",
             "home.safety.meta" to "Check descent accidents and weather shifts first",
+        ) + mapOf(
             "home.refresh" to "Refresh hiking index",
             COPY_HOME_INDEX_DEFAULT to "Good for hiking",
             "home.index.line" to "Today's hiking index · %s",
@@ -257,6 +259,7 @@ object DesignCopy {
             "home.search.meta" to "Korea Forest Service mountain data · 3,400+ mountains",
             "home.safety.head" to "⚠ Descent accidents are 1.8x more common than ascent accidents.",
             "home.safety.body" to "Use poles to reduce knee load and slow down before steep transitions.",
+        ) + mapOf(
             "home.news.title" to "🌿 Forest updates this week",
             "home.news.body" to "Check national park reservations together with wildfire and strong-wind alerts. Risk alerts are reflected in each route briefing.",
             "detail.more" to "Details ›",
@@ -264,6 +267,7 @@ object DesignCopy {
             "map.route.title" to "Recommended hiking route",
             "map.track.title" to "GPS track",
             "hike.hazard.title" to "Risk segment %s · %s · %s",
+        ) + mapOf(
             "hike.button.pause" to "Pause hike",
             "hike.button.start" to "Start hike",
             "hike.button.end" to "End hike",
@@ -272,6 +276,7 @@ object DesignCopy {
             "directions.title" to "🧭 Directions to the trailhead",
             "directions.body" to "Trail support center · %s",
             "directions.kakao" to "Current location → KakaoMap",
+        ) + mapOf(
             "directions.google" to "Google Maps",
             "directions.preparing" to "Preparing to open a directions app.",
             "directions.caption" to "When you arrive, tap Start hike to turn on GPS tracking.",
@@ -279,6 +284,7 @@ object DesignCopy {
             "metric.altitude" to "Current altitude",
             "metric.heart" to "Heart rate (watch)",
             "metric.sunset" to "To sunset",
+        ) + mapOf(
             "sos.location" to "Current location",
             "sos.grid" to "National grid number",
             "sos.station" to "Rescue station",
@@ -286,6 +292,7 @@ object DesignCopy {
             "sos.send" to "🆘 Send SOS",
             "ai.sample.user1" to "I found this mushroom on the trail. Is it edible?",
             "ai.sample.user2" to "How far is it to Baegundae summit?",
+        ) + mapOf(
             "ai.sample.assistant2" to "You have 1.8km left. At your current pace, arrival is about 55 minutes away. There is still daylight, but winds near the summit are strong, so pack an outer layer.",
             "ai.input.hint" to "Ask Soopi",
             "ai.input.default" to "Is this route safe today?",
@@ -293,6 +300,7 @@ object DesignCopy {
             "ai.photo" to "📷 Just-captured photo",
             "ai.risk.title" to "🚫 High chance of death cap mushroom",
             "ai.risk.body" to "It resembles a highly poisonous amatoxin mushroom. Even a small amount can be dangerous.",
+        ) + mapOf(
             "ai.risk.confidence" to "AI ID confidence 87% · checked against Korea National Arboretum data",
             "ai.risk.warning" to "⚠ Do not pick or eat it. If touched, wash your hands with running water.",
             "my.account.title" to "Account",
@@ -301,6 +309,7 @@ object DesignCopy {
             "my.signup" to "Sign up",
             "my.login" to "Log in",
             "my.load" to "Load records and badges",
+        ) + mapOf(
             "my.summary.title" to "My hikes",
             "my.account.label" to "Account",
             "my.device.label" to "Device registration",
@@ -309,6 +318,7 @@ object DesignCopy {
             "my.device.pending" to "Pending",
             "my.device.complete" to "Done",
             "my.watch.none" to "None",
+        ) + mapOf(
             "my.safety.title" to "Live safety events",
             "my.stat.sos" to "SOS drills",
             "my.stat.risk" to "Risks detected",
@@ -316,6 +326,7 @@ object DesignCopy {
             "my.stat.arrival.value" to "23m",
             "my.privacy" to "Personal location is used for safety analysis only after k-anonymization.",
             "my.risk.section" to "Risk by segment",
+        ) + mapOf(
             "event.zone1" to "Insubong east slab",
             "event.grade1" to "High 81",
             "event.reason1" to "Strong wind 9m/s · frequent accidents",
@@ -324,6 +335,7 @@ object DesignCopy {
             "event.reason2" to "Rockfall · congestion",
             "event.zone3" to "Baegundae summit area",
             "event.grade3" to "Caution 58",
+        ) + mapOf(
             "event.reason3" to "Crowding · sunset approaching",
             "language.title" to "Language",
             "language.body" to "Choose the app display language. AI questions are sent in the selected language too.",
@@ -332,6 +344,7 @@ object DesignCopy {
             "language.current" to "Current language: %s",
             "course.match" to "Match %d%%",
             "course.ai" to "AI pick",
+        ) + mapOf(
             "course.grid" to "National grid %s",
             "course.selected" to "%s selected",
             COPY_COURSE_META to "▲ %.1fkm   ◷ %s   ● Difficulty %s",
@@ -339,6 +352,7 @@ object DesignCopy {
             "status.home.loading" to "Loading hiking index and recommendations...",
             "status.home.stored" to "Showing saved route recommendations.",
             "status.home.fallback" to "Could not load the latest data, so saved routes are shown.",
+        ) + mapOf(
             "status.hike.paused" to "Hike paused · current progress %s",
             "status.hike.gps" to "GPS tracking started · %s",
             "status.hike.checkin.loading" to "Checking in this hike on the server...",
@@ -346,6 +360,7 @@ object DesignCopy {
             "status.hike.local.end" to "Local hike ended · %skm",
             "status.hike.save.loading" to "Saving hike record...",
             "status.hike.saved" to "Hike ended · %skm · record saved",
+        ) + mapOf(
             "status.watch.loading" to "Creating watch pairing code...",
             "status.watch.code" to "Watch backup code %s · valid for %d minutes",
             "status.sos.loading" to "Sending SOS...",
@@ -353,6 +368,7 @@ object DesignCopy {
             "status.chat.loading" to "Soopi is answering...",
             "status.summary.loading" to "Loading records and badges...",
             "summary.badge.earned" to "earned",
+        ) + mapOf(
             "summary.badge.progress" to "%s/%s",
             "summary.badges.empty" to "Badge history pending",
             "summary.text" to "%d hikes · %skm · level %d\n%d completed routes · %d visited regions\n%s",
@@ -360,6 +376,7 @@ object DesignCopy {
             "status.account.creating" to "Creating account...",
             "status.account.created" to "Account created · %s · record sync ON",
             "status.login.loading" to "Logging in...",
+        ) + mapOf(
             "status.login.done" to "Logged in · %s · record sync ON",
             "status.location.permission" to "Location permission is required.",
             "status.location.provider" to "No available location provider.",
