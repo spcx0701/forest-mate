@@ -4,6 +4,13 @@ import java.util.Locale
 import kr.forestmate.app.state.PhoneTab
 import kr.forestmate.core.model.Course
 
+private const val COPY_HOME_INDEX_DEFAULT = "home.index.default"
+private const val COPY_LOCATION_SHORT = "location.short"
+private const val COPY_COURSE_LEVEL_UNKNOWN = "course.level.unknown"
+private const val COPY_COURSE_META = "course.meta"
+internal const val COPY_LANGUAGE_KOREAN = "language.korean"
+internal const val COPY_LANGUAGE_ENGLISH = "language.english"
+
 enum class AppLanguage(val storedValue: String, val chatLang: String) {
     KOREAN("ko", "ko"),
     ENGLISH("en", "en"),
@@ -38,28 +45,28 @@ data class AppCopy(
     fun tabLabel(tab: PhoneTab): String = tabLabels[tab.ordinal]
 
     fun hikingIndexLabel(remoteLabel: String?): String {
-        val value = remoteLabel?.takeIf { it.isNotBlank() } ?: text("home.index.default")
+        val value = remoteLabel?.takeIf { it.isNotBlank() } ?: text(COPY_HOME_INDEX_DEFAULT)
         if (language == AppLanguage.KOREAN) return value
         return when {
             value.contains("좋") -> "Good for hiking"
             value.contains("주의") -> "Use caution"
             value.contains("위험") -> "High risk"
             value.contains("보통") -> "Moderate conditions"
-            else -> text("home.index.default")
+            else -> text(COPY_HOME_INDEX_DEFAULT)
         }
     }
 
     fun placeName(remotePlace: String?, remoteRegion: String?): String {
         val value = remotePlace?.ifBlank { remoteRegion.orEmpty() } ?: remoteRegion.orEmpty()
-        if (value.isBlank()) return text("location.short")
+        if (value.isBlank()) return text(COPY_LOCATION_SHORT)
         if (language == AppLanguage.KOREAN) return value
-        return if (value.contains("서울") || value.contains("은평")) text("location.short") else value
+        return if (value.contains("서울") || value.contains("은평")) text(COPY_LOCATION_SHORT) else value
     }
 
     fun courseMeta(course: Course): String {
         val time = duration(course.minutes)
-        val level = course.level.ifBlank { text("course.level.unknown") }
-        return format("course.meta", course.km, time, level)
+        val level = course.level.ifBlank { text(COPY_COURSE_LEVEL_UNKNOWN) }
+        return format(COPY_COURSE_META, course.km, time, level)
     }
 
     fun duration(minutes: Int): String =
@@ -90,7 +97,7 @@ object DesignCopy {
         strings = mapOf(
             "brand.name" to "숲길동무",
             "location.label" to "📍 서울 은평구 ▾",
-            "location.short" to "서울 은평구",
+            COPY_LOCATION_SHORT to "서울 은평구",
             "screen.home.title" to "좋음 — 산행하기 좋은 날",
             "screen.home.subtitle" to "산행지수와 맞춤 코스를 한눈에 확인하세요.",
             "screen.sos.title" to "안전 요청",
@@ -104,7 +111,7 @@ object DesignCopy {
             "home.safety.title" to "🛡 안전 브리핑",
             "home.safety.meta" to "하산 사고와 날씨 변화를 먼저 확인",
             "home.refresh" to "산행지수 새로고침",
-            "home.index.default" to "산행하기 좋은 날",
+            COPY_HOME_INDEX_DEFAULT to "산행하기 좋은 날",
             "home.index.line" to "오늘의 산행지수 · %s",
             "home.search.title" to "🔍 전국 산 검색",
             "home.search.meta" to "산림청 산정보 · 전국 3,400여 개 산",
@@ -180,15 +187,15 @@ object DesignCopy {
             "event.reason3" to "혼잡·일몰임박",
             "language.title" to "언어",
             "language.body" to "앱 화면 언어를 선택하세요. AI 질문도 선택한 언어로 전송됩니다.",
-            "language.korean" to "한국어",
-            "language.english" to "English",
+            COPY_LANGUAGE_KOREAN to "한국어",
+            COPY_LANGUAGE_ENGLISH to "English",
             "language.current" to "현재 언어: %s",
             "course.match" to "매칭 %d%%",
             "course.ai" to "AI 추천",
             "course.grid" to "국가지점번호 %s",
             "course.selected" to "%s 선택됨",
-            "course.meta" to "▲ %.1fkm   ◷ %s   ● 난이도 %s",
-            "course.level.unknown" to "확인",
+            COPY_COURSE_META to "▲ %.1fkm   ◷ %s   ● 난이도 %s",
+            COPY_COURSE_LEVEL_UNKNOWN to "확인",
             "status.home.loading" to "산행지수와 추천을 불러오는 중...",
             "status.home.stored" to "추천 코스는 저장된 목록으로 표시 중입니다.",
             "status.home.fallback" to "최신 데이터를 불러오지 못해 저장된 코스를 보여줍니다.",
@@ -230,7 +237,7 @@ object DesignCopy {
         strings = mapOf(
             "brand.name" to "ForestMate",
             "location.label" to "📍 Eunpyeong, Seoul ▾",
-            "location.short" to "Eunpyeong, Seoul",
+            COPY_LOCATION_SHORT to "Eunpyeong, Seoul",
             "screen.home.title" to "Good — ready for a hike",
             "screen.home.subtitle" to "Check today's hiking index and personalized routes at a glance.",
             "screen.sos.title" to "Safety Request",
@@ -244,7 +251,7 @@ object DesignCopy {
             "home.safety.title" to "🛡 Safety Briefing",
             "home.safety.meta" to "Check descent accidents and weather shifts first",
             "home.refresh" to "Refresh hiking index",
-            "home.index.default" to "Good for hiking",
+            COPY_HOME_INDEX_DEFAULT to "Good for hiking",
             "home.index.line" to "Today's hiking index · %s",
             "home.search.title" to "🔍 Search mountains nationwide",
             "home.search.meta" to "Korea Forest Service mountain data · 3,400+ mountains",
@@ -320,15 +327,15 @@ object DesignCopy {
             "event.reason3" to "Crowding · sunset approaching",
             "language.title" to "Language",
             "language.body" to "Choose the app display language. AI questions are sent in the selected language too.",
-            "language.korean" to "Korean",
-            "language.english" to "English",
+            COPY_LANGUAGE_KOREAN to "Korean",
+            COPY_LANGUAGE_ENGLISH to "English",
             "language.current" to "Current language: %s",
             "course.match" to "Match %d%%",
             "course.ai" to "AI pick",
             "course.grid" to "National grid %s",
             "course.selected" to "%s selected",
-            "course.meta" to "▲ %.1fkm   ◷ %s   ● Difficulty %s",
-            "course.level.unknown" to "Check",
+            COPY_COURSE_META to "▲ %.1fkm   ◷ %s   ● Difficulty %s",
+            COPY_COURSE_LEVEL_UNKNOWN to "Check",
             "status.home.loading" to "Loading hiking index and recommendations...",
             "status.home.stored" to "Showing saved route recommendations.",
             "status.home.fallback" to "Could not load the latest data, so saved routes are shown.",

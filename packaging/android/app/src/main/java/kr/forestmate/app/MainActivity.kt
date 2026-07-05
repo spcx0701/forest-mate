@@ -328,7 +328,7 @@ class MainActivity : Activity() {
             setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
         rightCol.addView(TextView(this).apply {
-            text = copy.format("home.index.line", idx?.let { copy.placeName(it.place, it.regionName) } ?: copy.text("location.short"))
+            text = copy.format("home.index.line", idx?.let { copy.placeName(it.place, it.regionName) } ?: copy.placeName(null, null))
             textSize = 11f
             typeface = Contour.mono()
             setTextColor(0xB3FFFFFF.toInt())
@@ -707,14 +707,15 @@ class MainActivity : Activity() {
         val card = NativeViews.card(this)
         card.addView(cardTitle(copy.text("language.title")))
         card.addView(NativeViews.bodyText(this, copy.text("language.body")))
-        card.addView(NativeViews.captionText(this, copy.format("language.current", copy.text(if (appLanguage == AppLanguage.ENGLISH) "language.english" else "language.korean"))))
+        val currentLanguageKey = if (appLanguage == AppLanguage.ENGLISH) COPY_LANGUAGE_ENGLISH else COPY_LANGUAGE_KOREAN
+        card.addView(NativeViews.captionText(this, copy.format("language.current", copy.text(currentLanguageKey))))
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(
                 if (appLanguage == AppLanguage.KOREAN) {
-                    NativeViews.primaryButton(this@MainActivity, copy.text("language.korean")) {}
+                    NativeViews.primaryButton(this@MainActivity, copy.text(COPY_LANGUAGE_KOREAN)) {}
                 } else {
-                    NativeViews.ghostButton(this@MainActivity, copy.text("language.korean")) { setLanguage(AppLanguage.KOREAN) }
+                    NativeViews.ghostButton(this@MainActivity, copy.text(COPY_LANGUAGE_KOREAN)) { setLanguage(AppLanguage.KOREAN) }
                 },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                     rightMargin = Contour.dp(this@MainActivity, 8f)
@@ -722,9 +723,9 @@ class MainActivity : Activity() {
             )
             addView(
                 if (appLanguage == AppLanguage.ENGLISH) {
-                    NativeViews.primaryButton(this@MainActivity, copy.text("language.english")) {}
+                    NativeViews.primaryButton(this@MainActivity, copy.text(COPY_LANGUAGE_ENGLISH)) {}
                 } else {
-                    NativeViews.ghostButton(this@MainActivity, copy.text("language.english")) { setLanguage(AppLanguage.ENGLISH) }
+                    NativeViews.ghostButton(this@MainActivity, copy.text(COPY_LANGUAGE_ENGLISH)) { setLanguage(AppLanguage.ENGLISH) }
                 },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
             )

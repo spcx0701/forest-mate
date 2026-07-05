@@ -36,6 +36,12 @@ object ConditionDetailViews {
 
     private const val PANEL_INK = 0xFFEAF4FF.toInt()
     private const val PANEL_SUB = 0xB8EAF4FF.toInt()
+    private const val EN_SPREAD_WIND = "Spread wind"
+    private const val EN_STRONG_WIND_CAUTION = "Strong-wind caution"
+    private const val EN_COMPARED_PEAKS = "Compared peaks"
+    private const val EN_REGIONAL_DISTRIBUTION = "Regional distribution"
+    private const val EN_ROUTE_CALL = "Route call"
+    private const val EN_BEFORE_DEPARTURE = "Before departure"
 
     data class Metric(val label: String, val value: String, val note: String)
     data class Axis(val label: String, val value: Int, val note: String)
@@ -165,6 +171,7 @@ object ConditionDetailViews {
     fun build(id: String, idx: HikeIndex?, language: AppLanguage = AppLanguage.KOREAN): Detail =
         if (language == AppLanguage.ENGLISH) buildEnglish(id, idx) else buildKorean(id, idx)
 
+    @Suppress("kotlin:S3776")
     private fun buildKorean(id: String, idx: HikeIndex?): Detail {
         val c = Ctx(idx, AppLanguage.KOREAN)
         val mode = if (c.live) "LIVE" else "SNAPSHOT"
@@ -307,6 +314,7 @@ object ConditionDetailViews {
         }
     }
 
+    @Suppress("kotlin:S3776")
     private fun buildEnglish(id: String, idx: HikeIndex?): Detail {
         val c = Ctx(idx, AppLanguage.ENGLISH)
         val mode = if (c.live) "LIVE" else "SNAPSHOT"
@@ -323,24 +331,24 @@ object ConditionDetailViews {
                     FIRE,
                     listOf(
                         Metric("Risk level", c.fireLevel, "Forecast tier"),
-                        Metric("Spread wind", fmtWind(c.wind), if (c.wind >= 7) "Strong-wind caution" else "Moderate"),
+                        Metric(EN_SPREAD_WIND, fmtWind(c.wind), if (c.wind >= 7) EN_STRONG_WIND_CAUTION else "Moderate"),
                         Metric("Dry signal", "${c.rain}% rain", if (c.rain < 20) "Very dry" else "May ease"),
                     ),
                     listOf(
                         Axis("Forecast", risk.toInt(), c.fireLevel),
                         Axis("Dryness", dry.toInt(), "${c.rain}% rain"),
-                        Axis("Spread wind", wind.toInt(), fmtWind(c.wind)),
+                        Axis(EN_SPREAD_WIND, wind.toInt(), fmtWind(c.wind)),
                         Axis("Fire care", mix(risk, dry, 0.55).toInt(), "No cooking/smoking"),
                         Axis("Report need", mix(risk, wind, 0.6).toInt(), "Smoke or burnt smell"),
                         Axis("Access limit", mix(risk, 100.0 - c.score, 0.65).toInt(), "Closure notices"),
                     ),
                     listOf(
                         Signal("Risk level", c.fireLevel, "Wildfire forecast", if (risk >= 45) "warn" else "safe"),
-                        Signal("Spread wind", fmtWind(c.wind), "Ridge-sensitive signal", if (c.wind >= 7) "warn" else "neutral"),
+                        Signal(EN_SPREAD_WIND, fmtWind(c.wind), "Ridge-sensitive signal", if (c.wind >= 7) "warn" else "neutral"),
                         Signal("Dry relief", "${c.rain}%", "Lower rain is worse", if (c.rain < 20) "warn" else "safe"),
                         Signal("Map area", c.region, "District/grid forecast", "neutral"),
-                        Signal("Compared peaks", "1", "Regional distribution", "neutral"),
-                        Signal("Route call", if (risk >= 45) "Use alternative" else "Proceed", "Before departure", if (risk >= 45) "warn" else "safe"),
+                        Signal(EN_COMPARED_PEAKS, "1", EN_REGIONAL_DISTRIBUTION, "neutral"),
+                        Signal(EN_ROUTE_CALL, if (risk >= 45) "Use alternative" else "Proceed", EN_BEFORE_DEPARTURE, if (risk >= 45) "warn" else "safe"),
                     ),
                     "If the wildfire level is high near your mountain, switch to a lower-risk mountain or a shorter route.",
                     "National Institute of Forest Science wildfire forecast", mode, updated, c.score,
@@ -371,8 +379,8 @@ object ConditionDetailViews {
                         Signal("Status", c.lsLabel, statusWord(c.lsScore, AppLanguage.ENGLISH), if (c.lsScore >= 80) "safe" else "warn"),
                         Signal("Rain impact", "${c.rain}%", "Recent/expected rain", if (c.rain >= 30) "warn" else "neutral"),
                         Signal("Map area", c.region, "District/grid", "neutral"),
-                        Signal("Compared peaks", "1", "Regional distribution", "neutral"),
-                        Signal("Route call", if (c.lsGrade <= 2) "Use alternative" else "Proceed", "Before departure", if (c.lsGrade <= 2) "warn" else "safe"),
+                        Signal(EN_COMPARED_PEAKS, "1", EN_REGIONAL_DISTRIBUTION, "neutral"),
+                        Signal(EN_ROUTE_CALL, if (c.lsGrade <= 2) "Use alternative" else "Proceed", EN_BEFORE_DEPARTURE, if (c.lsGrade <= 2) "warn" else "safe"),
                     ),
                     "If rain is forecast or fell yesterday, remove high-landslide-grade mountains from the candidate list.",
                     "Landslide information system risk map · Korea Forest Service trail hazard segments", mode, updated, c.score,
@@ -388,7 +396,7 @@ object ConditionDetailViews {
                     WX,
                     listOf(
                         Metric("Temp", "${c.temp.toInt()}°C", "Ridge baseline"),
-                        Metric("Wind", fmtWind(c.wind), if (c.wind >= 7) "Strong-wind caution" else "Moderate"),
+                        Metric("Wind", fmtWind(c.wind), if (c.wind >= 7) EN_STRONG_WIND_CAUTION else "Moderate"),
                         Metric("Rain chance", "${c.rain}%", if (c.rain >= 30) "Pack rain gear" else "Low"),
                     ),
                     listOf(
@@ -401,11 +409,11 @@ object ConditionDetailViews {
                     ),
                     listOf(
                         Signal("Temp", "${c.temp.toInt()}°C", c.wxLabel, "neutral"),
-                        Signal("Wind", fmtWind(c.wind), if (c.wind >= 7) "Strong-wind caution" else "Moderate", if (c.wind >= 7) "warn" else "safe"),
+                        Signal("Wind", fmtWind(c.wind), if (c.wind >= 7) EN_STRONG_WIND_CAUTION else "Moderate", if (c.wind >= 7) "warn" else "safe"),
                         Signal("Rain chance", "${c.rain}%", if (c.rain >= 30) "Pack rain gear" else "Low", if (c.rain >= 30) "warn" else "safe"),
                         Signal("Station", c.station, "Location baseline", "neutral"),
-                        Signal("Compared peaks", "1", "Regional distribution", "neutral"),
-                        Signal("Route length", if (c.rain >= 30 || c.wind >= 7) "Shorten" else "Normal", "Before departure", if (c.rain >= 30 || c.wind >= 7) "warn" else "safe"),
+                        Signal(EN_COMPARED_PEAKS, "1", EN_REGIONAL_DISTRIBUTION, "neutral"),
+                        Signal("Route length", if (c.rain >= 30 || c.wind >= 7) "Shorten" else "Normal", EN_BEFORE_DEPARTURE, if (c.rain >= 30 || c.wind >= 7) "warn" else "safe"),
                     ),
                     "Before leaving, check wind speed and rain chance for the mountain station and choose clothing and route length accordingly.",
                     "KMA short-term forecast · mountain weather observation network", mode, updated, c.score,
@@ -439,8 +447,8 @@ object ConditionDetailViews {
                         Signal("Time left", sunsetMargin(c.sunsetAt, AppLanguage.ENGLISH), "Device time", if (shortMargin) "warn" else "safe"),
                         Signal("Turnaround", "Before 16:00", "New-route cutoff", "warn"),
                         Signal("Gear", "Headlamp", "Battery and warm layer", if (shortMargin) "warn" else "neutral"),
-                        Signal("Compared peaks", "1", "Regional sunset", "neutral"),
-                        Signal("Route call", if (shortMargin) "Shorten" else "Proceed", "Before departure", if (shortMargin) "warn" else "safe"),
+                        Signal(EN_COMPARED_PEAKS, "1", "Regional sunset", "neutral"),
+                        Signal(EN_ROUTE_CALL, if (shortMargin) "Shorten" else "Proceed", EN_BEFORE_DEPARTURE, if (shortMargin) "warn" else "safe"),
                     ),
                     "Before departure, confirm the expected finish time is at least one hour before sunset. Otherwise choose a shorter route.",
                     "Regional sunset time · current-location baseline", mode, updated, c.score,
@@ -536,7 +544,7 @@ object ConditionDetailViews {
             chartHead(
                 context,
                 if (language == AppLanguage.ENGLISH) "Signal cards" else "신호 카드",
-                if (language == AppLanguage.ENGLISH) "Before departure" else "출발 전 점검",
+                if (language == AppLanguage.ENGLISH) EN_BEFORE_DEPARTURE else "출발 전 점검",
             ),
         )
         root.addView(cardGrid(context, d.cards))
@@ -548,7 +556,7 @@ object ConditionDetailViews {
             setPadding(dp(13f), dp(12f), dp(13f), dp(12f))
             (layoutParamsOrSet(this)).topMargin = dp(12f)
             addView(TextView(context).apply {
-                text = if (language == AppLanguage.ENGLISH) "Before departure" else "출발 전 확인"; textSize = 12.5f; setTextColor(0xFFFFFFFF.toInt()); typeface = Contour.black()
+                text = if (language == AppLanguage.ENGLISH) EN_BEFORE_DEPARTURE else "출발 전 확인"; textSize = 12.5f; setTextColor(0xFFFFFFFF.toInt()); typeface = Contour.black()
             })
             addView(TextView(context).apply {
                 text = d.guidance; textSize = 12f; setTextColor(0xD1EAF4FF.toInt())
