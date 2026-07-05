@@ -42,6 +42,8 @@ object ConditionDetailViews {
     private const val EN_REGIONAL_DISTRIBUTION = "Regional distribution"
     private const val EN_ROUTE_CALL = "Route call"
     private const val EN_BEFORE_DEPARTURE = "Before departure"
+    private const val KO_REGIONAL_DISTRIBUTION = "지역/산별 분포"
+    private const val KO_BEFORE_DEPARTURE = "출발 전 선택"
 
     data class Metric(val label: String, val value: String, val note: String)
     data class Axis(val label: String, val value: Int, val note: String)
@@ -217,8 +219,8 @@ object ConditionDetailViews {
                 Signal(tr(c, "확산 바람", EN_SPREAD_WIND), fmtWind(c.wind), tr(c, "능선부 민감 신호", "Ridge-sensitive signal"), if (c.wind >= 7) "warn" else "neutral"),
                 Signal(tr(c, "건조 완화", "Dry relief"), "${c.rain}%", tr(c, "강수가 낮을수록 불리", "Lower rain is worse"), if (c.rain < 20) "warn" else "safe"),
                 Signal(tr(c, "지도 기준", "Map area"), c.region, tr(c, "시군구/격자 예보", "District/grid forecast"), "neutral"),
-                Signal(tr(c, "비교 산", EN_COMPARED_PEAKS), "1", tr(c, "지역/산별 분포", EN_REGIONAL_DISTRIBUTION), "neutral"),
-                Signal(tr(c, "코스 판단", EN_ROUTE_CALL), if (risk >= 45) tr(c, "대체 권장", "Use alternative") else tr(c, "진행 가능", "Proceed"), tr(c, "출발 전 선택", EN_BEFORE_DEPARTURE), if (risk >= 45) "warn" else "safe"),
+                Signal(tr(c, "비교 산", EN_COMPARED_PEAKS), "1", tr(c, KO_REGIONAL_DISTRIBUTION, EN_REGIONAL_DISTRIBUTION), "neutral"),
+                Signal(tr(c, "코스 판단", EN_ROUTE_CALL), if (risk >= 45) tr(c, "대체 권장", "Use alternative") else tr(c, "진행 가능", "Proceed"), tr(c, KO_BEFORE_DEPARTURE, EN_BEFORE_DEPARTURE), if (risk >= 45) "warn" else "safe"),
             ),
             tr(
                 c,
@@ -260,8 +262,8 @@ object ConditionDetailViews {
                 Signal(tr(c, "상태", "Status"), c.lsLabel, statusWord(c.lsScore, c.language), if (c.lsScore >= 80) "safe" else "warn"),
                 Signal(tr(c, "강수 영향", "Rain impact"), "${c.rain}%", tr(c, "최근/예상 강수 신호", "Recent/expected rain"), if (c.rain >= 30) "warn" else "neutral"),
                 Signal(tr(c, "지도 기준", "Map area"), c.region, tr(c, "시군구/격자", "District/grid"), "neutral"),
-                Signal(tr(c, "비교 산", EN_COMPARED_PEAKS), "1", tr(c, "지역/산별 분포", EN_REGIONAL_DISTRIBUTION), "neutral"),
-                Signal(tr(c, "코스 판단", EN_ROUTE_CALL), if (c.lsGrade <= 2) tr(c, "대체 권장", "Use alternative") else tr(c, "진행 가능", "Proceed"), tr(c, "출발 전 선택", EN_BEFORE_DEPARTURE), if (c.lsGrade <= 2) "warn" else "safe"),
+                Signal(tr(c, "비교 산", EN_COMPARED_PEAKS), "1", tr(c, KO_REGIONAL_DISTRIBUTION, EN_REGIONAL_DISTRIBUTION), "neutral"),
+                Signal(tr(c, "코스 판단", EN_ROUTE_CALL), if (c.lsGrade <= 2) tr(c, "대체 권장", "Use alternative") else tr(c, "진행 가능", "Proceed"), tr(c, KO_BEFORE_DEPARTURE, EN_BEFORE_DEPARTURE), if (c.lsGrade <= 2) "warn" else "safe"),
             ),
             tr(
                 c,
@@ -304,8 +306,8 @@ object ConditionDetailViews {
                 Signal(tr(c, "풍속", "Wind"), fmtWind(c.wind), strongWindNote(c), if (c.wind >= 7) "warn" else "safe"),
                 Signal(tr(c, "강수확률", "Rain chance"), "${c.rain}%", if (c.rain >= 30) tr(c, "우의 준비", "Pack rain gear") else tr(c, "낮음", "Low"), if (c.rain >= 30) "warn" else "safe"),
                 Signal(tr(c, "관측소", "Station"), c.station, tr(c, "위치 기준", "Location baseline"), "neutral"),
-                Signal(tr(c, "비교 산", EN_COMPARED_PEAKS), "1", tr(c, "지역/산별 분포", EN_REGIONAL_DISTRIBUTION), "neutral"),
-                Signal(tr(c, "코스 길이", "Route length"), if (c.rain >= 30 || c.wind >= 7) tr(c, "짧게", "Shorten") else tr(c, "보통", "Normal"), tr(c, "출발 전 선택", EN_BEFORE_DEPARTURE), if (c.rain >= 30 || c.wind >= 7) "warn" else "safe"),
+                Signal(tr(c, "비교 산", EN_COMPARED_PEAKS), "1", tr(c, KO_REGIONAL_DISTRIBUTION, EN_REGIONAL_DISTRIBUTION), "neutral"),
+                Signal(tr(c, "코스 길이", "Route length"), if (c.rain >= 30 || c.wind >= 7) tr(c, "짧게", "Shorten") else tr(c, "보통", "Normal"), tr(c, KO_BEFORE_DEPARTURE, EN_BEFORE_DEPARTURE), if (c.rain >= 30 || c.wind >= 7) "warn" else "safe"),
             ),
             tr(
                 c,
@@ -351,7 +353,7 @@ object ConditionDetailViews {
                 Signal(tr(c, "전환 기준", "Turnaround"), tr(c, "16시 전", "Before 16:00"), tr(c, "새 코스 진입 마감", "New-route cutoff"), "warn"),
                 Signal(tr(c, "준비물", "Gear"), tr(c, "헤드랜턴", "Headlamp"), tr(c, "보조배터리·보온층", "Battery and warm layer"), if (shortMargin) "warn" else "neutral"),
                 Signal(tr(c, "비교 산", EN_COMPARED_PEAKS), "1", tr(c, "지역/산별 일몰", "Regional sunset"), "neutral"),
-                Signal(tr(c, "코스 판단", EN_ROUTE_CALL), if (shortMargin) tr(c, "짧게", "Shorten") else tr(c, "진행 가능", "Proceed"), tr(c, "출발 전 선택", EN_BEFORE_DEPARTURE), if (shortMargin) "warn" else "safe"),
+                Signal(tr(c, "코스 판단", EN_ROUTE_CALL), if (shortMargin) tr(c, "짧게", "Shorten") else tr(c, "진행 가능", "Proceed"), tr(c, KO_BEFORE_DEPARTURE, EN_BEFORE_DEPARTURE), if (shortMargin) "warn" else "safe"),
             ),
             tr(
                 c,
