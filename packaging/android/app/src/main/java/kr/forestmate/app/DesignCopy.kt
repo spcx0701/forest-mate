@@ -90,6 +90,16 @@ data class AppCopy(
         if (language == AppLanguage.KOREAN) value.startsWith("높음") else value.startsWith("High")
 }
 
+private fun copyTable(raw: String): Map<String, String> =
+    raw.trimIndent()
+        .lineSequence()
+        .filter { it.isNotBlank() }
+        .associate { row ->
+            val separator = row.indexOf('=')
+            require(separator > 0) { "Invalid copy row: $row" }
+            row.substring(0, separator) to row.substring(separator + 1).replace("\\n", "\n")
+        }
+
 object DesignCopy {
     val korean = AppCopy(
         language = AppLanguage.KOREAN,
@@ -234,157 +244,142 @@ object DesignCopy {
     val english = AppCopy(
         language = AppLanguage.ENGLISH,
         tabLabels = listOf("Home", "Hike", "Safety", "AI Guide", "My"),
-        strings = mapOf(
-            "brand.name" to "ForestMate",
-            "location.label" to "📍 Eunpyeong, Seoul ▾",
-            COPY_LOCATION_SHORT to "Eunpyeong, Seoul",
-            "screen.home.title" to "Good — ready for a hike",
-            "screen.home.subtitle" to "Check today's hiking index and personalized routes at a glance.",
-            "screen.sos.title" to "Safety Request",
-            "screen.sos.subtitle" to "Share your current position and national grid number with rescue teams.",
-        ) + mapOf(
-            "screen.ai.title" to "AI forest guide",
-            "screen.ai.subtitle" to "Ask about risky plants, route margin, and weather in natural language.",
-            "screen.my.title" to "My hikes",
-            "screen.my.subtitle" to "Review records, badges, and safety events.",
-            "home.ai.title" to "🤖 AI route picks",
-            "home.ai.meta" to "Intermediate fitness · knee caution history applied",
-            "home.safety.title" to "🛡 Safety Briefing",
-            "home.safety.meta" to "Check descent accidents and weather shifts first",
-        ) + mapOf(
-            "home.refresh" to "Refresh hiking index",
-            COPY_HOME_INDEX_DEFAULT to "Good for hiking",
-            "home.index.line" to "Today's hiking index · %s",
-            "home.search.title" to "🔍 Search mountains nationwide",
-            "home.search.meta" to "Korea Forest Service mountain data · 3,400+ mountains",
-            "home.safety.head" to "⚠ Descent accidents are 1.8x more common than ascent accidents.",
-            "home.safety.body" to "Use poles to reduce knee load and slow down before steep transitions.",
-        ) + mapOf(
-            "home.news.title" to "🌿 Forest updates this week",
-            "home.news.body" to "Check national park reservations together with wildfire and strong-wind alerts. Risk alerts are reflected in each route briefing.",
-            "detail.more" to "Details ›",
-            "map.caption" to "© OpenStreetMap contributors · Recommended route / risk markers / GPS track · Offline map saved",
-            "map.route.title" to "Recommended hiking route",
-            "map.track.title" to "GPS track",
-            "hike.hazard.title" to "Risk segment %s · %s · %s",
-        ) + mapOf(
-            "hike.button.pause" to "Pause hike",
-            "hike.button.start" to "Start hike",
-            "hike.button.end" to "End hike",
-            "hike.button.demo" to "Demo move +90m",
-            "hike.button.watch" to "Pair watch backup",
-            "directions.title" to "🧭 Directions to the trailhead",
-            "directions.body" to "Trail support center · %s",
-            "directions.kakao" to "Current location → KakaoMap",
-        ) + mapOf(
-            "directions.google" to "Google Maps",
-            "directions.preparing" to "Preparing to open a directions app.",
-            "directions.caption" to "When you arrive, tap Start hike to turn on GPS tracking.",
-            "metric.distance" to "Moved / %.1fkm",
-            "metric.altitude" to "Current altitude",
-            "metric.heart" to "Heart rate (watch)",
-            "metric.sunset" to "To sunset",
-        ) + mapOf(
-            "sos.location" to "Current location",
-            "sos.grid" to "National grid number",
-            "sos.station" to "Rescue station",
-            "sos.caption" to "Tap the button to send your hiking position and national grid number to rescue teams.",
-            "sos.send" to "🆘 Send SOS",
-            "ai.sample.user1" to "I found this mushroom on the trail. Is it edible?",
-            "ai.sample.user2" to "How far is it to Baegundae summit?",
-        ) + mapOf(
-            "ai.sample.assistant2" to "You have 1.8km left. At your current pace, arrival is about 55 minutes away. There is still daylight, but winds near the summit are strong, so pack an outer layer.",
-            "ai.input.hint" to "Ask Soopi",
-            "ai.input.default" to "Is this route safe today?",
-            "ai.ask" to "Ask",
-            "ai.photo" to "📷 Just-captured photo",
-            "ai.risk.title" to "🚫 High chance of death cap mushroom",
-            "ai.risk.body" to "It resembles a highly poisonous amatoxin mushroom. Even a small amount can be dangerous.",
-        ) + mapOf(
-            "ai.risk.confidence" to "AI ID confidence 87% · checked against Korea National Arboretum data",
-            "ai.risk.warning" to "⚠ Do not pick or eat it. If touched, wash your hands with running water.",
-            "my.account.title" to "Account",
-            "my.email" to "Email",
-            "my.password" to "Password",
-            "my.signup" to "Sign up",
-            "my.login" to "Log in",
-            "my.load" to "Load records and badges",
-        ) + mapOf(
-            "my.summary.title" to "My hikes",
-            "my.account.label" to "Account",
-            "my.device.label" to "Device registration",
-            "my.watch.label" to "Watch code",
-            "my.disconnected" to "Not connected",
-            "my.device.pending" to "Pending",
-            "my.device.complete" to "Done",
-            "my.watch.none" to "None",
-        ) + mapOf(
-            "my.safety.title" to "Live safety events",
-            "my.stat.sos" to "SOS drills",
-            "my.stat.risk" to "Risks detected",
-            "my.stat.arrival" to "Avg arrival",
-            "my.stat.arrival.value" to "23m",
-            "my.privacy" to "Personal location is used for safety analysis only after k-anonymization.",
-            "my.risk.section" to "Risk by segment",
-        ) + mapOf(
-            "event.zone1" to "Insubong east slab",
-            "event.grade1" to "High 81",
-            "event.reason1" to "Strong wind 9m/s · frequent accidents",
-            "event.zone2" to "Y Valley rocky ridge",
-            "event.grade2" to "High 76",
-            "event.reason2" to "Rockfall · congestion",
-            "event.zone3" to "Baegundae summit area",
-            "event.grade3" to "Caution 58",
-        ) + mapOf(
-            "event.reason3" to "Crowding · sunset approaching",
-            "language.title" to "Language",
-            "language.body" to "Choose the app display language. AI questions are sent in the selected language too.",
-            COPY_LANGUAGE_KOREAN to "Korean",
-            COPY_LANGUAGE_ENGLISH to "English",
-            "language.current" to "Current language: %s",
-            "course.match" to "Match %d%%",
-            "course.ai" to "AI pick",
-        ) + mapOf(
-            "course.grid" to "National grid %s",
-            "course.selected" to "%s selected",
-            COPY_COURSE_META to "▲ %.1fkm   ◷ %s   ● Difficulty %s",
-            COPY_COURSE_LEVEL_UNKNOWN to "Check",
-            "status.home.loading" to "Loading hiking index and recommendations...",
-            "status.home.stored" to "Showing saved route recommendations.",
-            "status.home.fallback" to "Could not load the latest data, so saved routes are shown.",
-        ) + mapOf(
-            "status.hike.paused" to "Hike paused · current progress %s",
-            "status.hike.gps" to "GPS tracking started · %s",
-            "status.hike.checkin.loading" to "Checking in this hike on the server...",
-            "status.hike.checkin.done" to "Trail check-in complete · %s · hike ID %s",
-            "status.hike.local.end" to "Local hike ended · %skm",
-            "status.hike.save.loading" to "Saving hike record...",
-            "status.hike.saved" to "Hike ended · %skm · record saved",
-        ) + mapOf(
-            "status.watch.loading" to "Creating watch pairing code...",
-            "status.watch.code" to "Watch backup code %s · valid for %d minutes",
-            "status.sos.loading" to "Sending SOS...",
-            "status.sos.done" to "SOS %s · %s · %s · ETA %d min",
-            "status.chat.loading" to "Soopi is answering...",
-            "status.summary.loading" to "Loading records and badges...",
-            "summary.badge.earned" to "earned",
-        ) + mapOf(
-            "summary.badge.progress" to "%s/%s",
-            "summary.badges.empty" to "Badge history pending",
-            "summary.text" to "%d hikes · %skm · level %d\n%d completed routes · %d visited regions\n%s",
-            "summary.logs.empty" to "No recent records",
-            "status.account.creating" to "Creating account...",
-            "status.account.created" to "Account created · %s · record sync ON",
-            "status.login.loading" to "Logging in...",
-        ) + mapOf(
-            "status.login.done" to "Logged in · %s · record sync ON",
-            "status.location.permission" to "Location permission is required.",
-            "status.location.provider" to "No available location provider.",
-            "status.location.changed" to "Location permission changed, so tracking stopped.",
-            "status.request.failed" to "Could not complete the request. Please try again shortly.",
-            "status.hike" to "Progress %s · moved %skm · %s · watch %s",
-            "status.tracking" to "GPS tracking",
-            "status.waiting" to "Waiting",
+        strings = copyTable(
+            """
+            brand.name=ForestMate
+            location.label=📍 Eunpyeong, Seoul ▾
+            $COPY_LOCATION_SHORT=Eunpyeong, Seoul
+            screen.home.title=Good — ready for a hike
+            screen.home.subtitle=Check today's hiking index and personalized routes at a glance.
+            screen.sos.title=Safety Request
+            screen.sos.subtitle=Share your current position and national grid number with rescue teams.
+            screen.ai.title=AI forest guide
+            screen.ai.subtitle=Ask about risky plants, route margin, and weather in natural language.
+            screen.my.title=My hikes
+            screen.my.subtitle=Review records, badges, and safety events.
+            home.ai.title=🤖 AI route picks
+            home.ai.meta=Intermediate fitness · knee caution history applied
+            home.safety.title=🛡 Safety Briefing
+            home.safety.meta=Check descent accidents and weather shifts first
+            home.refresh=Refresh hiking index
+            $COPY_HOME_INDEX_DEFAULT=Good for hiking
+            home.index.line=Today's hiking index · %s
+            home.search.title=🔍 Search mountains nationwide
+            home.search.meta=Korea Forest Service mountain data · 3,400+ mountains
+            home.safety.head=⚠ Descent accidents are 1.8x more common than ascent accidents.
+            home.safety.body=Use poles to reduce knee load and slow down before steep transitions.
+            home.news.title=🌿 Forest updates this week
+            home.news.body=Check national park reservations together with wildfire and strong-wind alerts. Risk alerts are reflected in each route briefing.
+            detail.more=Details ›
+            map.caption=© OpenStreetMap contributors · Recommended route / risk markers / GPS track · Offline map saved
+            map.route.title=Recommended hiking route
+            map.track.title=GPS track
+            hike.hazard.title=Risk segment %s · %s · %s
+            hike.button.pause=Pause hike
+            hike.button.start=Start hike
+            hike.button.end=End hike
+            hike.button.demo=Demo move +90m
+            hike.button.watch=Pair watch backup
+            directions.title=🧭 Directions to the trailhead
+            directions.body=Trail support center · %s
+            directions.kakao=Current location → KakaoMap
+            directions.google=Google Maps
+            directions.preparing=Preparing to open a directions app.
+            directions.caption=When you arrive, tap Start hike to turn on GPS tracking.
+            metric.distance=Moved / %.1fkm
+            metric.altitude=Current altitude
+            metric.heart=Heart rate (watch)
+            metric.sunset=To sunset
+            sos.location=Current location
+            sos.grid=National grid number
+            sos.station=Rescue station
+            sos.caption=Tap the button to send your hiking position and national grid number to rescue teams.
+            sos.send=🆘 Send SOS
+            ai.sample.user1=I found this mushroom on the trail. Is it edible?
+            ai.sample.user2=How far is it to Baegundae summit?
+            ai.sample.assistant2=You have 1.8km left. At your current pace, arrival is about 55 minutes away. There is still daylight, but winds near the summit are strong, so pack an outer layer.
+            ai.input.hint=Ask Soopi
+            ai.input.default=Is this route safe today?
+            ai.ask=Ask
+            ai.photo=📷 Just-captured photo
+            ai.risk.title=🚫 High chance of death cap mushroom
+            ai.risk.body=It resembles a highly poisonous amatoxin mushroom. Even a small amount can be dangerous.
+            ai.risk.confidence=AI ID confidence 87% · checked against Korea National Arboretum data
+            ai.risk.warning=⚠ Do not pick or eat it. If touched, wash your hands with running water.
+            my.account.title=Account
+            my.email=Email
+            my.password=Password
+            my.signup=Sign up
+            my.login=Log in
+            my.load=Load records and badges
+            my.summary.title=My hikes
+            my.account.label=Account
+            my.device.label=Device registration
+            my.watch.label=Watch code
+            my.disconnected=Not connected
+            my.device.pending=Pending
+            my.device.complete=Done
+            my.watch.none=None
+            my.safety.title=Live safety events
+            my.stat.sos=SOS drills
+            my.stat.risk=Risks detected
+            my.stat.arrival=Avg arrival
+            my.stat.arrival.value=23m
+            my.privacy=Personal location is used for safety analysis only after k-anonymization.
+            my.risk.section=Risk by segment
+            event.zone1=Insubong east slab
+            event.grade1=High 81
+            event.reason1=Strong wind 9m/s · frequent accidents
+            event.zone2=Y Valley rocky ridge
+            event.grade2=High 76
+            event.reason2=Rockfall · congestion
+            event.zone3=Baegundae summit area
+            event.grade3=Caution 58
+            event.reason3=Crowding · sunset approaching
+            language.title=Language
+            language.body=Choose the app display language. AI questions are sent in the selected language too.
+            $COPY_LANGUAGE_KOREAN=Korean
+            $COPY_LANGUAGE_ENGLISH=English
+            language.current=Current language: %s
+            course.match=Match %d%%
+            course.ai=AI pick
+            course.grid=National grid %s
+            course.selected=%s selected
+            $COPY_COURSE_META=▲ %.1fkm   ◷ %s   ● Difficulty %s
+            $COPY_COURSE_LEVEL_UNKNOWN=Check
+            status.home.loading=Loading hiking index and recommendations...
+            status.home.stored=Showing saved route recommendations.
+            status.home.fallback=Could not load the latest data, so saved routes are shown.
+            status.hike.paused=Hike paused · current progress %s
+            status.hike.gps=GPS tracking started · %s
+            status.hike.checkin.loading=Checking in this hike on the server...
+            status.hike.checkin.done=Trail check-in complete · %s · hike ID %s
+            status.hike.local.end=Local hike ended · %skm
+            status.hike.save.loading=Saving hike record...
+            status.hike.saved=Hike ended · %skm · record saved
+            status.watch.loading=Creating watch pairing code...
+            status.watch.code=Watch backup code %s · valid for %d minutes
+            status.sos.loading=Sending SOS...
+            status.sos.done=SOS %s · %s · %s · ETA %d min
+            status.chat.loading=Soopi is answering...
+            status.summary.loading=Loading records and badges...
+            summary.badge.earned=earned
+            summary.badge.progress=%s/%s
+            summary.badges.empty=Badge history pending
+            summary.text=%d hikes · %skm · level %d\n%d completed routes · %d visited regions\n%s
+            summary.logs.empty=No recent records
+            status.account.creating=Creating account...
+            status.account.created=Account created · %s · record sync ON
+            status.login.loading=Logging in...
+            status.login.done=Logged in · %s · record sync ON
+            status.location.permission=Location permission is required.
+            status.location.provider=No available location provider.
+            status.location.changed=Location permission changed, so tracking stopped.
+            status.request.failed=Could not complete the request. Please try again shortly.
+            status.hike=Progress %s · moved %skm · %s · watch %s
+            status.tracking=GPS tracking
+            status.waiting=Waiting
+            """,
         ),
     )
 

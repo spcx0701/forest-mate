@@ -4,171 +4,139 @@ import kr.forestmate.core.model.Course
 import kr.forestmate.core.model.Hazard
 
 object LocalCatalog {
-    private val koreanCourses: List<Course> = listOf(
-        Course(
-            id = "bukhansan",
-            name = "북한산 백운대 코스",
-            km = 4.2,
-            minutes = 190,
-            route = "백운대탐방지원센터 → 백운대 정상",
-            hazards = listOf(
-                Hazard(type = "낙석주의", grade = "산사태 1등급", at = 0.62, note = "최근 2주 강우 누적 — 우회로 권장"),
-                Hazard(type = "급경사", grade = "사고다발 구간", at = 0.38, note = "스틱 사용·심박 주의"),
-            ),
-            level = "중",
-            levelN = 2,
-            crowd = "보통",
-            view = 4,
-            peak = "백운대 836m",
-            gridNo = "다사 5683 2741",
-            gps = "37.6584,126.9778",
-            rescuePoint = "백운산장 헬기장 620m",
-            fireStation = "서울 종로소방서 산악구조대",
-            elevation = listOf(120, 180, 260, 390, 480, 542, 650, 770, 836),
-        ),
-        Course(
-            id = "inwangsan",
-            name = "인왕산 자락길 둘레",
-            km = 2.8,
-            minutes = 100,
-            route = "사직공원 → 수성동계곡",
-            hazards = listOf(Hazard(type = "혼잡구간", grade = "주말 정체", at = 0.55, note = "성곽길 합류 — 추월 자제")),
-            level = "하",
-            levelN = 1,
-            crowd = "낮음",
-            view = 3,
-            peak = "인왕산 338m",
-            gridNo = "다사 5421 2856",
-            gps = "37.5772,126.9610",
-            rescuePoint = "황학정 진입로 280m",
-            fireStation = "서울 종로소방서",
-            elevation = listOf(60, 95, 140, 180, 210, 196, 170, 150, 130),
-        ),
-        Course(
-            id = "achasan",
-            name = "아차산 해맞이 능선",
-            km = 3.5,
-            minutes = 140,
-            route = "아차산생태공원 → 해맞이광장",
-            hazards = listOf(Hazard(type = "암릉구간", grade = "주의", at = 0.70, note = "우천 시 미끄럼 — 난간 이용")),
-            level = "하",
-            levelN = 1,
-            crowd = "보통",
-            view = 5,
-            peak = "아차산 287m",
-            gridNo = "마바 1043 1822",
-            gps = "37.5713,127.1030",
-            rescuePoint = "해맞이광장 헬기포인트",
-            fireStation = "구리소방서",
-            elevation = listOf(40, 80, 130, 170, 210, 240, 262, 280, 287),
-        ),
-        Course(
-            id = "dobong",
-            name = "도봉산 신선대 코스",
-            km = 6.4,
-            minutes = 280,
-            route = "도봉탐방지원센터 → 신선대",
-            hazards = listOf(
-                Hazard(type = "Y계곡 암릉", grade = "사고다발", at = 0.78, note = "강풍 시 우회 권장"),
-                Hazard(type = "낙석주의", grade = "산사태 2등급", at = 0.45, note = "헬멧 권장 구간"),
-            ),
-            level = "상",
-            levelN = 3,
-            crowd = "높음",
-            view = 5,
-            peak = "신선대 726m",
-            gridNo = "다사 6122 3354",
-            gps = "37.6987,127.0114",
-            rescuePoint = "도봉대피소 410m",
-            fireStation = "도봉소방서 산악구조대",
-            elevation = listOf(110, 190, 300, 420, 510, 600, 660, 700, 726),
-        ),
+    private data class CourseShape(
+        val id: String,
+        val km: Double,
+        val minutes: Int,
+        val levelN: Int,
+        val view: Int,
+        val hazardPositions: List<Double>,
+        val gps: String,
+        val elevation: List<Int>,
     )
 
-    val courses: List<Course> = koreanCourses
-    val courseIds: Set<String> = koreanCourses.map { it.id }.toSet()
+    private data class CourseText(
+        val id: String,
+        val name: String,
+        val route: String,
+        val level: String,
+        val crowd: String,
+        val peak: String,
+        val gridNo: String,
+        val rescuePoint: String,
+        val fireStation: String,
+        val hazards: List<HazardText>,
+    )
 
-    private val englishCourses: List<Course> = listOf(
-        Course(
-            id = "bukhansan",
-            name = "Bukhansan Baegundae Route",
-            km = 4.2,
-            minutes = 190,
-            route = "Baegundae Trail Support Center → Baegundae summit",
-            hazards = listOf(
-                Hazard(type = "Rockfall caution", grade = "Landslide grade 1", at = 0.62, note = "Two-week rainfall buildup — detour recommended"),
-                Hazard(type = "Steep slope", grade = "Frequent-accident segment", at = 0.38, note = "Use poles and watch heart rate"),
-            ),
-            level = "Medium",
-            levelN = 2,
-            crowd = "Moderate",
-            view = 4,
-            peak = "Baegundae 836m",
-            gridNo = "Dasa 5683 2741",
-            gps = "37.6584,126.9778",
-            rescuePoint = "Baegunsanjang helipad 620m",
-            fireStation = "Seoul Jongno Fire Station mountain rescue team",
-            elevation = listOf(120, 180, 260, 390, 480, 542, 650, 770, 836),
-        ),
-        Course(
-            id = "inwangsan",
-            name = "Inwangsan Foothill Loop",
-            km = 2.8,
-            minutes = 100,
-            route = "Sajik Park → Suseongdong Valley",
-            hazards = listOf(Hazard(type = "Crowded segment", grade = "Weekend congestion", at = 0.55, note = "Fortress path merge — avoid passing")),
-            level = "Easy",
-            levelN = 1,
-            crowd = "Low",
-            view = 3,
-            peak = "Inwangsan 338m",
-            gridNo = "Dasa 5421 2856",
-            gps = "37.5772,126.9610",
-            rescuePoint = "Hwanghakjeong access road 280m",
-            fireStation = "Seoul Jongno Fire Station",
-            elevation = listOf(60, 95, 140, 180, 210, 196, 170, 150, 130),
-        ),
-        Course(
-            id = "achasan",
-            name = "Achasan Sunrise Ridge",
-            km = 3.5,
-            minutes = 140,
-            route = "Achasan Ecological Park → Sunrise Plaza",
-            hazards = listOf(Hazard(type = "Rocky ridge", grade = "Caution", at = 0.70, note = "Slippery in rain — use handrails")),
-            level = "Easy",
-            levelN = 1,
-            crowd = "Moderate",
-            view = 5,
-            peak = "Achasan 287m",
-            gridNo = "Maba 1043 1822",
-            gps = "37.5713,127.1030",
-            rescuePoint = "Sunrise Plaza heli point",
-            fireStation = "Guri Fire Station",
-            elevation = listOf(40, 80, 130, 170, 210, 240, 262, 280, 287),
-        ),
-        Course(
-            id = "dobong",
-            name = "Dobongsan Sinseondae Route",
-            km = 6.4,
-            minutes = 280,
-            route = "Dobong Trail Support Center → Sinseondae",
-            hazards = listOf(
-                Hazard(type = "Y Valley rocky ridge", grade = "Frequent accidents", at = 0.78, note = "Detour recommended in strong wind"),
-                Hazard(type = "Rockfall caution", grade = "Landslide grade 2", at = 0.45, note = "Helmet recommended segment"),
-            ),
-            level = "Hard",
-            levelN = 3,
-            crowd = "High",
-            view = 5,
-            peak = "Sinseondae 726m",
-            gridNo = "Dasa 6122 3354",
-            gps = "37.6987,127.0114",
-            rescuePoint = "Dobong shelter 410m",
-            fireStation = "Dobong Fire Station mountain rescue team",
-            elevation = listOf(110, 190, 300, 420, 510, 600, 660, 700, 726),
-        ),
+    private data class HazardText(val type: String, val grade: String, val note: String)
+
+    private val courseShapes = shapeTable(
+        """
+        bukhansan|4.2|190|2|4|0.62,0.38|37.6584,126.9778|120,180,260,390,480,542,650,770,836
+        inwangsan|2.8|100|1|3|0.55|37.5772,126.9610|60,95,140,180,210,196,170,150,130
+        achasan|3.5|140|1|5|0.70|37.5713,127.1030|40,80,130,170,210,240,262,280,287
+        dobong|6.4|280|3|5|0.78,0.45|37.6987,127.0114|110,190,300,420,510,600,660,700,726
+        """,
+    )
+
+    val courses: List<Course> = coursesFrom(
+        """
+        bukhansan|북한산 백운대 코스|백운대탐방지원센터 → 백운대 정상|중|보통|백운대 836m|다사 5683 2741|백운산장 헬기장 620m|서울 종로소방서 산악구조대|낙석주의~산사태 1등급~최근 2주 강우 누적 — 우회로 권장;급경사~사고다발 구간~스틱 사용·심박 주의
+        inwangsan|인왕산 자락길 둘레|사직공원 → 수성동계곡|하|낮음|인왕산 338m|다사 5421 2856|황학정 진입로 280m|서울 종로소방서|혼잡구간~주말 정체~성곽길 합류 — 추월 자제
+        achasan|아차산 해맞이 능선|아차산생태공원 → 해맞이광장|하|보통|아차산 287m|마바 1043 1822|해맞이광장 헬기포인트|구리소방서|암릉구간~주의~우천 시 미끄럼 — 난간 이용
+        dobong|도봉산 신선대 코스|도봉탐방지원센터 → 신선대|상|높음|신선대 726m|다사 6122 3354|도봉대피소 410m|도봉소방서 산악구조대|Y계곡 암릉~사고다발~강풍 시 우회 권장;낙석주의~산사태 2등급~헬멧 권장 구간
+        """,
+    )
+    val courseIds: Set<String> = courseShapes.map { it.id }.toSet()
+
+    private val englishCourses: List<Course> = coursesFrom(
+        """
+        bukhansan|Bukhansan Baegundae Route|Baegundae Trail Support Center → Baegundae summit|Medium|Moderate|Baegundae 836m|Dasa 5683 2741|Baegunsanjang helipad 620m|Seoul Jongno Fire Station mountain rescue team|Rockfall caution~Landslide grade 1~Two-week rainfall buildup — detour recommended;Steep slope~Frequent-accident segment~Use poles and watch heart rate
+        inwangsan|Inwangsan Foothill Loop|Sajik Park → Suseongdong Valley|Easy|Low|Inwangsan 338m|Dasa 5421 2856|Hwanghakjeong access road 280m|Seoul Jongno Fire Station|Crowded segment~Weekend congestion~Fortress path merge — avoid passing
+        achasan|Achasan Sunrise Ridge|Achasan Ecological Park → Sunrise Plaza|Easy|Moderate|Achasan 287m|Maba 1043 1822|Sunrise Plaza heli point|Guri Fire Station|Rocky ridge~Caution~Slippery in rain — use handrails
+        dobong|Dobongsan Sinseondae Route|Dobong Trail Support Center → Sinseondae|Hard|High|Sinseondae 726m|Dasa 6122 3354|Dobong shelter 410m|Dobong Fire Station mountain rescue team|Y Valley rocky ridge~Frequent accidents~Detour recommended in strong wind;Rockfall caution~Landslide grade 2~Helmet recommended segment
+        """,
     )
 
     fun coursesFor(language: AppLanguage): List<Course> =
-        if (language == AppLanguage.ENGLISH) englishCourses else koreanCourses
+        if (language == AppLanguage.ENGLISH) englishCourses else courses
+
+    private fun coursesFrom(raw: String): List<Course> {
+        val textById = courseTexts(raw).associateBy { it.id }
+        return courseShapes.map { shape ->
+            val text = textById.getValue(shape.id)
+            require(text.hazards.size == shape.hazardPositions.size) {
+                "Course ${shape.id} has ${text.hazards.size} hazard labels for ${shape.hazardPositions.size} positions"
+            }
+            Course(
+                id = shape.id,
+                name = text.name,
+                km = shape.km,
+                minutes = shape.minutes,
+                route = text.route,
+                hazards = text.hazards.zip(shape.hazardPositions).map { (hazard, at) ->
+                    Hazard(type = hazard.type, grade = hazard.grade, at = at, note = hazard.note)
+                },
+                level = text.level,
+                levelN = shape.levelN,
+                crowd = text.crowd,
+                view = shape.view,
+                peak = text.peak,
+                gridNo = text.gridNo,
+                gps = shape.gps,
+                rescuePoint = text.rescuePoint,
+                fireStation = text.fireStation,
+                elevation = shape.elevation,
+            )
+        }
+    }
+
+    private fun courseTexts(raw: String): List<CourseText> =
+        raw.trimIndent()
+            .lineSequence()
+            .filter { it.isNotBlank() }
+            .map { row ->
+                val fields = row.split('|')
+                require(fields.size == 10) { "Invalid course row: $row" }
+                CourseText(
+                    id = fields[0],
+                    name = fields[1],
+                    route = fields[2],
+                    level = fields[3],
+                    crowd = fields[4],
+                    peak = fields[5],
+                    gridNo = fields[6],
+                    rescuePoint = fields[7],
+                    fireStation = fields[8],
+                    hazards = hazardTexts(fields[9]),
+                )
+            }
+            .toList()
+
+    private fun shapeTable(raw: String): List<CourseShape> =
+        raw.trimIndent()
+            .lineSequence()
+            .filter { it.isNotBlank() }
+            .map { row ->
+                val fields = row.split('|')
+                require(fields.size == 8) { "Invalid course shape row: $row" }
+                CourseShape(
+                    id = fields[0],
+                    km = fields[1].toDouble(),
+                    minutes = fields[2].toInt(),
+                    levelN = fields[3].toInt(),
+                    view = fields[4].toInt(),
+                    hazardPositions = fields[5].split(',').map { it.toDouble() },
+                    gps = fields[6],
+                    elevation = fields[7].split(',').map { it.toInt() },
+                )
+            }
+            .toList()
+
+    private fun hazardTexts(raw: String): List<HazardText> =
+        raw.split(';').map { entry ->
+            val fields = entry.split('~')
+            require(fields.size == 3) { "Invalid hazard row: $entry" }
+            HazardText(type = fields[0], grade = fields[1], note = fields[2])
+        }
 }
