@@ -15,6 +15,8 @@ packaging/android/build/
 packaging/android/app/build/
 packaging/android/core/build/
 packaging/android/wear/build/
+packaging/android/.idea/
+packaging/android/gradle/gradle-daemon-jvm.properties
 
 # Android emulator QA artifacts (screenshots, logcat, ui dumps)
 packaging/android/qa-screenshots/
