@@ -24,6 +24,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from html import escape
+from typing import Final
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP_DIR = os.path.join(ROOT, "app")
@@ -33,6 +34,7 @@ UA = "ForestMate-DevPreview/1.0"
 ALLOWED_HOST = "upload.wikimedia.org"
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_BYTES = 2_000_000
+SAFE_SCHEMES: Final = {"http", "https"}
 
 
 def _normalize(name: str) -> str:
@@ -43,6 +45,26 @@ def _normalize(name: str) -> str:
 def _allowed(url: str) -> bool:
     p = urllib.parse.urlparse(url or "")
     return p.scheme == "https" and p.netloc == ALLOWED_HOST and p.path.startswith("/wikipedia/")
+
+
+def _backend_url(backend: str, request_target: str) -> str:
+    base = urllib.parse.urlsplit(backend.rstrip("/"))
+    if base.scheme not in SAFE_SCHEMES or not base.netloc:
+        raise ValueError("backend must be an absolute HTTP(S) origin")
+
+    target = urllib.parse.urlsplit(request_target)
+    if target.scheme or target.netloc or target.fragment:
+        raise ValueError("proxy target must be a relative request path")
+    if not target.path.startswith("/api/"):
+        raise ValueError("proxy target must stay under /api/")
+
+    decoded_segments = [urllib.parse.unquote(segment) for segment in target.path.split("/")]
+    if ".." in decoded_segments:
+        raise ValueError("proxy target must not traverse path segments")
+
+    base_path = base.path.rstrip("/")
+    path = f"{base_path}{target.path}" if base_path else target.path
+    return urllib.parse.urlunsplit((base.scheme, base.netloc, path, target.query, ""))
 
 
 def _fallback_svg(name: str, height: int) -> bytes:
@@ -104,7 +126,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def _proxy(self, method: str) -> None:
         length = int(self.headers.get("content-length", 0) or 0)
         payload = self.rfile.read(length) if length else None
-        req = urllib.request.Request(BACKEND + self.path, data=payload, method=method)
+        try:
+            url = _backend_url(BACKEND, self.path)
+        except ValueError:
+            self._send_bytes(400, b'{"detail":"invalid proxy target"}', "application/json")
+            return
+
+        req = urllib.request.Request(url, data=payload, method=method)
         ctype = self.headers.get("content-type")
         if ctype:
             req.add_header("content-type", ctype)

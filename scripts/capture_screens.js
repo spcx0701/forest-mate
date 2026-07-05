@@ -6,11 +6,20 @@ const fs = require("node:fs");
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const BASE = process.env.BASE || "http://localhost:8770";
-const OUT = process.env.OUT || "/tmp/fm_shots";
-fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function capturePhone(browser, name, setup, { screen = name, finalize = () => {} } = {}) {
+function resolveOutputDir({ cwd = process.cwd(), env = process.env } = {}) {
+  const configured = (env.OUT || "").trim();
+  return path.resolve(cwd, configured || path.join("artifacts", "screenshots"));
+}
+
+function ensurePrivateDir(dir) {
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  fs.chmodSync(dir, 0o700);
+  return dir;
+}
+
+async function capturePhone(browser, outputDir, name, setup, { screen = name, finalize = () => {} } = {}) {
   const page = await browser.newPage();
   await page.setViewport({ width: 430, height: 932, deviceScaleFactor: 2 });
   // ?t=<screen> → FTUE(온보딩 로그인) 모달을 건너뛰고 해당 화면으로 진입 (app.js:2396)
@@ -26,21 +35,22 @@ async function capturePhone(browser, name, setup, { screen = name, finalize = ()
     window.scrollTo(0, 0);
   });
   await sleep(300);
-  const file = path.join(OUT, `app_${name}.png`);
+  const file = path.join(outputDir, `app_${name}.png`);
   await page.screenshot({ path: file, type: "png" });
   console.log("shot", file);
   await page.close();
 }
 
-(async () => {
+async function main() {
+  const outputDir = ensurePrivateDir(resolveOutputDir());
   const browser = await puppeteer.launch({
     executablePath: CHROME, headless: "new",
     args: ["--no-sandbox", "--hide-scrollbars", "--force-device-scale-factor=2"],
   });
 
-  await capturePhone(browser, "home", () => { try { show("home"); } catch (e) {} });
+  await capturePhone(browser, outputDir, "home", () => { try { show("home"); } catch (e) {} });
 
-  await capturePhone(browser, "trail", () => {
+  await capturePhone(browser, outputDir, "trail", () => {
     try {
       selectCourse("bukhansan");
       startHike();
@@ -50,9 +60,9 @@ async function capturePhone(browser, name, setup, { screen = name, finalize = ()
   });
 
   // AI: init에서 seedChat이 이미 1회 실행됨 — 재호출하면 대화가 중복되므로 호출하지 않음
-  await capturePhone(browser, "ai", () => { try { show("ai"); } catch (e) {} });
+  await capturePhone(browser, outputDir, "ai", () => { try { show("ai"); } catch (e) {} });
 
-  await capturePhone(browser, "sos", () => { try { show("sos"); } catch (e) {} });
+  await capturePhone(browser, outputDir, "sos", () => { try { show("sos"); } catch (e) {} });
 
   // 리포트가 채워진 모습(데이터 있는 사용자 UI 시연) — 앱의 실제 렌더 함수 사용.
   // renderMy()가 async라 setup 직후 덮어도 뒤늦게 0으로 되돌아갈 수 있어 finalize(안정화 후)에서 적용.
@@ -72,7 +82,7 @@ async function capturePhone(browser, name, setup, { screen = name, finalize = ()
       if (typeof renderProfileExtra === "function") renderProfileExtra();
     } catch (e) { console.log("my seed err", e.message); }
   };
-  await capturePhone(browser, "my", () => { try { show("my"); } catch (e) {} }, { finalize: seedMy });
+  await capturePhone(browser, outputDir, "my", () => { try { show("my"); } catch (e) {} }, { finalize: seedMy });
 
   // 관제 대시보드 (웹) — 3000x1960 비율.
   // /api/v1/dashboard/summary 를 차단해 cloudBridge(실데이터 0)를 막고 시연 시뮬레이션(3,482명 등) 유지.
@@ -99,10 +109,16 @@ async function capturePhone(browser, name, setup, { screen = name, finalize = ()
     }
   });
   await sleep(250);
-  await d.screenshot({ path: path.join(OUT, "dashboard.png"), type: "png" });
+  await d.screenshot({ path: path.join(outputDir, "dashboard.png"), type: "png" });
   console.log("shot dashboard");
   await d.close();
 
   await browser.close();
   console.log("DONE");
-})().catch((e) => { console.error(e); process.exit(1); });
+}
+
+if (require.main === module) {
+  main().catch((e) => { console.error(e); process.exit(1); });
+}
+
+module.exports = { capturePhone, ensurePrivateDir, main, resolveOutputDir };
