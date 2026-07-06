@@ -1,0 +1,51 @@
+name: Feature request
+description: Suggest an improvement or new user-facing capability.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the user problem first. For safety, privacy, SOS, or
+        location-data changes, include the risk and fallback behavior.
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What user, operator, or maintainer problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should change?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What simpler or safer options have you considered?
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact area
+      options:
+        - Safety / SOS
+        - Privacy / location data
+        - Public-data integration
+        - PWA / web app
+        - Backend API
+        - Android / Wear OS packaging
+        - F-Droid metadata
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation idea
+      description: How could we verify the feature works and does not weaken safety or privacy?
