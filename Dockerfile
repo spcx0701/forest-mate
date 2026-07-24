@@ -4,7 +4,7 @@ ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 
 COPY requirements.lock .
-RUN pip install --no-cache-dir --require-hashes -r requirements.lock
+RUN pip install --no-cache-dir --require-hashes --only-binary :all: --no-binary http-ece -r requirements.lock
 
 COPY server/ ./server/
 COPY app/ ./app/
