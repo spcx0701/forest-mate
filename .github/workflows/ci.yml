@@ -20,7 +20,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.lock
       - name: Install dependencies
-        run: pip install --require-hashes --only-binary :all: --no-binary http-ece -r requirements-dev.lock
+        run: 'pip install --require-hashes --only-binary :all: --no-binary http-ece -r requirements-dev.lock'
       - name: Run tests
         run: python -m pytest server/tests -q --cov=server --cov-report=xml
       - name: Upload coverage to Codecov
@@ -81,7 +81,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.lock
       - name: Install runtime dependencies
-        run: pip install --require-hashes --only-binary :all: --no-binary http-ece -r requirements.lock
+        run: 'pip install --require-hashes --only-binary :all: --no-binary http-ece -r requirements.lock'
       - name: Start ForestMate app
         run: |
           python -m uvicorn server.main:app --host 0.0.0.0 --port 5181 > uvicorn.log 2>&1 &
