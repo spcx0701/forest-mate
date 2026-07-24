@@ -104,7 +104,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def _proxy(self, method: str) -> None:
         length = int(self.headers.get("content-length", 0) or 0)
         payload = self.rfile.read(length) if length else None
-        req = urllib.request.Request(BACKEND + self.path, data=payload, method=method)
+        # self.path is the raw, attacker-controlled HTTP request path. Re-encode it
+        # before concatenating onto BACKEND so it can't inject CRLF/control characters
+        # or otherwise smuggle content into the outbound request (CWE-918-style taint).
+        parsed = urllib.parse.urlsplit(self.path)
+        safe_path = urllib.parse.quote(parsed.path, safe="/")
+        target = f"{BACKEND}{safe_path}"
+        if parsed.query:
+            target += f"?{urllib.parse.quote(parsed.query, safe='=&')}"
+        req = urllib.request.Request(target, data=payload, method=method)
         ctype = self.headers.get("content-type")
         if ctype:
             req.add_header("content-type", ctype)

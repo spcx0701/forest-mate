@@ -3,10 +3,13 @@
 const puppeteer = require("puppeteer-core");
 const path = require("node:path");
 const fs = require("node:fs");
+const os = require("node:os");
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const BASE = process.env.BASE || "http://localhost:8770";
-const OUT = process.env.OUT || "/tmp/fm_shots";
+// Don't hardcode a fixed path under the shared, world-writable /tmp (symlink/race
+// hazard on multi-user machines) — mkdtemp gives us a fresh, unpredictable directory.
+const OUT = process.env.OUT || fs.mkdtempSync(path.join(os.tmpdir(), "fm_shots-"));
 fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
