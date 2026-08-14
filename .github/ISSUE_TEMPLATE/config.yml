@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/spcx0701/forest-mate/security/advisories/new
+    about: Please report security issues privately instead of opening a public issue.
+  - name: Support policy
+    url: https://github.com/spcx0701/forest-mate/blob/main/SUPPORT.md
+    about: Check where to ask questions and what information to include.
