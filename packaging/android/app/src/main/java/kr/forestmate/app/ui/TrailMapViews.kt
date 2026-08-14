@@ -12,6 +12,7 @@ import org.osmdroid.views.overlay.Polyline
 import kr.forestmate.app.state.LatLon
 import kr.forestmate.app.state.TrailMapState
 import kr.forestmate.app.state.TrailMarkerKind
+import kr.forestmate.app.AppLanguage
 
 object TrailMapViews {
     fun createMap(context: Context, state: TrailMapState): MapView =
@@ -39,7 +40,7 @@ object TrailMapViews {
                     outlinePaint.color = Color.rgb(45, 106, 79)
                     outlinePaint.strokeWidth = 8f
                     outlinePaint.alpha = 215
-                    title = "추천 등산 경로"
+                    title = if (state.language == AppLanguage.ENGLISH) "Recommended hiking route" else "추천 등산 경로"
                 },
             )
         }
@@ -49,7 +50,7 @@ object TrailMapViews {
                     setPoints(state.trackPoints.map { it.geoPoint() })
                     outlinePaint.color = Color.rgb(40, 83, 173)
                     outlinePaint.strokeWidth = 6f
-                    title = "GPS 트랙"
+                    title = if (state.language == AppLanguage.ENGLISH) "GPS track" else "GPS 트랙"
                 },
             )
         }

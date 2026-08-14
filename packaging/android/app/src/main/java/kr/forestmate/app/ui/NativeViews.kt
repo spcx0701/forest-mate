@@ -14,6 +14,8 @@ import android.view.ViewOutlineProvider
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import kr.forestmate.app.AppCopy
+import kr.forestmate.app.DesignCopy
 import kr.forestmate.app.state.PhoneTab
 
 /**
@@ -31,15 +33,15 @@ object NativeViews {
     // --- Page scaffold -------------------------------------------------------
 
     /** Scroll content container with screen gutters (background/app bar set by caller). */
-    fun screen(context: Context, title: String, body: String): LinearLayout =
+    fun screen(context: Context, title: String, body: String, copy: AppCopy = DesignCopy.korean): LinearLayout =
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(context, 18f), dp(context, 10f), dp(context, 18f), dp(context, 24f))
-            addView(appBar(context, title, body))
+            addView(appBar(context, title, body, copy))
         }
 
     /** Brand app bar: pine mark + app name + location, then the active screen context. */
-    fun appBar(context: Context, title: String, subtitle: String): LinearLayout =
+    fun appBar(context: Context, title: String, subtitle: String, copy: AppCopy = DesignCopy.korean): LinearLayout =
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(context, 4f), 0, dp(context, 18f))
@@ -54,13 +56,13 @@ object NativeViews {
                         },
                     )
                     addView(TextView(context).apply {
-                        text = "숲길동무"
+                        text = copy.text("brand.name")
                         setTextColor(Contour.pine)
                         textSize = 25f
                         typeface = Contour.black()
                     }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                     addView(TextView(context).apply {
-                        text = "📍 서울 은평구 ▾"
+                        text = copy.text("location.label")
                         setTextColor(Contour.sub)
                         textSize = 12.5f
                         typeface = Contour.bold()
@@ -217,9 +219,9 @@ object NativeViews {
 
     // --- Bottom navigation ---------------------------------------------------
 
-    fun tabButton(context: Context, tab: PhoneTab, onClick: () -> Unit): Button =
+    fun tabButton(context: Context, tab: PhoneTab, label: String, onClick: () -> Unit): Button =
         Button(context).apply {
-            text = "${tabIcon(tab)}\n${tab.label}"
+            text = "${tabIcon(tab)}\n$label"
             isAllCaps = false
             textSize = 10f
             typeface = Contour.bold()

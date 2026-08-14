@@ -44,6 +44,7 @@ class MainActivity : Activity() {
     private lateinit var repository: ForestMateRepository
     private var navigation = NavigationState()
     private var courses: List<Course> = LocalCatalog.courses
+    private var usingLocalCatalog = true
     private var selectedCourse: Course = LocalCatalog.courses.first()
     private var hikeFlow = HikeFlowState(selectedCourseId = selectedCourse.id)
     private var mapState = TrailMapState.forCourse(selectedCourse)
@@ -54,10 +55,15 @@ class MainActivity : Activity() {
     private var lastMessage = ""
     private var hikeIndex: HikeIndex? = null
     private var autoLoadedHome = false
+    private val appLanguage: AppLanguage
+        get() = resolveLanguage()
+    private val copy: AppCopy
+        get() = DesignCopy.forLanguage(appLanguage)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = PhoneStore(this)
+        syncLocalCatalogForLanguage(resetMap = true)
         repository = ForestMateRepository(ApiConfig(store.apiBase), UrlConnectionTransport())
         hikeFlow = hikeFlow.copy(activeHikeId = store.activeHikeId.takeIf { it.isNotBlank() })
         tracking = hikeFlow.activeHikeId != null
@@ -102,6 +108,38 @@ class MainActivity : Activity() {
         Configuration.getInstance().userAgentValue = packageName
     }
 
+    private fun resolveLanguage(): AppLanguage {
+        val stored = store.languageOverride
+        return if (stored.isNotBlank()) AppLanguage.fromStoredValue(stored) else AppLanguage.fromLanguageTag(deviceLanguageTag())
+    }
+
+    private fun deviceLanguageTag(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            resources.configuration.locales[0]?.toLanguageTag().orEmpty()
+        } else {
+            @Suppress("DEPRECATION")
+            resources.configuration.locale.toLanguageTag()
+        }
+
+    private fun syncLocalCatalogForLanguage(resetMap: Boolean = false) {
+        if (!usingLocalCatalog) return
+        val localized = LocalCatalog.coursesFor(appLanguage)
+        val selectedId = selectedCourse.id
+        courses = localized
+        selectedCourse = localized.firstOrNull { it.id == selectedId } ?: localized.first()
+        if (resetMap || mapState.courseId != selectedCourse.id || mapState.language != appLanguage) {
+            mapState = TrailMapState.forCourse(selectedCourse, appLanguage)
+        }
+    }
+
+    private fun setLanguage(language: AppLanguage) {
+        store.languageOverride = language.storedValue
+        usingLocalCatalog = true
+        syncLocalCatalogForLanguage(resetMap = true)
+        lastMessage = ""
+        render()
+    }
+
     private fun navigationBarHeight(): Int {
         val resId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
         return if (resId > 0) resources.getDimensionPixelSize(resId) else 0
@@ -114,11 +152,12 @@ class MainActivity : Activity() {
         )
 
     private fun render() {
+        syncLocalCatalogForLanguage()
         currentMapView?.onDetach()
         currentMapView = null
         root.removeAllViews()
         val (title, body) = bodyFor(navigation.selected)
-        val content = NativeViews.screen(this, title, body)
+        val content = NativeViews.screen(this, title, body, copy)
         val status = NativeViews.statusText(this, lastMessage)
         content.addView(status)
         addTabContent(content, status, navigation.selected)
@@ -130,11 +169,11 @@ class MainActivity : Activity() {
     }
 
     private fun bodyFor(tab: PhoneTab): Pair<String, String> = when (tab) {
-        PhoneTab.HOME -> "좋음 — 산행하기 좋은 날" to "산행지수와 맞춤 코스를 한눈에 확인하세요."
+        PhoneTab.HOME -> copy.text("screen.home.title") to copy.text("screen.home.subtitle")
         PhoneTab.HIKE -> selectedCourse.name to selectedCourse.route
-        PhoneTab.SOS -> "안전 요청" to "현재 위치와 국가지점번호를 구조기관에 전달합니다."
-        PhoneTab.AI -> "AI 숲해설사 '숲이'" to "위험한 식물, 코스 여유, 날씨를 자연어로 물어보세요."
-        PhoneTab.MY -> "내 산행" to "기록, 배지, 안전 이벤트를 모아 봅니다."
+        PhoneTab.SOS -> copy.text("screen.sos.title") to copy.text("screen.sos.subtitle")
+        PhoneTab.AI -> copy.text("screen.ai.title") to copy.text("screen.ai.subtitle")
+        PhoneTab.MY -> copy.text("screen.my.title") to copy.text("screen.my.subtitle")
     }
 
     /** Bottom nav — design parity: pine/muted tabs with a raised red SOS button. */
@@ -199,14 +238,14 @@ class MainActivity : Activity() {
                         gravity = Gravity.CENTER_HORIZONTAL
                     },
                 )
-                addView(navLabel(tab.label, Contour.danger, selected))
+                addView(navLabel(copy.tabLabel(tab), Contour.danger, selected))
             } else {
                 addView(TextView(this@MainActivity).apply {
                     text = navIcon(tab)
                     textSize = 20f
                     gravity = Gravity.CENTER
                 })
-                addView(navLabel(tab.label, if (selected) Contour.pine else 0xFF9FB0A4.toInt(), selected))
+                addView(navLabel(copy.tabLabel(tab), if (selected) Contour.pine else 0xFF9FB0A4.toInt(), selected))
             }
         }
 
@@ -252,12 +291,12 @@ class MainActivity : Activity() {
     private fun renderHome(content: LinearLayout, status: TextView) {
         content.addView(indexCard())
         content.addView(searchCard())
-        content.addView(sectionRow("🤖 AI 맞춤 코스", "체력 중급 · 무릎 주의 이력 반영"))
+        content.addView(sectionRow(copy.text("home.ai.title"), copy.text("home.ai.meta")))
         content.addView(courseCarousel())
-        content.addView(sectionRow("🛡 안전 브리핑", "하산 사고와 날씨 변화를 먼저 확인"))
+        content.addView(sectionRow(copy.text("home.safety.title"), copy.text("home.safety.meta")))
         content.addView(safetyBriefingCard())
         content.addView(newsCard())
-        content.addView(NativeViews.ghostButton(this, "산행지수 새로고침") { loadHome(status) })
+        content.addView(NativeViews.ghostButton(this, copy.text("home.refresh")) { loadHome(status) })
         if (!autoLoadedHome) {
             autoLoadedHome = true
             status.post {
@@ -283,13 +322,13 @@ class MainActivity : Activity() {
         )
         val rightCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         rightCol.addView(TextView(this).apply {
-            text = idx?.label ?: "산행하기 좋은 날"
+            text = copy.hikingIndexLabel(idx?.label)
             textSize = 17f
             setTextColor(0xFFFFFFFF.toInt())
             setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
         rightCol.addView(TextView(this).apply {
-            text = "오늘의 산행지수 · ${idx?.let { it.place.ifBlank { it.regionName } } ?: "서울 은평구"}"
+            text = copy.format("home.index.line", idx?.let { copy.placeName(it.place, it.regionName) } ?: copy.placeName(null, null))
             textSize = 11f
             typeface = Contour.mono()
             setTextColor(0xB3FFFFFF.toInt())
@@ -302,7 +341,7 @@ class MainActivity : Activity() {
     }
 
     private fun subIndexGrid(idx: HikeIndex?): LinearLayout {
-        val tiles = ConditionDetailViews.summaryTiles(idx)
+        val tiles = ConditionDetailViews.summaryTiles(idx, appLanguage)
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             tiles.chunked(2).forEachIndexed { rowIdx, pair ->
@@ -348,7 +387,7 @@ class MainActivity : Activity() {
                     setTextColor(0x99FFFFFF.toInt())
                 }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 addView(TextView(this@MainActivity).apply {
-                    text = "자세히 ›"
+                    text = copy.text("detail.more")
                     textSize = 8.5f
                     setTextColor(0x80FFFFFF.toInt())
                 })
@@ -364,11 +403,11 @@ class MainActivity : Activity() {
 
     /** Bottom-sheet condition detail dialog (condition-panel parity). */
     private fun showConditionDetail(id: String) {
-        val detail = ConditionDetailViews.build(id, hikeIndex)
+        val detail = ConditionDetailViews.build(id, hikeIndex, appLanguage)
         val dialog = android.app.Dialog(this)
         val scroll = ScrollView(this).apply {
             isVerticalScrollBarEnabled = false
-            addView(ConditionDetailViews.panel(this@MainActivity, detail) { dialog.dismiss() })
+            addView(ConditionDetailViews.panel(this@MainActivity, detail, { dialog.dismiss() }, appLanguage))
         }
         dialog.setContentView(scroll)
         dialog.window?.apply {
@@ -407,13 +446,13 @@ class MainActivity : Activity() {
             lp.bottomMargin = Contour.dp(this@MainActivity, 12f)
             layoutParams = lp
             addView(TextView(this@MainActivity).apply {
-                text = "🔍 전국 산 검색"
+                text = copy.text("home.search.title")
                 textSize = 18f
                 setTextColor(Contour.pine)
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
             })
             addView(TextView(this@MainActivity).apply {
-                text = "산림청 산정보 · 전국 3,400여 개 산"
+                text = copy.text("home.search.meta")
                 textSize = 12.5f
                 setTextColor(Contour.sub)
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -445,18 +484,18 @@ class MainActivity : Activity() {
             lp.bottomMargin = Contour.dp(this@MainActivity, 14f)
             layoutParams = lp
             addView(TextView(this@MainActivity).apply {
-                text = "⚠ 하산 시 사고가 등반보다 1.8배 많아요."
+                text = copy.text("home.safety.head")
                 textSize = 14f
                 setTextColor(Contour.cautionInk)
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
             })
-            addView(NativeViews.bodyText(this@MainActivity, "스틱으로 무릎 부담을 줄이고, 급경사 전환 구간에서는 속도를 낮추세요."))
+            addView(NativeViews.bodyText(this@MainActivity, copy.text("home.safety.body")))
         }
 
     private fun newsCard(): LinearLayout {
         val card = NativeViews.card(this)
-        card.addView(cardTitle("🌿 이번 주 숲 소식"))
-        card.addView(NativeViews.bodyText(this, "국립공원 탐방 예약과 산불·강풍 안내를 함께 확인하세요. 위험 알림은 코스별 안전 브리핑에 반영됩니다."))
+        card.addView(cardTitle(copy.text("home.news.title")))
+        card.addView(NativeViews.bodyText(this, copy.text("home.news.body")))
         return card
     }
 
@@ -469,49 +508,49 @@ class MainActivity : Activity() {
         val map = TrailMapViews.createMap(this, mapState)
         currentMapView = map
         content.addView(map, mapParams())
-        content.addView(NativeViews.captionText(this, "© OpenStreetMap contributors · 추천 경로/위험 마커/GPS 트랙 · 오프라인 지도 저장됨"))
+        content.addView(NativeViews.captionText(this, copy.text("map.caption")))
 
         content.addView(hikeMetricRow())
 
         selectedCourse.hazards.forEach { hazard ->
             content.addView(
                 hazardCard(
-                    "위험구간 ${hazard.at.percent()} · ${hazard.type} · ${hazard.grade}",
+                    copy.format("hike.hazard.title", hazard.at.percent(), hazard.type, hazard.grade),
                     hazard.note,
                 ),
             )
         }
 
-        content.addView(NativeViews.primaryButton(this, if (tracking) "산행 일시정지" else "산행 시작") { toggleHike(status) })
-        content.addView(NativeViews.ghostButton(this, "산행 종료") { endHike(status) })
-        content.addView(NativeViews.ghostButton(this, "데모 이동 +90m") { demoGps(status) })
-        content.addView(NativeViews.ghostButton(this, "워치 백업 연결") { pairWatch(status) })
+        content.addView(NativeViews.primaryButton(this, if (tracking) copy.text("hike.button.pause") else copy.text("hike.button.start")) { toggleHike(status) })
+        content.addView(NativeViews.ghostButton(this, copy.text("hike.button.end")) { endHike(status) })
+        content.addView(NativeViews.ghostButton(this, copy.text("hike.button.demo")) { demoGps(status) })
+        content.addView(NativeViews.ghostButton(this, copy.text("hike.button.watch")) { pairWatch(status) })
     }
 
     private fun directionsCard(): LinearLayout {
         val card = NativeViews.card(this)
-        card.addView(cardTitle("🧭 들머리까지 가는 길"))
-        card.addView(NativeViews.bodyText(this, "탐방지원센터 · ${selectedCourse.route.substringBefore(" → ")}"))
+        card.addView(cardTitle(copy.text("directions.title")))
+        card.addView(NativeViews.bodyText(this, copy.format("directions.body", selectedCourse.route.substringBefore(" → "))))
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, Contour.dp(this@MainActivity, 10f), 0, Contour.dp(this@MainActivity, 6f))
-            addView(NativeViews.primaryButton(this@MainActivity, "현재위치→카카오맵") { lastMessage = "길찾기 앱을 열 준비 중입니다."; render() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            addView(NativeViews.primaryButton(this@MainActivity, copy.text("directions.kakao")) { lastMessage = copy.text("directions.preparing"); render() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                 rightMargin = Contour.dp(this@MainActivity, 8f)
             })
-            addView(NativeViews.ghostButton(this@MainActivity, "구글맵") { lastMessage = "길찾기 앱을 열 준비 중입니다."; render() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(NativeViews.ghostButton(this@MainActivity, copy.text("directions.google")) { lastMessage = copy.text("directions.preparing"); render() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }
         card.addView(actions)
-        card.addView(NativeViews.captionText(this, "도착하면 산행 시작을 눌러 GPS 추적을 켜세요."))
+        card.addView(NativeViews.captionText(this, copy.text("directions.caption")))
         return card
     }
 
     private fun hikeMetricRow(): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            addView(metricTile(mapState.walkedKm.formatKm() + "km", "이동 / ${selectedCourse.km}km"), metricLp())
-            addView(metricTile("${selectedCourse.elevation.firstOrNull() ?: 120}m", "현재 고도"), metricLp())
-            addView(metricTile(hikeFlow.watchPairCode ?: "-", "심박(워치)"), metricLp())
-            addView(metricTile("1:22", "일몰까지"), metricLp())
+            addView(metricTile(mapState.walkedKm.formatKm() + "km", copy.format("metric.distance", selectedCourse.km)), metricLp())
+            addView(metricTile("${selectedCourse.elevation.firstOrNull() ?: 120}m", copy.text("metric.altitude")), metricLp())
+            addView(metricTile(hikeFlow.watchPairCode ?: "-", copy.text("metric.heart")), metricLp())
+            addView(metricTile("1:22", copy.text("metric.sunset")), metricLp())
         }
 
     private fun metricLp(): LinearLayout.LayoutParams =
@@ -544,26 +583,26 @@ class MainActivity : Activity() {
 
     private fun renderSos(content: LinearLayout, status: TextView) {
         val location = NativeViews.heroCard(this, dark = true)
-        location.addView(heroTitle("현재 위치"))
-        location.addView(heroLine("국가지점번호", selectedCourse.gridNo))
+        location.addView(heroTitle(copy.text("sos.location")))
+        location.addView(heroLine(copy.text("sos.grid"), selectedCourse.gridNo))
         location.addView(heroLine("GPS", selectedCourse.gps))
-        location.addView(heroLine("관할 119", selectedCourse.fireStation))
+        location.addView(heroLine(copy.text("sos.station"), selectedCourse.fireStation))
         content.addView(location)
-        content.addView(NativeViews.captionText(this, "버튼을 누르면 현재 산행 위치와 국가지점번호가 구조기관으로 전달됩니다."))
-        content.addView(NativeViews.dangerButton(this, "🆘 SOS 전송") { sendSos(status) })
+        content.addView(NativeViews.captionText(this, copy.text("sos.caption")))
+        content.addView(NativeViews.dangerButton(this, copy.text("sos.send")) { sendSos(status) })
     }
 
     private fun renderAi(content: LinearLayout, status: TextView) {
         content.addView(photoQuestionCard())
-        content.addView(chatBubble("길에서 봤는데, 이 버섯 먹어도 돼?", fromUser = true))
+        content.addView(chatBubble(copy.text("ai.sample.user1"), fromUser = true))
         content.addView(aiRiskCard())
-        content.addView(chatBubble("백운대 정상까지 얼마나 남았어?", fromUser = true))
-        content.addView(chatBubble("남은 거리 1.8km, 지금 페이스라면 약 55분 뒤 도착해요. 일몰까지 여유는 있지만 정상 부근 바람이 강하니 겉옷을 준비하세요.", fromUser = false))
+        content.addView(chatBubble(copy.text("ai.sample.user2"), fromUser = true))
+        content.addView(chatBubble(copy.text("ai.sample.assistant2"), fromUser = false))
 
         val inputCard = NativeViews.card(this)
-        val input = styledInput("숲이에게 질문", "오늘 이 코스 안전해?")
+        val input = styledInput(copy.text("ai.input.hint"), copy.text("ai.input.default"))
         inputCard.addView(input)
-        inputCard.addView(NativeViews.primaryButton(this, "묻기") { sendChat(status, input.text.toString()) })
+        inputCard.addView(NativeViews.primaryButton(this, copy.text("ai.ask")) { sendChat(status, input.text.toString()) })
         content.addView(inputCard)
     }
 
@@ -576,7 +615,7 @@ class MainActivity : Activity() {
                     intArrayOf(0xFF7E6A3D.toInt(), 0xFFE8D684.toInt(), 0xFF4B3821.toInt()),
                 ).apply { cornerRadius = Contour.dp(this@MainActivity, 18f).toFloat() }
                 addView(TextView(this@MainActivity).apply {
-                    text = "📷 방금 촬영한 사진"
+                    text = copy.text("ai.photo")
                     textSize = 13f
                     setTextColor(Contour.sub)
                     background = Contour.round(this@MainActivity, Contour.card, radiusDp = 0f)
@@ -611,20 +650,20 @@ class MainActivity : Activity() {
             lp.bottomMargin = Contour.dp(this@MainActivity, 16f)
             layoutParams = lp
             addView(TextView(this@MainActivity).apply {
-                text = "🚫 개나리광대버섯 가능성 높음"
+                text = copy.text("ai.risk.title")
                 textSize = 15f
                 setTextColor(0xFFC7252D.toInt())
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
             })
-            addView(NativeViews.bodyText(this@MainActivity, "아마톡신 함유 맹독성 버섯과 유사합니다. 소량 섭취도 위험할 수 있어요."))
+            addView(NativeViews.bodyText(this@MainActivity, copy.text("ai.risk.body")))
             addView(TextView(this@MainActivity).apply {
-                text = "AI 판별 신뢰도 87% · 국립수목원 자료 대조"
+                text = copy.text("ai.risk.confidence")
                 textSize = 12f
                 setTextColor(0xFF8B4A52.toInt())
                 setPadding(0, Contour.dp(this@MainActivity, 8f), 0, Contour.dp(this@MainActivity, 8f))
             })
             addView(TextView(this@MainActivity).apply {
-                text = "⚠ 절대 채취·섭취 금지. 만졌다면 흐르는 물에 손을 씻어주세요."
+                text = copy.text("ai.risk.warning")
                 textSize = 13f
                 setTextColor(0xFFC7252D.toInt())
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -634,39 +673,78 @@ class MainActivity : Activity() {
     private fun renderMy(content: LinearLayout, status: TextView) {
         content.addView(dashboardSummaryCard())
         content.addView(safetyEventsCard())
+        content.addView(languageCard())
 
         val account = NativeViews.card(this)
-        account.addView(cardTitle("계정"))
-        val email = styledInput("이메일", store.accountEmail).apply { setSingleLine(true) }
-        val password = styledInput("비밀번호", "").apply {
+        account.addView(cardTitle(copy.text("my.account.title")))
+        val email = styledInput(copy.text("my.email"), store.accountEmail).apply { setSingleLine(true) }
+        val password = styledInput(copy.text("my.password"), "").apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             setSingleLine(true)
         }
         account.addView(email)
         account.addView(password)
-        account.addView(NativeViews.primaryButton(this, "가입") { registerAccount(status, email.text.toString(), password.text.toString()) })
-        account.addView(NativeViews.ghostButton(this, "로그인") { loginAccount(status, email.text.toString(), password.text.toString()) })
+        account.addView(NativeViews.primaryButton(this, copy.text("my.signup")) { registerAccount(status, email.text.toString(), password.text.toString()) })
+        account.addView(NativeViews.ghostButton(this, copy.text("my.login")) { loginAccount(status, email.text.toString(), password.text.toString()) })
         content.addView(account)
 
-        content.addView(NativeViews.primaryButton(this, "기록/배지 불러오기") { loadSummary(status) })
+        content.addView(NativeViews.primaryButton(this, copy.text("my.load")) { loadSummary(status) })
 
         val info = NativeViews.card(this)
-        info.addView(cardTitle("내 산행"))
-        info.addView(NativeViews.bodyText(this, "계정: ${store.accountEmail.ifBlank { "미연결" }}\n기기 등록: ${if (store.deviceToken.isBlank()) "대기" else "완료"}\n워치 코드: ${hikeFlow.watchPairCode ?: "없음"}"))
+        info.addView(cardTitle(copy.text("my.summary.title")))
+        info.addView(
+            NativeViews.bodyText(
+                this,
+                "${copy.text("my.account.label")}: ${store.accountEmail.ifBlank { copy.text("my.disconnected") }}\n" +
+                    "${copy.text("my.device.label")}: ${if (store.deviceToken.isBlank()) copy.text("my.device.pending") else copy.text("my.device.complete")}\n" +
+                    "${copy.text("my.watch.label")}: ${hikeFlow.watchPairCode ?: copy.text("my.watch.none")}",
+            ),
+        )
         content.addView(info)
+    }
+
+    private fun languageCard(): LinearLayout {
+        val card = NativeViews.card(this)
+        card.addView(cardTitle(copy.text("language.title")))
+        card.addView(NativeViews.bodyText(this, copy.text("language.body")))
+        val currentLanguageKey = if (appLanguage == AppLanguage.ENGLISH) COPY_LANGUAGE_ENGLISH else COPY_LANGUAGE_KOREAN
+        card.addView(NativeViews.captionText(this, copy.format("language.current", copy.text(currentLanguageKey))))
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(
+                if (appLanguage == AppLanguage.KOREAN) {
+                    NativeViews.primaryButton(this@MainActivity, copy.text(COPY_LANGUAGE_KOREAN)) {}
+                } else {
+                    NativeViews.ghostButton(this@MainActivity, copy.text(COPY_LANGUAGE_KOREAN)) { setLanguage(AppLanguage.KOREAN) }
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    rightMargin = Contour.dp(this@MainActivity, 8f)
+                },
+            )
+            addView(
+                if (appLanguage == AppLanguage.ENGLISH) {
+                    NativeViews.primaryButton(this@MainActivity, copy.text(COPY_LANGUAGE_ENGLISH)) {}
+                } else {
+                    NativeViews.ghostButton(this@MainActivity, copy.text(COPY_LANGUAGE_ENGLISH)) { setLanguage(AppLanguage.ENGLISH) }
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
+        }
+        card.addView(row)
+        return card
     }
 
     private fun dashboardSummaryCard(): LinearLayout {
         val card = NativeViews.heroCard(this, dark = true)
-        card.addView(heroTitle("실시간 안전 이벤트"))
+        card.addView(heroTitle(copy.text("my.safety.title")))
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            addView(darkStat("1", "SOS 훈련"), darkStatLp())
-            addView(darkStat("7", "위험 감지"), darkStatLp())
-            addView(darkStat("23분", "평균 도착"), darkStatLp())
+            addView(darkStat("1", copy.text("my.stat.sos")), darkStatLp())
+            addView(darkStat("7", copy.text("my.stat.risk")), darkStatLp())
+            addView(darkStat(copy.text("my.stat.arrival.value"), copy.text("my.stat.arrival")), darkStatLp())
         }
         card.addView(row)
-        card.addView(heroBody("개인 위치는 k-익명화 기준으로만 안전 분석에 반영됩니다."))
+        card.addView(heroBody(copy.text("my.privacy")))
         return card
     }
 
@@ -695,10 +773,10 @@ class MainActivity : Activity() {
 
     private fun safetyEventsCard(): LinearLayout {
         val card = NativeViews.card(this)
-        card.addView(cardTitle("구간별 위험도"))
-        card.addView(eventLine("인수봉 동면 슬랩", "높음 81", "강풍 9m/s · 사고다발"))
-        card.addView(eventLine("Y계곡 암릉", "높음 76", "낙석·정체"))
-        card.addView(eventLine("백운대 정상부", "주의 58", "혼잡·일몰임박"))
+        card.addView(cardTitle(copy.text("my.risk.section")))
+        card.addView(eventLine(copy.text("event.zone1"), copy.text("event.grade1"), copy.text("event.reason1")))
+        card.addView(eventLine(copy.text("event.zone2"), copy.text("event.grade2"), copy.text("event.reason2")))
+        card.addView(eventLine(copy.text("event.zone3"), copy.text("event.grade3"), copy.text("event.reason3")))
         return card
     }
 
@@ -709,7 +787,7 @@ class MainActivity : Activity() {
             addView(TextView(this@MainActivity).apply {
                 text = "$zone · $grade"
                 textSize = 13.5f
-                setTextColor(if (grade.startsWith("높음")) Contour.dangerInk else Contour.cautionInk)
+                setTextColor(if (copy.lowHighGrade(grade)) Contour.dangerInk else Contour.cautionInk)
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
             })
             addView(TextView(this@MainActivity).apply {
@@ -742,7 +820,7 @@ class MainActivity : Activity() {
         val hero = FrameLayout(this).apply { background = Contour.courseHeroStrip(this@MainActivity) }
         hero.addView(
             TextView(this).apply {
-                text = if (course.view > 0) "매칭 ${course.view}%" else "AI 추천"
+                text = if (course.view > 0) copy.format("course.match", course.view) else copy.text("course.ai")
                 textSize = 10f
                 typeface = Contour.mono()
                 setTextColor(0xFFFFFFFF.toInt())
@@ -757,7 +835,7 @@ class MainActivity : Activity() {
         if (course.gridNo.isNotBlank()) {
             hero.addView(
                 TextView(this).apply {
-                    text = "국가지점번호 ${course.gridNo}"
+                    text = copy.format("course.grid", course.gridNo)
                     textSize = 9f
                     typeface = Contour.mono()
                     setTextColor(0xE6FFFFFF.toInt())
@@ -788,17 +866,13 @@ class MainActivity : Activity() {
         card.setOnClickListener {
             selectCourse(course)
             navigation = navigation.select(PhoneTab.HIKE.id)
-            lastMessage = "${course.name} 선택됨"
+            lastMessage = copy.format("course.selected", course.name)
             render()
         }
         return card
     }
 
-    private fun courseMetaLine(course: Course): String {
-        val time = if (course.minutes >= 60) "${course.minutes / 60}시간${(course.minutes % 60).let { if (it > 0) "${it}분" else "" }}" else "${course.minutes}분"
-        val level = course.level.ifBlank { "확인" }
-        return "▲ ${course.km}km   ◷ $time   ● 난이도 $level"
-    }
+    private fun courseMetaLine(course: Course): String = copy.courseMeta(course)
 
     private fun hazardCard(title: String, note: String): LinearLayout =
         LinearLayout(this).apply {
@@ -881,7 +955,7 @@ class MainActivity : Activity() {
         }
 
     private fun loadHome(status: TextView) {
-        runApi(status, "산행지수와 추천을 불러오는 중...") {
+        runApi(status, copy.text("status.home.loading")) {
             val healthResult = repository.health()
             if (healthResult is ApiResult.Failure) {
                 return@runApi homeFallbackMessage()
@@ -894,44 +968,51 @@ class MainActivity : Activity() {
             }
             val remoteCourses = repository.courses()
             if (remoteCourses is ApiResult.Success && remoteCourses.value.isNotEmpty()) {
-                courses = remoteCourses.value
-                selectedCourse = courses.firstOrNull { it.id == selectedCourse.id } ?: courses.first()
-                mapState = TrailMapState.forCourse(selectedCourse)
+                if (appLanguage == AppLanguage.ENGLISH) {
+                    usingLocalCatalog = true
+                    syncLocalCatalogForLanguage(resetMap = true)
+                } else {
+                    usingLocalCatalog = false
+                    courses = remoteCourses.value
+                    selectedCourse = courses.firstOrNull { it.id == selectedCourse.id } ?: courses.first()
+                    mapState = TrailMapState.forCourse(selectedCourse, appLanguage)
+                }
             } else if (remoteCourses is ApiResult.Failure) {
-                return@runApi "추천 코스는 저장된 목록으로 표시 중입니다."
+                usingLocalCatalog = true
+                return@runApi copy.text("status.home.stored")
             }
             ""
         }
     }
 
     private fun homeFallbackMessage(): String =
-        "최신 데이터를 불러오지 못해 저장된 코스를 보여줍니다."
+        copy.text("status.home.fallback")
 
     private fun selectCourse(course: Course) {
         selectedCourse = course
         hikeFlow = hikeFlow.copy(selectedCourseId = course.id, activeHikeId = null, progress = 0.0)
-        mapState = TrailMapState.forCourse(course)
+        mapState = TrailMapState.forCourse(course, appLanguage)
     }
 
     private fun toggleHike(status: TextView) {
         if (tracking) {
             tracking = false
             stopLocationUpdates()
-            lastMessage = "산행 일시정지 · 현재 진행 ${hikeFlow.progress.percent()}"
+            lastMessage = copy.format("status.hike.paused", hikeFlow.progress.percent())
             status.text = lastMessage
             render()
             return
         }
         tracking = true
-        lastMessage = "GPS 추적 시작 · ${selectedCourse.name}"
+        lastMessage = copy.format("status.hike.gps", selectedCourse.name)
         status.text = lastMessage
         startLocationUpdates()
-        runApi(status, "서버 산행 체크인 중...") {
+        runApi(status, copy.text("status.hike.checkin.loading")) {
             val token = ensureDeviceToken()
             messageFor(repository.startHike(token, selectedCourse.id)) {
                 hikeFlow = hikeFlow.started(it.hikeId)
                 store.activeHikeId = it.hikeId
-                "입산 체크인 완료 · ${selectedCourse.name} · 산행 ID ${it.hikeId.take(8)}"
+                copy.format("status.hike.checkin.done", selectedCourse.name, it.hikeId.take(8))
             }
         }
     }
@@ -950,45 +1031,45 @@ class MainActivity : Activity() {
         hikeFlow = hikeFlow.copy(activeHikeId = null)
         store.activeHikeId = ""
         if (token.isBlank() || hikeId.isNullOrBlank()) {
-            lastMessage = "로컬 산행 종료 · ${mapState.walkedKm.formatKm()}km"
+            lastMessage = copy.format("status.hike.local.end", mapState.walkedKm.formatKm())
             status.text = lastMessage
             render()
             return
         }
-        runApi(status, "산행 기록 저장 중...") {
+        runApi(status, copy.text("status.hike.save.loading")) {
             messageFor(repository.endHike(token, hikeId)) {
-                "산행 종료 · ${mapState.walkedKm.formatKm()}km · 기록 저장"
+                copy.format("status.hike.saved", mapState.walkedKm.formatKm())
             }
         }
     }
 
     private fun pairWatch(status: TextView) {
-        runApi(status, "워치 연결 코드 생성 중...") {
+        runApi(status, copy.text("status.watch.loading")) {
             val token = ensureDeviceToken()
             val result = repository.startWatchPairing(token, hikeFlow.activeHikeId)
             messageFor(result) {
                 hikeFlow = hikeFlow.paired(it.code)
-                "워치 백업 코드 ${it.code} · ${it.expiresIn / 60}분 유효"
+                copy.format("status.watch.code", it.code, it.expiresIn / 60)
             }
         }
     }
 
     private fun sendSos(status: TextView) {
-        runApi(status, "SOS 전송 중...") {
+        runApi(status, copy.text("status.sos.loading")) {
             val token = ensureDeviceToken()
             messageFor(repository.sendSos(token, hikeFlow.activeHikeId)) {
-                "SOS ${it.status} · ${it.gridNo} · ${it.station} · ETA ${it.etaMin}분"
+                copy.format("status.sos.done", it.status, it.gridNo, it.station, it.etaMin)
             }
         }
     }
 
     private fun sendChat(status: TextView, rawMessage: String) {
-        val message = rawMessage.ifBlank { "오늘 이 코스 안전해?" }
-        runApi(status, "숲이 응답 중...") {
+        val message = rawMessage.ifBlank { copy.text("ai.input.default") }
+        runApi(status, copy.text("status.chat.loading")) {
             messageFor(
                 repository.sendChat(
                     message = message,
-                    lang = "ko",
+                    lang = appLanguage.chatLang,
                     courseId = selectedCourse.id,
                     progress = hikeFlow.progress,
                 ),
@@ -999,41 +1080,42 @@ class MainActivity : Activity() {
     }
 
     private fun loadSummary(status: TextView) {
-        runApi(status, "기록과 배지를 불러오는 중...") {
+        runApi(status, copy.text("status.summary.loading")) {
             val token = store.accountToken.ifBlank { ensureDeviceToken() }
             val summaryText = messageFor(repository.hikeSummary(token)) {
                 val badges = it.badges.take(5).joinToString(" / ") { badge ->
-                    "${badge.icon}${badge.label} ${if (badge.earned) "달성" else "${badge.progress}/${badge.goal}"}"
-                }.ifBlank { "배지 기록 대기" }
-                "총 ${it.totalHikes}회 · ${it.totalKm}km · 레벨 ${it.level}\n완등 ${it.distinctCourses}코스 · 방문 지역 ${it.regions}곳\n$badges"
+                    val state = if (badge.earned) copy.text("summary.badge.earned") else copy.format("summary.badge.progress", badge.progress, badge.goal)
+                    "${badge.icon}${badge.label} $state"
+                }.ifBlank { copy.text("summary.badges.empty") }
+                copy.format("summary.text", it.totalHikes, it.totalKm, it.level, it.distinctCourses, it.regions, badges)
             }
             val logText = messageFor(repository.hikeLog(token)) { logs ->
-                if (logs.isEmpty()) "최근 기록 없음" else logs.take(3).joinToString("\n") { "${it.date} ${it.course} ${it.km}km" }
+                if (logs.isEmpty()) copy.text("summary.logs.empty") else logs.take(3).joinToString("\n") { "${it.date} ${it.course} ${it.km}km" }
             }
             "$summaryText\n$logText"
         }
     }
 
     private fun registerAccount(status: TextView, email: String, password: String) {
-        runApi(status, "계정 생성 중...") {
+        runApi(status, copy.text("status.account.creating")) {
             val deviceToken = store.deviceToken.ifBlank { null }
             messageFor(repository.registerAccount(email.trim(), password, deviceToken)) {
                 store.accountToken = it.accessToken
                 store.accountEmail = it.email
                 store.deviceToken = it.deviceToken
-                "계정 생성 완료 · ${it.email} · 기록 동기화 ON"
+                copy.format("status.account.created", it.email)
             }
         }
     }
 
     private fun loginAccount(status: TextView, email: String, password: String) {
-        runApi(status, "로그인 중...") {
+        runApi(status, copy.text("status.login.loading")) {
             val deviceToken = store.deviceToken.ifBlank { null }
             messageFor(repository.loginAccount(email.trim(), password, deviceToken)) {
                 store.accountToken = it.accessToken
                 store.accountEmail = it.email
                 store.deviceToken = it.deviceToken
-                "로그인 완료 · ${it.email} · 기록 동기화 ON"
+                copy.format("status.login.done", it.email)
             }
         }
     }
@@ -1066,9 +1148,9 @@ class MainActivity : Activity() {
             val provider = if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) LocationManager.GPS_PROVIDER else LocationManager.NETWORK_PROVIDER
             manager.requestLocationUpdates(provider, 5000L, 5f, locationListener!!)
         } catch (ex: SecurityException) {
-            lastMessage = "위치 권한이 필요합니다."
+            lastMessage = copy.text("status.location.permission")
         } catch (ex: IllegalArgumentException) {
-            lastMessage = "사용 가능한 위치 공급자가 없습니다."
+            lastMessage = copy.text("status.location.provider")
         }
     }
 
@@ -1077,7 +1159,7 @@ class MainActivity : Activity() {
         try {
             locationManager?.removeUpdates(listener)
         } catch (_: SecurityException) {
-            lastMessage = "위치 권한 상태가 변경되어 추적을 멈췄습니다."
+            lastMessage = copy.text("status.location.changed")
         }
         locationListener = null
     }
@@ -1108,7 +1190,7 @@ class MainActivity : Activity() {
             val message = try {
                 block()
             } catch (ex: Exception) {
-                "요청을 완료하지 못했습니다. 잠시 후 다시 시도해주세요."
+                copy.text("status.request.failed")
             }
             runOnUiThread {
                 lastMessage = message
@@ -1128,7 +1210,13 @@ class MainActivity : Activity() {
         }
 
     private fun hikeStatusText(): String =
-        "진행 ${hikeFlow.progress.percent()} · 이동 ${mapState.walkedKm.formatKm()}km · ${if (tracking) "GPS 추적 중" else "대기"} · 워치 ${hikeFlow.watchPairCode ?: "미연결"}"
+        copy.format(
+            "status.hike",
+            hikeFlow.progress.percent(),
+            mapState.walkedKm.formatKm(),
+            if (tracking) copy.text("status.tracking") else copy.text("status.waiting"),
+            hikeFlow.watchPairCode ?: copy.text("my.disconnected"),
+        )
 
     private fun Double.percent(): String = "${(this.coerceIn(0.0, 1.0) * 100).toInt()}%"
 
