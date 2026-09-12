@@ -9,13 +9,13 @@ importers:
   .:
     devDependencies:
       fast-check:
-        specifier: 4.8.0
-        version: 4.8.0
+        specifier: 4.10.0
+        version: 4.10.0
 
 packages:
 
-  fast-check@4.8.0:
-    resolution: {integrity: sha512-GOJ158CUMnN6cSahsv4+ExARvIDuzzinFjkp0E9WtiBa5zcVeLozVkWaE4IzFcc+Y48Wp1EDlUZsXRyAztQcSg==}
+  fast-check@4.10.0:
+    resolution: {integrity: sha512-hhqQL+IJllZi3aM4TKvmCj3bywLEcycNTTLZeLhA9ttMxBrCqM07q7Di4kl+j9EWSTXvJH1+EpIgsDbF/+8H5Q==}
     engines: {node: '>=12.17.0'}
 
   pure-rand@8.4.0:
@@ -23,7 +23,7 @@ packages:
 
 snapshots:
 
-  fast-check@4.8.0:
+  fast-check@4.10.0:
     dependencies:
       pure-rand: 8.4.0
 
