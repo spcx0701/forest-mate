@@ -18,8 +18,8 @@ importers:
         specifier: 8.2.0
         version: 8.2.0(@capacitor/core@8.4.1)
       '@capacitor/ios':
-        specifier: 8.4.1
-        version: 8.4.1(@capacitor/core@8.4.1)
+        specifier: 8.4.3
+        version: 8.4.3(@capacitor/core@8.4.1)
       '@capacitor/push-notifications':
         specifier: 8.1.1
         version: 8.1.1(@capacitor/core@8.4.1)
@@ -43,8 +43,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
-  '@capacitor/ios@8.4.1':
-    resolution: {integrity: sha512-EgcAk7NYheHMTyP3CUrA65qKs4D2UEAKgw44HI6Uk3dTw6KjLQkdLOQWvbeRncHaZ2gklfOojUoc5DlSw2lhYg==}
+  '@capacitor/ios@8.4.3':
+    resolution: {integrity: sha512-ziFt4WskFjUFgwCcudhxklcCFMCPNTUk1yVuwutw6xxCvUZzmiOJjVLjDrZ+3A1G02nV+oizUiGPff97htPRIg==}
     peerDependencies:
       '@capacitor/core': ^8.4.0
 
@@ -104,6 +104,7 @@ packages:
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -434,7 +435,7 @@ snapshots:
       '@capacitor/core': 8.4.1
       '@capacitor/synapse': 1.0.4
 
-  '@capacitor/ios@8.4.1(@capacitor/core@8.4.1)':
+  '@capacitor/ios@8.4.3(@capacitor/core@8.4.1)':
     dependencies:
       '@capacitor/core': 8.4.1
 
